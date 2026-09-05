@@ -666,7 +666,7 @@ khuseeyo su'aasha user-ka.
                         method: "POST",
 headers: {
     "Authorization":
-        Bearer ${OPENROUTER_API_KEY},
+        `Bearer ${OPENROUTER_API_KEY}`,
 
     "Content-Type":
         "application/json",
@@ -678,8 +678,6 @@ headers: {
     "X-Title":
         "AI Chat Somali"
 },
-                      
-                        },
 
                         body: JSON.stringify({
                             model: OPENROUTER_MODEL,
