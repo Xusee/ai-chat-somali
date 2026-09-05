@@ -664,20 +664,21 @@ khuseeyo su'aasha user-ka.
                     "https://openrouter.ai/api/v1/chat/completions",
                     {
                         method: "POST",
+headers: {
+    "Authorization":
+        Bearer ${OPENROUTER_API_KEY},
 
-                        headers: {
-                            "Authorization":
-                               'Bearer ${OPENROUTER_API_KEY}',
+    "Content-Type":
+        "application/json",
 
-                            "Content-Type":
-                                "application/json",
+    "HTTP-Referer":
+        process.env.APP_URL ||
+        "http://localhost:3000",
 
-                            "HTTP-Referer":
-                                process.env.APP_URL ||
-                                "http://localhost:3000",
-
-                            "X-Title":
-                                "AI Chat Somali"
+    "X-Title":
+        "AI Chat Somali"
+},
+                      
                         },
 
                         body: JSON.stringify({
