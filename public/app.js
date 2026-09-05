@@ -185,7 +185,7 @@ async function checkLogin() {
 
         const response =
             await fetch(
-                ${API}/api/me,
+                '${API}/api/me',
                 {
                     headers: {
                         Authorization:
@@ -277,7 +277,7 @@ async function login(
 
         const response =
             await fetch(
-                ${API}/api/login,
+                '${API}/api/login',
                 {
                     method: "POST",
 
@@ -354,7 +354,7 @@ async function register(
 
         const response =
             await fetch(
-                ${API}/api/register,
+                '${API}/api/register',
                 {
                     method: "POST",
 
@@ -470,7 +470,7 @@ async function sendMessage() {
 
         const response =
             await fetch(
-                ${API}/api/chat,
+                '${API}/api/chat',
                 {
                     method: "POST",
 
@@ -536,7 +536,7 @@ async function loadChats() {
 
         const response =
             await fetch(
-                ${API}/api/chats,
+                '${API}/api/chats',
                 {
                     headers: {
                         Authorization:
@@ -597,7 +597,7 @@ async function deleteChats() {
 
         const response =
             await fetch(
-                ${API}/api/chats,
+                '${API}/api/chats',
                 {
                     method: "DELETE",
 
