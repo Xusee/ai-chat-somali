@@ -1,230 +1,214 @@
-// =====================================================
-// AI CHAT SOMALI - APP.JS
-// =====================================================
+"use strict";
 
-// IMPORTANT:
-// Markuu app-ku online noqdo, API-ga wuxuu noqonayaa
-// isla domain-ka uu browser-ku joogo.
-// Sidaas darteed localhost looma baahna.
+/*
+=====================================================
+ AI CHAT SOMALI - PUBLIC APP.JS
+=====================================================
+ Works with:
+   POST   /api/register
+   POST   /api/login
+   GET    /api/me
+   POST   /api/chat
+   GET    /api/chats
+   DELETE /api/chats
+
+ Features:
+   - Login
+   - Register
+   - JWT authentication
+   - Chat
+   - Chat history
+   - Delete history
+   - Image upload
+   - Logout
+   - Mobile friendly
+=====================================================
+*/
+
+
+// =====================================================
+// API
+// =====================================================
 
 const API = window.location.origin;
 
-let token =
-    localStorage.getItem("ai_token");
 
+// =====================================================
+// LOCAL STORAGE KEYS
+// =====================================================
+
+const TOKEN_KEY = "ai_token";
+const USER_KEY = "ai_user";
+
+
+// =====================================================
+// STATE
+// =====================================================
+
+let token = localStorage.getItem(TOKEN_KEY) || "";
 let currentUser = null;
+let selectedImage = null;
 
-try {
 
-    currentUser =
-        JSON.parse(
-            localStorage.getItem("ai_user")
-        );
+// =====================================================
+// DOM HELPERS
+// =====================================================
 
-} catch {
-
-    currentUser = null;
+function $(id) {
+    return document.getElementById(id);
 }
+
 
 // =====================================================
 // ELEMENTS
 // =====================================================
 
-const messages =
-    document.getElementById("messages");
+const loginSection = $("loginSection");
+const chatSection = $("chatSection");
 
-const chatForm =
-    document.getElementById("chatForm");
+const loginForm = $("loginForm");
+const registerForm = $("registerForm");
 
-const messageInput =
-    document.getElementById("messageInput");
+const loginEmail = $("loginEmail");
+const loginPassword = $("loginPassword");
 
-const imageInput =
-    document.getElementById("imageInput");
+const registerName = $("registerName");
+const registerEmail = $("registerEmail");
+const registerPassword = $("registerPassword");
 
-const imageBtn =
-    document.getElementById("imageBtn");
+const userName = $("userName");
+const userEmail = $("userEmail");
 
-const logoutBtn =
-    document.getElementById("logoutBtn");
+const messages = $("messages");
 
-const clearBtn =
-    document.getElementById("clearBtn");
+const chatForm = $("chatForm");
+const messageInput = $("messageInput");
 
-const userName =
-    document.getElementById("userName");
+const imageBtn = $("imageBtn");
+const imageInput = $("imageInput");
 
-const userEmail =
-    document.getElementById("userEmail");
+const clearBtn = $("clearBtn");
+const logoutBtn = $("logoutBtn");
 
-const loginSection =
-    document.getElementById("loginSection");
-
-const chatSection =
-    document.getElementById("chatSection");
 
 // =====================================================
-// HELPERS
+// ESCAPE HTML
 // =====================================================
 
-function escapeHTML(text) {
-
-    const div =
-        document.createElement("div");
-
-    div.textContent =
-        text || "";
-
+function escapeHTML(value) {
+    const div = document.createElement("div");
+    div.textContent = value ?? "";
     return div.innerHTML;
 }
 
-function showError(message) {
 
-    if (!messages) return;
+// =====================================================
+// SHOW MESSAGE
+// =====================================================
 
-    const box =
-        document.createElement("div");
+function showMessage(text, type = "error") {
 
-    box.className =
-        "message error";
+    const old = document.getElementById("appNotice");
 
-    box.innerHTML =
-        ❌ ${escapeHTML(message)};
+    if (old) {
+        old.remove();
+    }
 
-    messages.appendChild(box);
+    const notice = document.createElement("div");
 
-    messages.scrollTop =
-        messages.scrollHeight;
-}
+    notice.id = "appNotice";
 
-function addUserMessage(text) {
+    notice.style.padding = "12px";
+    notice.style.margin = "10px 0";
+    notice.style.borderRadius = "10px";
+    notice.style.fontSize = "15px";
+    notice.style.whiteSpace = "pre-wrap";
 
-    const box =
-        document.createElement("div");
-
-    box.className =
-        "message user";
-
-    box.innerHTML =
-        escapeHTML(text);
-
-    messages.appendChild(box);
-
-    messages.scrollTop =
-        messages.scrollHeight;
-}
-
-function addAIMessage(text) {
-
-    const box =
-        document.createElement("div");
-
-    box.className =
-        "message ai";
-
-    box.innerHTML =
-        escapeHTML(text)
-            .replace(/\n/g, "<br>");
-
-    messages.appendChild(box);
-
-    messages.scrollTop =
-        messages.scrollHeight;
-}
-
-function loading(show) {
-
-    let item =
-        document.getElementById(
-            "aiLoading"
-        );
-
-    if (show) {
-
-        if (item) return;
-
-        item =
-            document.createElement("div");
-
-        item.id =
-            "aiLoading";
-
-        item.className =
-            "message ai";
-
-        item.innerHTML =
-            "🤖 AI ayaa qoraya...";
-
-        messages.appendChild(item);
-
-        messages.scrollTop =
-            messages.scrollHeight;
-
+    if (type === "success") {
+        notice.style.background = "#dcfce7";
+        notice.style.color = "#166534";
     } else {
-
-        if (item) {
-            item.remove();
-        }
+        notice.style.background = "#fee2e2";
+        notice.style.color = "#991b1b";
     }
+
+    notice.textContent = text;
+
+    const container =
+        document.querySelector(".container") ||
+        document.body;
+
+    container.prepend(notice);
+
+    setTimeout(() => {
+        notice.remove();
+    }, 5000);
 }
 
+
 // =====================================================
-// AUTH CHECK
+// GET ERROR FROM SERVER
 // =====================================================
 
-async function checkLogin() {
-
-    if (!token) {
-
-        showLogin();
-
-        return;
-    }
+async function getErrorMessage(response) {
 
     try {
 
-        const response =
-            await fetch(
-                '${API}/api/me',
-                {
-                    headers: {
-                        Authorization:
-                            Bearer ${token}
-                    }
-                }
-            );
+        const data = await response.json();
 
-        const data =
-            await response.json();
-
-        if (!response.ok) {
-
-            logout(false);
-
-            return;
-        }
-
-        currentUser =
-            data.user;
-
-        localStorage.setItem(
-            "ai_user",
-            JSON.stringify(
-                currentUser
-            )
+        return (
+            data?.error ||
+            data?.message ||
+            `Request failed (${response.status})`
         );
-
-        showChat();
-
-        await loadChats();
 
     } catch (error) {
 
-        showError(
-            "Server-ka lama xiriirin karin."
-        );
+        return `Request failed (${response.status})`;
     }
 }
+
+
+// =====================================================
+// AUTH HEADERS
+// =====================================================
+
+function authHeaders() {
+
+    return {
+        "Authorization": `Bearer ${token}`
+    };
+}
+
+
+// =====================================================
+// SAVE LOGIN
+// =====================================================
+
+function saveSession(newToken, user) {
+
+    token = newToken;
+    currentUser = user;
+
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+
+// =====================================================
+// CLEAR LOGIN
+// =====================================================
+
+function clearSession() {
+
+    token = "";
+    currentUser = null;
+    selectedImage = null;
+
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+}
+
 
 // =====================================================
 // SHOW LOGIN
@@ -232,14 +216,15 @@ async function checkLogin() {
 
 function showLogin() {
 
-    if (loginSection)
-        loginSection.style.display =
-            "block";
+    if (loginSection) {
+        loginSection.style.display = "block";
+    }
 
-    if (chatSection)
-        chatSection.style.display =
-            "none";
+    if (chatSection) {
+        chatSection.style.display = "none";
+    }
 }
+
 
 // =====================================================
 // SHOW CHAT
@@ -247,98 +232,119 @@ function showLogin() {
 
 function showChat() {
 
-    if (loginSection)
-        loginSection.style.display =
-            "none";
+    if (loginSection) {
+        loginSection.style.display = "none";
+    }
 
-    if (chatSection)
-        chatSection.style.display =
-            "block";
+    if (chatSection) {
+        chatSection.style.display = "block";
+    }
 
-    if (userName)
-        userName.textContent =
-            currentUser?.name || "";
+    if (currentUser) {
 
-    if (userEmail)
-        userEmail.textContent =
-            currentUser?.email || "";
+        if (userName) {
+            userName.textContent =
+                currentUser.name || "User";
+        }
+
+        if (userEmail) {
+            userEmail.textContent =
+                currentUser.email || "";
+        }
+    }
 }
+
 
 // =====================================================
 // LOGIN
 // =====================================================
 
-async function login(
-    email,
-    password
-) {
+async function login(email, password) {
+
+    email = email.trim();
+
+    if (!email || !password) {
+        showMessage(
+            "Fadlan geli email iyo password."
+        );
+        return;
+    }
 
     try {
 
-        const response =
-            await fetch(
-                '${API}/api/login',
-                {
-                    method: "POST",
+        showMessage(
+            "⏳ Login ayaa socda...",
+            "success"
+        );
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+        const response = await fetch(
+            `${API}/api/login`,
+            {
+                method: "POST",
 
-                    body: JSON.stringify({
-                        email,
-                        password
-                    })
-                }
-            );
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            }
+        );
+
+        if (!response.ok) {
+
+            const error =
+                await getErrorMessage(response);
+
+            throw new Error(error);
+        }
 
         const data =
             await response.json();
 
-        if (!response.ok) {
+        if (!data.success || !data.token) {
 
-            alert(
+            throw new Error(
                 data.error ||
-                "Login-ku wuu fashilmay."
+                "Login-ku ma shaqayn."
             );
-
-            return false;
         }
 
-        token =
-            data.token;
-
-        currentUser =
-            data.user;
-
-        localStorage.setItem(
-            "ai_token",
-            token
-        );
-
-        localStorage.setItem(
-            "ai_user",
-            JSON.stringify(
-                currentUser
-            )
+        saveSession(
+            data.token,
+            data.user
         );
 
         showChat();
 
-        await loadChats();
+        showMessage(
+            "✅ Si guul leh ayaad u gashay.",
+            "success"
+        );
 
-        return true;
+        if (loginForm) {
+            loginForm.reset();
+        }
+
+        await loadChats();
 
     } catch (error) {
 
-        alert(
-            "Server-ka lama xiriirin karin."
+        console.error(
+            "LOGIN ERROR:",
+            error
         );
 
-        return false;
+        showMessage(
+            "❌ " +
+            (error.message ||
+                "Login-ku wuu fashilmay.")
+        );
     }
 }
+
 
 // =====================================================
 // REGISTER
@@ -350,56 +356,154 @@ async function register(
     password
 ) {
 
+    name = name.trim();
+    email = email.trim();
+
+    if (!name || !email || !password) {
+
+        showMessage(
+            "Fadlan buuxi magaca, email-ka iyo password-ka."
+        );
+
+        return;
+    }
+
+    if (password.length < 6) {
+
+        showMessage(
+            "❌ Password-ku ugu yaraan 6 xaraf ha noqdo."
+        );
+
+        return;
+    }
+
     try {
 
-        const response =
-            await fetch(
-                '${API}/api/register',
-                {
-                    method: "POST",
+        showMessage(
+            "⏳ Account ayaa la samaynayaa...",
+            "success"
+        );
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+        const response = await fetch(
+            `${API}/api/register`,
+            {
+                method: "POST",
 
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        password
-                    })
-                }
-            );
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    name: name,
+                    email: email,
+                    password: password
+                })
+            }
+        );
+
+        if (!response.ok) {
+
+            const error =
+                await getErrorMessage(response);
+
+            throw new Error(error);
+        }
 
         const data =
             await response.json();
 
+        if (!data.success || !data.token) {
+
+            throw new Error(
+                data.error ||
+                "Account lama samayn."
+            );
+        }
+
+        saveSession(
+            data.token,
+            data.user
+        );
+
+        showChat();
+
+        showMessage(
+            "✅ Account-ka si guul leh ayaa loo sameeyay.",
+            "success"
+        );
+
+        if (registerForm) {
+            registerForm.reset();
+        }
+
+        await loadChats();
+
+    } catch (error) {
+
+        console.error(
+            "REGISTER ERROR:",
+            error
+        );
+
+        showMessage(
+            "❌ " +
+            (error.message ||
+                "Account lama samayn.")
+        );
+    }
+}
+
+
+// =====================================================
+// CHECK CURRENT USER
+// =====================================================
+
+async function checkAuth() {
+
+    if (!token) {
+
+        showLogin();
+        return false;
+    }
+
+    try {
+
+        const response = await fetch(
+            `${API}/api/me`,
+            {
+                method: "GET",
+
+                headers: {
+                    "Authorization":
+                        `Bearer ${token}`
+                }
+            }
+        );
+
         if (!response.ok) {
 
-            alert(
-                data.error ||
-                "User lama abuuri karin."
-            );
+            clearSession();
+            showLogin();
 
             return false;
         }
 
-        token =
-            data.token;
+        const data =
+            await response.json();
 
-        currentUser =
-            data.user;
+        if (!data.success || !data.user) {
+
+            clearSession();
+            showLogin();
+
+            return false;
+        }
+
+        currentUser = data.user;
 
         localStorage.setItem(
-            "ai_token",
-            token
-        );
-
-        localStorage.setItem(
-            "ai_user",
-            JSON.stringify(
-                currentUser
-            )
+            USER_KEY,
+            JSON.stringify(currentUser)
         );
 
         showChat();
@@ -410,118 +514,175 @@ async function register(
 
     } catch (error) {
 
-        alert(
-            "Server-ka lama xiriirin karin."
+        console.error(
+            "AUTH CHECK ERROR:",
+            error
+        );
+
+        /*
+        Haddii internet/server-ka uu
+        cilad leeyahay, session-ka lama
+        tirtirayo si user-ku uusan
+        si lama filaan ah uga bixin.
+        */
+
+        showLogin();
+
+        showMessage(
+            "❌ Server-ka lama xiriirin karo."
         );
 
         return false;
     }
 }
 
+
 // =====================================================
-// SEND CHAT
+// ADD USER MESSAGE
 // =====================================================
 
-async function sendMessage() {
+function addUserMessage(text, imageFile = null) {
 
-    const text =
-        messageInput?.value.trim() ||
-        "";
-
-    const image =
-        imageInput?.files?.[0];
-
-    if (!text && !image) {
-
+    if (!messages) {
         return;
     }
 
-    addUserMessage(
-        text ||
-        "📷 Sawir"
-    );
+    const div =
+        document.createElement("div");
 
-    if (messageInput) {
-        messageInput.value = "";
+    div.className =
+        "message user";
+
+    let html = "";
+
+    if (text) {
+
+        html +=
+            `<div>${escapeHTML(text).replace(
+                /\n/g,
+                "<br>"
+            )}</div>`;
     }
 
-    loading(true);
+    if (imageFile) {
 
-    try {
+        const imageURL =
+            URL.createObjectURL(imageFile);
 
-        const formData =
-            new FormData();
+        html += `
+            <div style="margin-top:10px;">
+                <img
+                    src="${imageURL}"
+                    alt="Sawir"
+                    style="
+                        max-width:100%;
+                        max-height:300px;
+                        border-radius:10px;
+                    "
+                >
+            </div>
+        `;
+    }
 
-        if (text) {
+    div.innerHTML = html;
 
-            formData.append(
-                "message",
-                text
-            );
-        }
+    messages.appendChild(div);
 
-        if (image) {
+    scrollMessages();
+}
 
-            formData.append(
-                "image",
-                image
-            );
-        }
 
-        const response =
-            await fetch(
-                '${API}/api/chat',
-                {
-                    method: "POST",
+// =====================================================
+// ADD AI MESSAGE
+// =====================================================
 
-                    headers: {
-                        Authorization:
-                            Bearer ${token}
-                    },
+function addAIMessage(text) {
 
-                    body: formData
-                }
-            );
+    if (!messages) {
+        return;
+    }
 
-        const data =
-            await response.json();
+    const div =
+        document.createElement("div");
 
-        loading(false);
+    div.className =
+        "message ai";
 
-        if (response.status === 401) {
+    /*
+    Waxaan isticmaalay textContent si
+    jawaabta AI aysan HTML khatar ah
+    ugu gelin browser-ka.
+    */
 
-            logout();
+    const content =
+        document.createElement("div");
 
-            return;
-        }
+    content.textContent =
+        text || "Jawaab lama helin.";
 
-        if (!response.ok) {
+    content.style.whiteSpace =
+        "pre-wrap";
 
-            showError(
-                data.error ||
-                "AI error."
-            );
+    div.appendChild(content);
 
-            return;
-        }
+    messages.appendChild(div);
 
-        addAIMessage(
-            data.answer
-        );
+    scrollMessages();
+}
 
-        if (imageInput) {
-            imageInput.value = "";
-        }
 
-    } catch (error) {
+// =====================================================
+// ADD ERROR MESSAGE
+// =====================================================
 
-        loading(false);
+function addErrorMessage(text) {
 
-        showError(
-            "Server-ka lama xiriirin karin."
-        );
+    if (!messages) {
+        return;
+    }
+
+    const div =
+        document.createElement("div");
+
+    div.className =
+        "message error";
+
+    div.textContent =
+        "❌ " +
+        (text || "Khalad ayaa dhacay.");
+
+    messages.appendChild(div);
+
+    scrollMessages();
+}
+
+
+// =====================================================
+// SCROLL CHAT
+// =====================================================
+
+function scrollMessages() {
+
+    if (!messages) {
+        return;
+    }
+
+    messages.scrollTop =
+        messages.scrollHeight;
+}
+
+
+// =====================================================
+// CLEAR CHAT SCREEN
+// =====================================================
+
+function clearChatScreen() {
+
+    if (messages) {
+        messages.innerHTML = "";
     }
 }
+
 
 // =====================================================
 // LOAD CHAT HISTORY
@@ -529,146 +690,525 @@ async function sendMessage() {
 
 async function loadChats() {
 
-    if (!token ||
-        !messages) return;
+    if (!token || !messages) {
+        return;
+    }
 
     try {
 
-        const response =
-            await fetch(
-                '${API}/api/chats',
-                {
-                    headers: {
-                        Authorization:
-                            Bearer ${token}
-                    }
+        const response = await fetch(
+            `${API}/api/chats`,
+            {
+                method: "GET",
+
+                headers: {
+                    "Authorization":
+                        `Bearer ${token}`
                 }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok) {
-
-            if (response.status === 401) {
-                logout();
             }
+        );
+
+        if (response.status === 401) {
+
+            clearSession();
+            showLogin();
 
             return;
         }
 
-        messages.innerHTML = "";
+        if (!response.ok) {
 
-        data.chats.forEach(chat => {
+            const error =
+                await getErrorMessage(response);
 
-            addUserMessage(
-                chat.message
-            );
+            throw new Error(error);
+        }
 
-            addAIMessage(
-                chat.response
-            );
+        const data =
+            await response.json();
+
+        clearChatScreen();
+
+        const chats =
+            Array.isArray(data.chats)
+                ? data.chats
+                : [];
+
+        if (chats.length === 0) {
+
+            const welcome =
+                document.createElement("div");
+
+            welcome.className =
+                "message ai";
+
+            welcome.textContent =
+                "👋 Ku soo dhowow AI Chat Somali.\n\nQor su'aashaada si aan kuu caawiyo.";
+
+            messages.appendChild(welcome);
+
+            return;
+        }
+
+        chats.forEach(chat => {
+
+            if (chat.message) {
+
+                addUserMessage(
+                    chat.message
+                );
+            }
+
+            if (chat.response) {
+
+                addAIMessage(
+                    chat.response
+                );
+            }
         });
+
+        scrollMessages();
 
     } catch (error) {
 
-        showError(
+        console.error(
+            "LOAD CHATS ERROR:",
+            error
+        );
+
+        addErrorMessage(
+            error.message ||
             "Chat history lama soo qaadi karin."
         );
     }
 }
 
+
 // =====================================================
-// DELETE CHAT HISTORY
+// SEND CHAT
 // =====================================================
 
-async function deleteChats() {
+async function sendChat() {
 
-    if (!token) return;
+    if (!token) {
 
-    const yes =
-        confirm(
-            "Ma hubtaa inaad tirtirayso dhammaan chat history-ga?"
+        showLogin();
+
+        return;
+    }
+
+    const text =
+        messageInput
+            ? messageInput.value.trim()
+            : "";
+
+    if (!text && !selectedImage) {
+
+        showMessage(
+            "Fadlan qor su'aal ama geli sawir."
         );
 
-    if (!yes) return;
+        return;
+    }
+
+    const sentText = text;
+    const sentImage = selectedImage;
+
+    /*
+    Marka hore UI-ga tus user message-ka.
+    */
+
+    addUserMessage(
+        sentText,
+        sentImage
+    );
+
+    if (messageInput) {
+        messageInput.value = "";
+    }
+
+    selectedImage = null;
+
+    if (imageInput) {
+        imageInput.value = "";
+    }
+
+    if (imageBtn) {
+        imageBtn.textContent = "📷";
+        imageBtn.title = "Geli sawir";
+    }
+
+    let sendButton = null;
+
+    if (chatForm) {
+        sendButton =
+            chatForm.querySelector(
+                'button[type="submit"]'
+            );
+    }
+
+    if (sendButton) {
+        sendButton.disabled = true;
+        sendButton.textContent = "⏳";
+    }
+
+    const loading =
+        document.createElement("div");
+
+    loading.className =
+        "message ai";
+
+    loading.id =
+        "aiLoadingMessage";
+
+    loading.textContent =
+        "⏳ AI ayaa fikiraya...";
+
+    if (messages) {
+        messages.appendChild(loading);
+        scrollMessages();
+    }
 
     try {
 
+        const formData =
+            new FormData();
+
+        if (sentText) {
+
+            formData.append(
+                "message",
+                sentText
+            );
+        }
+
+        if (sentImage) {
+
+            formData.append(
+                "image",
+                sentImage
+            );
+        }
+
         const response =
             await fetch(
-                '${API}/api/chats',
+                `${API}/api/chat`,
                 {
-                    method: "DELETE",
+                    method: "POST",
 
                     headers: {
-                        Authorization:
-                            Bearer ${token}
-                    }
+                        "Authorization":
+                            `Bearer ${token}`
+                    },
+
+                    body: formData
                 }
             );
+
+        if (loading) {
+            loading.remove();
+        }
+
+        if (response.status === 401) {
+
+            clearSession();
+            showLogin();
+
+            addErrorMessage(
+                "Session-ka wuu dhacay. Fadlan mar kale gal."
+            );
+
+            return;
+        }
+
+        if (!response.ok) {
+
+            const error =
+                await getErrorMessage(response);
+
+            throw new Error(error);
+        }
 
         const data =
             await response.json();
 
-        if (response.ok) {
+        if (!data.success) {
 
-            messages.innerHTML = "";
-
-        } else {
-
-            alert(
+            throw new Error(
                 data.error ||
-                "Tirtiriddu way fashilantay."
+                "AI jawaab ma soo celin."
             );
         }
 
+        addAIMessage(
+            data.answer ||
+            "AI jawaab ma soo celin."
+        );
+
     } catch (error) {
 
-        alert(
-            "Server-ka lama xiriirin karin."
+        console.error(
+            "CHAT ERROR:",
+            error
         );
+
+        if (loading) {
+            loading.remove();
+        }
+
+        addErrorMessage(
+            error.message ||
+            "Chat-ku wuu fashilmay."
+        );
+
+    } finally {
+
+        if (sendButton) {
+
+            sendButton.disabled =
+                false;
+
+            sendButton.textContent =
+                "➤";
+        }
+
+        if (messageInput) {
+            messageInput.focus();
+        }
     }
 }
+
+
+// =====================================================
+// DELETE ALL CHAT HISTORY
+// =====================================================
+
+async function deleteChats() {
+
+    if (!token) {
+
+        showLogin();
+
+        return;
+    }
+
+    const confirmed =
+        window.confirm(
+            "Ma hubtaa inaad tirtirayso dhammaan Chat History-ga?"
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+
+        if (clearBtn) {
+            clearBtn.disabled = true;
+            clearBtn.textContent =
+                "⏳ Tirtiraya...";
+        }
+
+        const response =
+            await fetch(
+                `${API}/api/chats`,
+                {
+                    method: "DELETE",
+
+                    headers: {
+                        "Authorization":
+                            `Bearer ${token}`
+                    }
+                }
+            );
+
+        if (response.status === 401) {
+
+            clearSession();
+            showLogin();
+
+            return;
+        }
+
+        if (!response.ok) {
+
+            const error =
+                await getErrorMessage(response);
+
+            throw new Error(error);
+        }
+
+        const data =
+            await response.json();
+
+        clearChatScreen();
+
+        const message =
+            document.createElement("div");
+
+        message.className =
+            "message ai";
+
+        message.textContent =
+            data.message ||
+            "✅ Chat history-ga waa la tirtiray.";
+
+        messages.appendChild(message);
+
+        showMessage(
+            "✅ Chat history-ga waa la tirtiray.",
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "DELETE CHATS ERROR:",
+            error
+        );
+
+        showMessage(
+            "❌ " +
+            (error.message ||
+                "Tirtiriddu way fashilantay.")
+        );
+
+    } finally {
+
+        if (clearBtn) {
+
+            clearBtn.disabled =
+                false;
+
+            clearBtn.textContent =
+                "🗑️ Tirtir Chat";
+        }
+    }
+}
+
 
 // =====================================================
 // LOGOUT
 // =====================================================
 
-function logout(
-    redirect = true
-) {
+function logout() {
 
-    token = null;
-    currentUser = null;
+    const confirmed =
+        window.confirm(
+            "Ma hubtaa inaad ka baxayso account-ka?"
+        );
 
-    localStorage.removeItem(
-        "ai_token"
-    );
-
-    localStorage.removeItem(
-        "ai_user"
-    );
-
-    if (messages) {
-        messages.innerHTML = "";
+    if (!confirmed) {
+        return;
     }
+
+    clearSession();
+
+    clearChatScreen();
 
     showLogin();
 
-    if (redirect) {
-        location.reload();
-    }
+    showMessage(
+        "👋 Waad ka baxday account-ka.",
+        "success"
+    );
 }
+
+
+// =====================================================
+// IMAGE BUTTON
+// =====================================================
+
+if (imageBtn && imageInput) {
+
+    imageBtn.addEventListener(
+        "click",
+        () => {
+            imageInput.click();
+        }
+    );
+}
+
+
+// =====================================================
+// IMAGE SELECT
+// =====================================================
+
+if (imageInput) {
+
+    imageInput.addEventListener(
+        "change",
+        () => {
+
+            const file =
+                imageInput.files?.[0];
+
+            if (!file) {
+
+                selectedImage = null;
+
+                if (imageBtn) {
+                    imageBtn.textContent =
+                        "📷";
+                }
+
+                return;
+            }
+
+            if (!file.type.startsWith("image/")) {
+
+                showMessage(
+                    "❌ Fadlan dooro sawir."
+                );
+
+                imageInput.value = "";
+                selectedImage = null;
+
+                return;
+            }
+
+            /*
+            10MB limit dhinaca browser-ka.
+            */
+
+            const maxSize =
+                10 * 1024 * 1024;
+
+            if (file.size > maxSize) {
+
+                showMessage(
+                    "❌ Sawirku waa inuu ka yar yahay 10MB."
+                );
+
+                imageInput.value = "";
+                selectedImage = null;
+
+                return;
+            }
+
+            selectedImage = file;
+
+            if (imageBtn) {
+
+                imageBtn.textContent =
+                    "📷✓";
+
+                imageBtn.title =
+                    file.name;
+            }
+
+            showMessage(
+                `📷 Sawirka "${file.name}" waa la doortay.`,
+                "success"
+            );
+        }
+    );
+}
+
 
 // =====================================================
 // LOGIN FORM
 // =====================================================
-
-const loginForm =
-    document.getElementById(
-        "loginForm"
-    );
 
 if (loginForm) {
 
@@ -679,14 +1219,14 @@ if (loginForm) {
             event.preventDefault();
 
             const email =
-                document.getElementById(
-                    "loginEmail"
-                ).value.trim();
+                loginEmail
+                    ? loginEmail.value.trim()
+                    : "";
 
             const password =
-                document.getElementById(
-                    "loginPassword"
-                ).value;
+                loginPassword
+                    ? loginPassword.value
+                    : "";
 
             await login(
                 email,
@@ -696,14 +1236,10 @@ if (loginForm) {
     );
 }
 
+
 // =====================================================
 // REGISTER FORM
 // =====================================================
-
-const registerForm =
-    document.getElementById(
-        "registerForm"
-    );
 
 if (registerForm) {
 
@@ -714,19 +1250,19 @@ if (registerForm) {
             event.preventDefault();
 
             const name =
-                document.getElementById(
-                    "registerName"
-                ).value.trim();
+                registerName
+                    ? registerName.value.trim()
+                    : "";
 
             const email =
-                document.getElementById(
-                    "registerEmail"
-                ).value.trim();
+                registerEmail
+                    ? registerEmail.value.trim()
+                    : "";
 
             const password =
-                document.getElementById(
-                    "registerPassword"
-                ).value;
+                registerPassword
+                    ? registerPassword.value
+                    : "";
 
             await register(
                 name,
@@ -736,6 +1272,7 @@ if (registerForm) {
         }
     );
 }
+
 
 // =====================================================
 // CHAT FORM
@@ -749,28 +1286,39 @@ if (chatForm) {
 
             event.preventDefault();
 
-            await sendMessage();
+            await sendChat();
         }
     );
 }
 
+
 // =====================================================
-// IMAGE BUTTON
+// ENTER TO SEND
+// Shift + Enter = New Line
 // =====================================================
 
-if (imageBtn &&
-    imageInput) {
+if (messageInput) {
 
-    imageBtn.addEventListener(
-        "click",
-        () => {
-            imageInput.click();
+    messageInput.addEventListener(
+        "keydown",
+        async event => {
+
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
+
+                event.preventDefault();
+
+                await sendChat();
+            }
         }
     );
 }
 
+
 // =====================================================
-// CLEAR CHAT
+// CLEAR BUTTON
 // =====================================================
 
 if (clearBtn) {
@@ -781,43 +1329,47 @@ if (clearBtn) {
     );
 }
 
+
 // =====================================================
-// LOGOUT
+// LOGOUT BUTTON
 // =====================================================
 
 if (logoutBtn) {
 
     logoutBtn.addEventListener(
         "click",
-        () => logout()
+        logout
     );
 }
 
+
 // =====================================================
-// ENTER TO SEND
+// START APPLICATION
 // =====================================================
 
-if (messageInput) {
+async function startApp() {
 
-    messageInput.addEventListener(
-        "keydown",
-        event => {
+    /*
+    Haddii token jiro → hubi server-ka.
+    Haddii token uusan jirin → login tus.
+    */
 
-            if (
-                event.key === "Enter" &&
-                !event.shiftKey
-            ) {
+    if (token) {
 
-                event.preventDefault();
+        await checkAuth();
 
-                sendMessage();
-            }
-        }
-    );
+    } else {
+
+        showLogin();
+    }
 }
+
 
 // =====================================================
 // START
 // =====================================================
 
-checkLogin();
+document.addEventListener(
+    "DOMContentLoaded",
+    startApp
+);
