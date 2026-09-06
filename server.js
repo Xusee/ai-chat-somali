@@ -12,10 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 // ADMIN LOGIN
 const ADMIN_EMAIL =
-  process.env.ADMIN_EMAIL || "mooge242@gmail.com";
+  process.env.ADMIN_EMAIL;
 
 const ADMIN_PASSWORD =
-  process.env.ADMIN_PASSWORD || "PasswordAdag123!";
+  process.env.ADMIN_PASSWORD;
 
 app.use(cors());
 app.use(express.json());
