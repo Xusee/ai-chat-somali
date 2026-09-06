@@ -1022,8 +1022,9 @@ app.listen(
       `Health: http://localhost:${PORT}/api/health`
     );
 
-    console.log(
-      `Model: ${OPENROUTER_MODEL}`
+ console.log(
+  Model: ${AI_MODEL}
+
     );
 
     console.log("====================================");
