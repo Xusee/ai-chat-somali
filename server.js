@@ -1023,7 +1023,7 @@ app.listen(
     );
 
  console.log(
-  Model: ${AI_MODEL}
+  'Model: ${AI_MODEL}'
 
     );
 
