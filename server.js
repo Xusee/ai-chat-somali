@@ -1,8 +1,3 @@
-// ==========================================
-// AI CHAT SOMALI - SERVER.JS
-// LOGIN LOOMA BAAHNA
-// ==========================================
-
 require("dotenv").config();
 
 const express = require("express");
@@ -12,123 +7,85 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-
-// ==========================================
-// OPENROUTER SETTINGS
-// ==========================================
-
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-const OPENROUTER_MODEL =
-  process.env.OPENROUTER_MODEL ||
-  "meta-llama/llama-3.3-70b-instruct:free";
-
-
 // ==========================================
 // MIDDLEWARE
 // ==========================================
 
 app.use(express.json({
-  limit: "20mb"
+  limit: "10mb"
 }));
 
 app.use(express.urlencoded({
   extended: true,
-  limit: "20mb"
+  limit: "10mb"
 }));
-
-
-// ==========================================
-// SERVE PUBLIC FOLDER
-// ==========================================
-
-app.use(express.static(path.join(__dirname, "public")));
-
 
 // ==========================================
 // CHAT HISTORY
-// Memory ku meel gaar ah
+// Xusuusta chat-ka inta server-ku shaqaynayo
 // ==========================================
 
 let chats = [];
 
+// ==========================================
+// PUBLIC FOLDER
+// public/index.html si toos ah ayuu u furmayaa
+// ==========================================
+
+app.use(express.static(path.join(__dirname, "public")));
 
 // ==========================================
-// HOME
+// HOME PAGE
 // ==========================================
 
 app.get("/", (req, res) => {
-
-  res.sendFile(
-    path.join(__dirname, "public", "index.html")
-  );
-
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-
 
 // ==========================================
 // HEALTH CHECK
+// GET /api/health
 // ==========================================
 
 app.get("/api/health", (req, res) => {
-
   res.status(200).json({
-
     success: true,
-
     status: "online",
-
-    loginRequired: false,
-
-    message: "AI Chat Somali server waa shaqaynayaa",
-
+    message: "AI Chat Somali server-ka wuu shaqaynayaa",
     time: new Date().toISOString()
-
   });
-
 });
 
-
 // ==========================================
-// GET ALL CHATS
-// LOGIN LOOMA BAAHNA
+// GET CHAT HISTORY
+// GET /api/chats
 // ==========================================
 
 app.get("/api/chats", (req, res) => {
-
-  res.json({
-
+  res.status(200).json({
     success: true,
-
     chats: chats
-
   });
-
 });
-
 
 // ==========================================
 // DELETE ALL CHATS
-// LOGIN LOOMA BAAHNA
+// DELETE /api/chats
 // ==========================================
 
 app.delete("/api/chats", (req, res) => {
 
   chats = [];
 
-  res.json({
-
+  res.status(200).json({
     success: true,
-
-    message: "Dhammaan chat-yada waa la tirtiray"
-
+    message: "Dhammaan chat history waa la tirtiray"
   });
 
 });
 
-
 // ==========================================
-// AI CHAT ENDPOINT
+// AI CHAT
 // POST /chat
 // ==========================================
 
@@ -137,342 +94,215 @@ app.post("/chat", async (req, res) => {
   try {
 
     const {
-
       message,
-
-      messages
-
+      image
     } = req.body;
 
+    // ----------------------------
+    // Validate message
+    // ----------------------------
 
-    // ======================================
-    // CHECK API KEY
-    // ======================================
+    if (!message || !message.trim()) {
 
-    if (!OPENROUTER_API_KEY) {
-
-      console.error(
-        "OPENROUTER_API_KEY lama helin"
-      );
-
-      return res.status(500).json({
-
+      return res.status(400).json({
         success: false,
-
-        error:
-          "OPENROUTER_API_KEY lama dejin server-ka"
-
+        error: "Fadlan qor fariin."
       });
 
     }
 
+    // ----------------------------
+    // API KEY CHECK
+    // ----------------------------
 
-    // ======================================
-    // PREPARE MESSAGES
-    // ======================================
+    const apiKey = process.env.OPENROUTER_API_KEY;
 
-    let conversation = [];
+    if (!apiKey) {
 
-
-    // Haddii frontend-ku soo diro messages
-    if (
-      Array.isArray(messages) &&
-      messages.length > 0
-    ) {
-
-      conversation = messages;
+      return res.status(500).json({
+        success: false,
+        error: "OPENROUTER_API_KEY lama helin. Hubi Environment Variables."
+      });
 
     }
 
-    // Haddii frontend-ku soo diro hal message
-    else {
+    // ----------------------------
+    // Save user message
+    // ----------------------------
 
-      if (
-        !message ||
-        typeof message !== "string" ||
-        !message.trim()
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error: "Fariin sax ah lama soo dirin"
-
-        });
-
-      }
-
-
-      conversation = [
-
-        {
-
-          role: "user",
-
-          content: message.trim()
-
-        }
-
-      ];
-
-    }
-
-
-    // ======================================
-    // SYSTEM PROMPT
-    // ======================================
-
-    const systemMessage = {
-
-      role: "system",
-
-      content: `
-Waxaad tahay AI Chat Somali.
-
-Shaqadaadu waa inaad dadka ka caawiso
-su'aalaha iyo dhibaatooyinka ay qabaan.
-
-Xeerarka:
-
-- Ku jawaab Af-Soomaali inta badan.
-- Noqo mid saaxiibtinimo leh.
-- Jawaabahaaga ha noqdaan kuwo cad.
-- Haddii qofku Ingiriisi ku weydiiyo,
-  waad ku jawaabi kartaa Ingiriisi.
-- Haddii code lagu weydiiyo,
-  bixi code dhamaystiran oo shaqaynaya.
-- Sharax talaabooyinka muhiimka ah.
-- Haddii aadan hubin jawaabta,
-  si daacad ah u sheeg.
-- Ha sheegan inaad tahay qof bini'aadam ah.
-
-Magacaaga waa:
-AI Chat Somali 🤖
-`
-
+    const userChat = {
+      id: Date.now(),
+      role: "user",
+      message: message.trim(),
+      image: image || null,
+      createdAt: new Date().toISOString()
     };
 
+    chats.push(userChat);
 
-    // System message hore geli
-    conversation.unshift(systemMessage);
+    // ----------------------------
+    // AI Messages
+    // ----------------------------
 
+    const messages = [
 
-    // ======================================
-    // LIMIT CHAT HISTORY
-    // ======================================
+      {
+        role: "system",
+        content: `
+Waxaad tahay AI Chat Somali.
 
-    if (conversation.length > 30) {
+Si fiican ugu jawaab Af-Soomaali.
 
-      conversation =
-        conversation.slice(-30);
+Haddii qofku ku weydiiyo su'aal farsamo:
+- Sharax si fudud.
+- Isticmaal tallaabooyin.
+- Haddii code loo baahan yahay, bixi code sax ah.
 
-      conversation.unshift(systemMessage);
+Haddii su'aashu Af-Ingiriisi tahay,
+waxaad ku jawaabi kartaa Af-Ingiriisi.
+
+Noqo mid saaxiibtinimo leh,
+caawimaad badan,
+oo jawaab cad bixiya.
+        `.trim()
+      },
+
+      {
+        role: "user",
+        content: message.trim()
+      }
+
+    ];
+
+    // ----------------------------
+    // IMAGE SUPPORT
+    // ----------------------------
+
+    if (image) {
+
+      messages[1] = {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: message.trim()
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: image
+            }
+          }
+        ]
+      };
 
     }
 
-
-    // ======================================
-    // SEND REQUEST TO OPENROUTER
-    // ======================================
-
-    console.log(
-      "🤖 AI request ayaa OpenRouter loo dirayaa..."
-    );
-
+    // ----------------------------
+    // OPENROUTER REQUEST
+    // ----------------------------
 
     const response = await fetch(
-
       "https://openrouter.ai/api/v1/chat/completions",
-
       {
 
         method: "POST",
 
         headers: {
-
-          "Content-Type":
-            "application/json",
-
-          "Authorization":
-            `Bearer ${OPENROUTER_API_KEY}`,
-
-          "HTTP-Referer":
-            process.env.APP_URL ||
-            "http://localhost:3000",
-
-          "X-Title":
-            "AI Chat Somali"
-
+          "Authorization": Bearer ${apiKey},
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
+          "X-Title": "AI Chat Somali"
         },
-
 
         body: JSON.stringify({
 
-          model:
-            OPENROUTER_MODEL,
+          // Waxaad beddeli kartaa model-kan
+          model: process.env.AI_MODEL ||
+            "meta-llama/llama-3.3-70b-instruct:free",
 
-          messages:
-            conversation,
+          messages: messages,
 
-          temperature:
-            0.7,
+          temperature: 0.7,
 
-          max_tokens:
-            2000
+          max_tokens: 1500
 
         })
 
       }
-
     );
 
+    // ----------------------------
+    // READ RESPONSE
+    // ----------------------------
 
-    // ======================================
-    // GET RESPONSE
-    // ======================================
+    const data = await response.json();
 
-    const data =
-      await response.json();
-
-
-    // ======================================
+    // ----------------------------
     // OPENROUTER ERROR
-    // ======================================
+    // ----------------------------
 
     if (!response.ok) {
 
-      console.error(
-        "OPENROUTER ERROR:",
-        JSON.stringify(data, null, 2)
-      );
+      console.error("OpenRouter Error:", data);
 
-
-      return res.status(
-        response.status
-      ).json({
-
+      return res.status(response.status).json({
         success: false,
-
         error:
-
           data?.error?.message ||
-
-          data?.message ||
-
-          "AI server error ayaa dhacay"
-
+          "AI server-ka ayaa qalad soo celiyey."
       });
 
     }
 
+    // ----------------------------
+    // GET AI ANSWER
+    // ----------------------------
 
-    // ======================================
-    // AI REPLY
-    // ======================================
-
-    const reply =
-
+    const answer =
       data?.choices?.[0]?.message?.content ||
-
       "Waan ka xumahay, jawaab lama helin.";
 
+    // ----------------------------
+    // SAVE AI ANSWER
+    // ----------------------------
 
-    // ======================================
-    // SAVE CHAT TEMPORARILY
-    // ======================================
-
-    const userText =
-
-      typeof message === "string"
-
-        ? message
-
-        : "Chat conversation";
-
-
-    const chat = {
-
-      id:
-        Date.now(),
-
-      user:
-        userText,
-
-      assistant:
-        reply,
-
-      createdAt:
-        new Date().toISOString()
-
+    const aiChat = {
+      id: Date.now() + 1,
+      role: "assistant",
+      message: answer,
+      createdAt: new Date().toISOString()
     };
 
+    chats.push(aiChat);
 
-    chats.push(chat);
-
-
-    // Xaddid memory-ga
-    if (chats.length > 100) {
-
-      chats =
-        chats.slice(-100);
-
-    }
-
-
-    console.log(
-      "✅ AI jawaab ayaa la helay"
-    );
-
-
-    // ======================================
+    // ----------------------------
     // SEND RESPONSE
-    // ======================================
+    // ----------------------------
 
-    return res.json({
+    res.status(200).json({
 
       success: true,
 
-      reply:
-        reply,
+      answer: answer,
 
-      message:
-        reply,
+      user: userChat,
 
-      chat:
-        chat
+      assistant: aiChat
 
     });
 
+  } catch (error) {
 
-  }
+    console.error("SERVER ERROR:", error);
 
-
-  // ========================================
-  // SERVER ERROR
-  // ========================================
-
-  catch (error) {
-
-    console.error(
-      "CHAT SERVER ERROR:",
-      error
-    );
-
-
-    return res.status(500).json({
+    res.status(500).json({
 
       success: false,
 
-      error:
-        "Waan ka xumahay, server-ka AI lama xiriiri karo.",
+      error: "Server-ka ayaa qalad galay.",
 
-      details:
-        process.env.NODE_ENV === "development"
-
-          ? error.message
-
-          : undefined
+      details: error.message
 
     });
 
@@ -480,55 +310,18 @@ AI Chat Somali 🤖
 
 });
 
-
 // ==========================================
-// ADMIN PAGE
-// LOGIN LOOMA BAAHNA
+// 404
 // ==========================================
 
-app.get("/admin", (req, res) => {
+app.use((req, res) => {
 
-  res.sendFile(
-
-    path.join(
-
-      __dirname,
-
-      "public",
-
-      "admin",
-
-      "index.html"
-
-    )
-
-  );
+  res.status(404).json({
+    success: false,
+    error: "Endpoint lama helin."
+  });
 
 });
-
-
-// ==========================================
-// FALLBACK
-// ==========================================
-
-app.get("*", (req, res) => {
-
-  res.sendFile(
-
-    path.join(
-
-      __dirname,
-
-      "public",
-
-      "index.html"
-
-    )
-
-  );
-
-});
-
 
 // ==========================================
 // START SERVER
@@ -536,44 +329,13 @@ app.get("*", (req, res) => {
 
 app.listen(PORT, () => {
 
-  console.log("");
-
-  console.log(
-    "=========================================="
-  );
-
-  console.log(
-    "🤖 AI CHAT SOMALI SERVER"
-  );
-
-  console.log(
-    "=========================================="
-  );
-
-  console.log(
-    `🚀 Server: http://localhost:${PORT}`
-  );
-
-  console.log(
-    `❤️ Health: http://localhost:${PORT}/api/health`
-  );
-
-  console.log(
-    "💬 Chat API: POST /chat"
-  );
-
-  console.log(
-    "🔓 Login: LAMA BAAHNA"
-  );
-
-  console.log(
-    "🔓 Register: LAMA BAAHNA"
-  );
-
-  console.log(
-    "=========================================="
-  );
-
-  console.log("");
+  console.log("=================================");
+  console.log("AI CHAT SOMALI SERVER");
+  console.log("=================================");
+  console.log(Server: http://localhost:${PORT});
+  console.log(Health: http://localhost:${PORT}/api/health);
+  console.log("Login: OFF");
+  console.log("Register: OFF");
+  console.log("=================================");
 
 });
