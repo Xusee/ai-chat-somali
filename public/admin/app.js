@@ -915,5 +915,5 @@ window.adminAPI = {
 };
 
 console.log(
-  "AI Chat Somali Admin app.js loaded successfully"
+  "cabdilahi xuseen app.js loaded successfully"
 );
