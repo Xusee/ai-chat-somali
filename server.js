@@ -12,6 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
 const AI_MODEL =
   process.env.OPENROUTER_MODEL ||
   "meta-llama/llama-3.3-70b-instruct:free";
