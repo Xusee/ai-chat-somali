@@ -10,6 +10,15 @@ const sqlite3 = require("sqlite3").verbose();
 const app = express();
 
 const PORT = process.env.PORT || 10000;
+// ADMIN LOGIN
+const ADMIN_EMAIL =
+  process.env.ADMIN_EMAIL || "mooge242@gmail.com";
+
+const ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD || "PasswordAdag123!";
+
+app.use(cors());
+app.use(express.json());
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
@@ -18,8 +27,8 @@ const AI_MODEL =
   "meta-llama/llama-3.3-70b-instruct:free";
 
 const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  "ai-chat-somali-secret-key-change-this";
+  process.env.JWT_SECRET || "ai-chat-somali-secret-key-change-this";
+
 // ==========================================
 // MIDDLEWARE
 // ==========================================
@@ -1022,10 +1031,7 @@ app.listen(
       `Health: http://localhost:${PORT}/api/health`
     );
 
- console.log(
-  'Model: ${AI_MODEL}'
-
-    );
+    console.log(`Model: ${AI_MODEL}`);
 
     console.log("====================================");
 
