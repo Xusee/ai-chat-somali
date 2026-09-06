@@ -18,8 +18,8 @@ const AI_MODEL =
   "meta-llama/llama-3.3-70b-instruct:free";
 
 const JWT_SECRET =
-  process.env.JWT_SECRET || "ai-chat-somali-secret-key-change-this";
-
+  process.env.JWT_SECRET ||
+  "ai-chat-somali-secret-key-change-this";
 // ==========================================
 // MIDDLEWARE
 // ==========================================
