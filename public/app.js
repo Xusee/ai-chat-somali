@@ -862,7 +862,7 @@ async function sendChat() {
         "aiLoadingMessage";
 
     loading.textContent =
-        "⏳ AI ayaa fikiraya...";
+        "⏳ waanu ka fikiraynaa fikiraya...";
 
     if (messages) {
         messages.appendChild(loading);
