@@ -206,16 +206,17 @@ app.use((req, res) => {
   });
 });
 
-// ================================
+// ===============================
 // START SERVER
-// ================================
+// ===============================
 
 app.listen(PORT, "0.0.0.0", () => {
-
-  console.log("=================================");
+  console.log("====================================");
   console.log("AI Chat Somali Server Started");
   console.log(`Port: ${PORT}`);
+  console.log(`Server: http://localhost:${PORT}`);
+  console.log(`Admin: http://localhost:${PORT}/admin`);
+  console.log(`Health: http://localhost:${PORT}/api/health`);
   console.log(`Model: ${AI_MODEL}`);
-  console.log("=================================");
-
+  console.log("====================================");
 });
