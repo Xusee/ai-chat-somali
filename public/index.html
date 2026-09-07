@@ -12,22 +12,23 @@
 
   <style>
 
+    :root {
+      --primary: #10a37f;
+      --primary-dark: #0d8a6c;
+      --dark: #202123;
+      --sidebar: #171717;
+      --bg: #f7f7f8;
+      --white: #ffffff;
+      --border: #e5e5e5;
+      --text: #202123;
+      --muted: #777;
+      --danger: #dc3545;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-    }
-
-    :root {
-      --primary: #10a37f;
-      --primary-dark: #0b7d62;
-      --dark: #202123;
-      --dark-2: #343541;
-      --bg: #f7f7f8;
-      --border: #e5e5e5;
-      --text: #202123;
-      --muted: #777;
-      --danger: #ef4444;
     }
 
     body {
@@ -38,10 +39,9 @@
       overflow: hidden;
     }
 
-
-    /* =========================
+    /* ================================
        APP
-    ========================= */
+    ================================= */
 
     .app {
       display: flex;
@@ -49,213 +49,135 @@
       height: 100vh;
     }
 
-
-    /* =========================
+    /* ================================
        SIDEBAR
-    ========================= */
+    ================================= */
 
     .sidebar {
-      width: 280px;
-      background: var(--dark);
+      width: 260px;
+      background: var(--sidebar);
       color: white;
       display: flex;
       flex-direction: column;
-      padding: 16px;
-      flex-shrink: 0;
+      padding: 15px;
     }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 25px;
-      padding: 8px;
-    }
-
-    .logo-icon {
-      width: 45px;
-      height: 45px;
-      border-radius: 12px;
-      background: linear-gradient(
-        135deg,
-        #10a37f,
-        #2563eb
-      );
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      font-size: 24px;
-    }
-
-    .logo h1 {
-      font-size: 23px;
-    }
-
-
-    /* NEW CHAT */
 
     .new-chat-btn {
       width: 100%;
-      padding: 15px;
-      border-radius: 10px;
-
-      border: 1px solid #666;
-
+      padding: 13px;
+      border: 1px solid #555;
       background: transparent;
       color: white;
-
-      font-size: 16px;
+      border-radius: 8px;
       cursor: pointer;
-
-      transition: 0.2s;
+      font-size: 15px;
+      margin-bottom: 20px;
     }
 
     .new-chat-btn:hover {
-      background: var(--dark-2);
+      background: #2d2d2d;
     }
 
-
-    /* CHAT HISTORY */
-
     .history-title {
-      margin-top: 25px;
+      font-size: 12px;
+      color: #aaa;
       margin-bottom: 10px;
-
-      color: #a8a8a8;
-      font-size: 13px;
-      font-weight: bold;
+      text-transform: uppercase;
     }
 
     #chatHistory {
-      overflow-y: auto;
       flex: 1;
+      overflow-y: auto;
     }
 
     .history-item {
-      width: 100%;
-      padding: 13px;
-      margin-bottom: 8px;
-
-      border: none;
-      border-radius: 8px;
-
-      background: #2c2c34;
-      color: white;
-
+      padding: 10px;
+      margin-bottom: 5px;
+      border-radius: 6px;
       cursor: pointer;
-
-      text-align: left;
-
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-
-    .history-item:hover {
-      background: #40414f;
-    }
-
-
-    /* DELETE */
-
-    .delete-btn {
-      width: 100%;
-
-      padding: 13px;
-
-      border: none;
-      border-radius: 8px;
-
-      background: #5b2940;
-      color: white;
-
-      cursor: pointer;
-
-      margin-top: 10px;
-
-      font-size: 15px;
-    }
-
-    .delete-btn:hover {
-      background: #7a1f3d;
-    }
-
-
-    /* =========================
-       MAIN
-    ========================= */
-
-    .main {
-      flex: 1;
-
-      display: flex;
-      flex-direction: column;
-
-      height: 100vh;
-
-      min-width: 0;
-    }
-
-
-    /* HEADER */
-
-    .header {
-      padding: 18px 25px;
-
-      border-bottom: 1px solid var(--border);
-
-      background: white;
-    }
-
-    .header h2 {
-      font-size: 22px;
-    }
-
-    .header p {
-      margin-top: 5px;
-      color: var(--muted);
       font-size: 14px;
     }
 
+    .history-item:hover {
+      background: #2a2a2a;
+    }
 
-    /* =========================
-       MESSAGES
-    ========================= */
+    .clear-btn {
+      width: 100%;
+      padding: 12px;
+      background: #a83232;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
 
-    #messages {
+    .clear-btn:hover {
+      background: #8e2525;
+    }
+
+    /* ================================
+       MAIN
+    ================================= */
+
+    .main {
       flex: 1;
-
-      overflow-y: auto;
-
-      padding: 25px;
-
       display: flex;
       flex-direction: column;
-
-      gap: 20px;
+      min-width: 0;
     }
 
+    /* ================================
+       HEADER
+    ================================= */
 
-    /* WELCOME */
+    .header {
+      height: 65px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 25px;
+    }
+
+    .header h2 {
+      font-size: 20px;
+      color: var(--primary);
+    }
+
+    #serverStatus {
+      font-size: 13px;
+      color: #777;
+    }
+
+    .status-online {
+      color: #10a37f !important;
+    }
+
+    .status-offline {
+      color: #dc3545 !important;
+    }
+
+    /* ================================
+       CHAT AREA
+    ================================= */
+
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 25px 15%;
+      scroll-behavior: smooth;
+    }
 
     .welcome {
-      margin: auto;
-
       text-align: center;
-
-      max-width: 650px;
-
-      padding: 30px;
+      margin-top: 60px;
     }
 
-    .welcome-icon {
-      font-size: 60px;
-      margin-bottom: 15px;
-    }
-
-    .welcome h2 {
+    .welcome h1 {
+      font-size: 28px;
       margin-bottom: 12px;
     }
 
@@ -264,277 +186,246 @@
       line-height: 1.6;
     }
 
+    /* ================================
+       MESSAGES
+    ================================= */
 
-    /* MESSAGE ROW */
-
-    .message-row {
+    .message {
       display: flex;
-      width: 100%;
+      margin-bottom: 20px;
     }
 
-    .message-row.user {
+    .message.user {
       justify-content: flex-end;
     }
 
-    .message-row.ai {
+    .message.assistant {
       justify-content: flex-start;
     }
 
-
-    /* MESSAGE */
-
-    .message {
+    .message-content {
       max-width: 80%;
-
-      padding: 14px 18px;
-
+      padding: 14px 17px;
       border-radius: 15px;
-
       line-height: 1.6;
-
       word-wrap: break-word;
-
-      white-space: pre-wrap;
     }
 
-    .user-message {
+    .message.user .message-content {
       background: var(--primary);
       color: white;
-
       border-bottom-right-radius: 4px;
     }
 
-    .ai-message {
+    .message.assistant .message-content {
       background: white;
-
       border: 1px solid var(--border);
-
-      color: var(--text);
-
       border-bottom-left-radius: 4px;
     }
 
+    .chat-image {
+      display: block;
+      max-width: 280px;
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
 
-    /* LOADING */
+    /* ================================
+       TYPING
+    ================================= */
 
     .typing {
       display: flex;
       gap: 5px;
-      align-items: center;
-
-      padding: 15px 18px;
-
-      background: white;
-
-      border: 1px solid var(--border);
-
-      border-radius: 15px;
-
-      width: fit-content;
+      padding: 12px;
     }
 
-    .dot {
+    .typing span {
       width: 8px;
       height: 8px;
-
+      background: #999;
       border-radius: 50%;
-
-      background: var(--primary);
-
-      animation: bounce 1.4s infinite;
+      animation: typing 1.2s infinite;
     }
 
-    .dot:nth-child(2) {
-      animation-delay: 0.2s;
+    .typing span:nth-child(2) {
+      animation-delay: .2s;
     }
 
-    .dot:nth-child(3) {
-      animation-delay: 0.4s;
+    .typing span:nth-child(3) {
+      animation-delay: .4s;
     }
 
-    @keyframes bounce {
+    @keyframes typing {
 
-      0%,
-      60%,
-      100% {
-        transform: translateY(0);
+      0%, 100% {
+        opacity: .3;
       }
 
-      30% {
-        transform: translateY(-7px);
+      50% {
+        opacity: 1;
       }
 
     }
 
+    /* ================================
+       IMAGE PREVIEW
+    ================================= */
 
-    /* =========================
-       WARNING
-    ========================= */
-
-    #warningBox {
+    #imagePreviewContainer {
       display: none;
-
-      margin: 10px auto;
-
-      max-width: 850px;
-
-      width: calc(100% - 40px);
-
-      padding: 14px 20px;
-
-      background: #fff8db;
-
-      border: 1px solid #f1d76a;
-
-      border-radius: 12px;
-
-      color: #665200;
-    }
-
-
-    /* =========================
-       INPUT AREA
-    ========================= */
-
-    .input-area {
-      padding: 18px;
-
+      width: min(900px, 100%);
+      margin: 0 auto 8px;
+      padding: 8px 12px;
       background: white;
-
-      border-top: 1px solid var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      align-items: center;
+      gap: 10px;
     }
 
-    .input-box {
-      max-width: 950px;
+    #imagePreview {
+      width: 65px;
+      height: 65px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
 
-      margin: auto;
+    #removeImageBtn {
+      border: none;
+      background: #fee2e2;
+      color: var(--danger);
+      padding: 8px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
 
+    #removeImageBtn:hover {
+      background: #fecaca;
+    }
+
+    /* ================================
+       INPUT AREA
+    ================================= */
+
+    .input-wrapper {
+      background: white;
+      border-top: 1px solid var(--border);
+      padding: 12px 15%;
+    }
+
+    .chat-input-area {
+      width: 100%;
       display: flex;
-
-      gap: 10px;
-
       align-items: flex-end;
+      gap: 10px;
+      background: white;
+      border: 1px solid #d9d9e3;
+      border-radius: 15px;
+      padding: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
     }
 
     #messageInput {
       flex: 1;
-
       resize: none;
-
-      min-height: 52px;
-      max-height: 180px;
-
-      padding: 15px;
-
-      border: 1px solid #d1d1d1;
-
-      border-radius: 14px;
-
-      outline: none;
-
-      font-size: 16px;
-
-      font-family: inherit;
-    }
-
-    #messageInput:focus {
-      border-color: var(--primary);
-
-      box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.12);
-    }
-
-
-    /* SEND */
-
-    #sendButton {
-      width: 52px;
-      height: 52px;
-
       border: none;
-
-      border-radius: 12px;
-
-      background: var(--primary);
-
-      color: white;
-
-      font-size: 20px;
-
-      cursor: pointer;
+      outline: none;
+      padding: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      min-height: 48px;
+      max-height: 150px;
+      background: transparent;
     }
 
-    #sendButton:hover {
+    #imageBtn,
+    #sendBtn {
+      width: 45px;
+      height: 45px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    #imageBtn {
+      background: #f1f1f1;
+    }
+
+    #imageBtn:hover {
+      background: #e3e3e3;
+    }
+
+    #sendBtn {
+      background: var(--primary);
+      color: white;
+    }
+
+    #sendBtn:hover {
       background: var(--primary-dark);
     }
 
-    #sendButton:disabled {
-      opacity: 0.6;
+    #sendBtn:disabled {
+      opacity: .5;
       cursor: not-allowed;
     }
 
-
-    /* STATUS */
-
-    .status {
+    .input-note {
       text-align: center;
-
+      font-size: 11px;
+      color: #999;
       margin-top: 8px;
-
-      font-size: 12px;
-
-      color: var(--muted);
     }
 
-    .status.online {
-      color: #16a34a;
-    }
-
-    .status.offline {
-      color: var(--danger);
-    }
-
-
-    /* =========================
+    /* ================================
        MOBILE
-    ========================= */
+    ================================= */
 
-    @media (max-width: 700px) {
+    @media (max-width: 768px) {
 
       .sidebar {
-        width: 75px;
-        padding: 8px;
+        width: 70px;
+        padding: 10px;
       }
 
-      .logo h1,
-      .new-chat-btn span,
-      .history-title,
-      #chatHistory,
-      .delete-btn span {
+      .sidebar .history-title,
+      .sidebar #chatHistory,
+      .sidebar .new-chat-btn {
         display: none;
       }
 
-      .logo {
-        justify-content: center;
+      .clear-btn {
+        font-size: 0;
+        height: 45px;
       }
 
-      .new-chat-btn {
-        padding: 15px 5px;
-      }
-
-      .delete-btn {
-        padding: 12px 5px;
-      }
-
-      .message {
-        max-width: 92%;
-      }
-
-      #messages {
-        padding: 15px;
+      .clear-btn::after {
+        content: "🗑️";
+        font-size: 20px;
       }
 
       .header {
-        padding: 15px;
+        padding: 0 15px;
+      }
+
+      .header h2 {
+        font-size: 16px;
+      }
+
+      .chat-container {
+        padding: 20px 10px;
+      }
+
+      .input-wrapper {
+        padding: 10px;
+      }
+
+      .message-content {
+        max-width: 90%;
       }
 
     }
@@ -546,53 +437,39 @@
 
 <body>
 
+
 <div class="app">
 
 
   <!-- =========================
        SIDEBAR
-  ========================= -->
+  ========================== -->
 
   <aside class="sidebar">
 
-    <div class="logo">
-
-      <div class="logo-icon">
-        🤖
-      </div>
-
-      <h1>AI Chat Somali</h1>
-
-    </div>
-
-
     <button
       class="new-chat-btn"
-      id="newChatButton"
+      id="newChatBtn"
     >
-      ➕
-      <span>Chat Cusub</span>
+      + Chat Cusub
     </button>
 
 
     <div class="history-title">
-      TAARIIKHDA CHAT-KA
+      Taariikhda Chat-ka
     </div>
 
 
     <div id="chatHistory">
 
-      <!-- Chat history halkan ayuu kasoo muuqanayaa -->
-
     </div>
 
 
     <button
-      class="delete-btn"
-      id="deleteChatsButton"
+      class="clear-btn"
+      id="clearChatsBtn"
     >
-      🗑️
-      <span>Tirtir Chat-yada</span>
+      🗑️ Tirtir Chat-yada
     </button>
 
   </aside>
@@ -601,7 +478,7 @@
 
   <!-- =========================
        MAIN
-  ========================= -->
+  ========================== -->
 
   <main class="main">
 
@@ -614,55 +491,107 @@
         🤖 AI Chat Somali
       </h2>
 
-      <p>
-        Kaaliyahaaga Caqliga Macmalka ah
-      </p>
+
+      <div id="serverStatus">
+        ● Hubinaya server-ka...
+      </div>
 
     </header>
 
 
 
-    <!-- MESSAGES -->
+    <!-- =========================
+         CHAT MESSAGES
+    ========================== -->
 
-    <section id="messages">
+    <section
+      class="chat-container"
+      id="chatContainer"
+    >
 
-      <div class="welcome">
 
-        <div class="welcome-icon">
-          🤖
-        </div>
+      <div
+        class="welcome"
+        id="welcomeScreen"
+      >
 
-        <h2>
+        <h1>
           Ku Soo Dhawoow AI Chat Somali
-        </h2>
+        </h1>
 
         <p>
           Wax kasta oo aad rabto waad i weydiin kartaa.
-          Waxaan isku dayayaa inaan kuugu jawaabo Af-Soomaali.
+          Waxaad sidoo kale dooran kartaa sawir 📷
+          kadibna waxaad waydiin kartaa AI inuu sharaxo.
         </p>
 
       </div>
+
 
     </section>
 
 
 
-    <!-- WARNING -->
+    <!-- =========================
+         IMAGE PREVIEW + INPUT
+    ========================== -->
 
-    <div id="warningBox">
-
-      ⚠️ Waan ka xumahay, server-ka lama xiriiri karo.
-      Fadlan hubi server.js iyo internet-ka.
-
-    </div>
+    <div class="input-wrapper">
 
 
+      <!-- Sawirka la doortay -->
 
-    <!-- INPUT -->
+      <div
+        id="imagePreviewContainer"
+      >
 
-    <div class="input-area">
+        <img
+          id="imagePreview"
+          alt="Sawirka la doortay"
+        >
 
-      <div class="input-box">
+
+        <button
+          type="button"
+          id="removeImageBtn"
+        >
+          ✕ Ka saar
+        </button>
+
+
+      </div>
+
+
+
+      <!-- CHAT INPUT -->
+
+      <div class="chat-input-area">
+
+
+        <!-- FILE INPUT -->
+
+        <input
+          type="file"
+          id="imageInput"
+          accept="image/*"
+          hidden
+        >
+
+
+
+        <!-- IMAGE BUTTON -->
+
+        <button
+          type="button"
+          id="imageBtn"
+          title="Dooro sawir"
+        >
+          📷
+        </button>
+
+
+
+        <!-- MESSAGE -->
 
         <textarea
           id="messageInput"
@@ -671,22 +600,27 @@
         ></textarea>
 
 
+
+        <!-- SEND -->
+
         <button
-          id="sendButton"
+          type="button"
+          id="sendBtn"
           title="Dir"
         >
           ➤
         </button>
 
+
       </div>
 
 
-      <div
-        id="serverStatus"
-        class="status"
-      >
-        Server-ka waa la hubinayaa...
+      <div class="input-note">
+
+        AI Chat Somali wuxuu kaa caawin karaa qoraal iyo sharaxaadda sawirrada.
+
       </div>
+
 
     </div>
 
@@ -697,10 +631,12 @@
 </div>
 
 
+
 <!-- APP JAVASCRIPT -->
 
-<script src="app.js"></script>
+<script src="/app.js"></script>
 
 
 </body>
+
 </html>
