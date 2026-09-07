@@ -7,12 +7,10 @@ AI CHAT SOMALI - public/app.js
 "use strict";
 
 /*
-============================================================
+================================================
 API CONFIG
-============================================================
+================================================
 */
-
-// Render server-kaaga
 
 const API = {
   chat: "/chat",
@@ -23,19 +21,152 @@ const API = {
 };
 
 
+/*
+================================================
+IMAGE SELECTOR
+================================================
+*/
+
+const imageInput = document.getElementById("imageInput");
+
+const imageBtn = document.getElementById("imageBtn");
+
+const imagePreview = document.getElementById("imagePreview");
+
+const imagePreviewContainer = document.getElementById(
+  "imagePreviewContainer"
+);
+
+const removeImageBtn = document.getElementById(
+  "removeImageBtn"
+);
+
+
+/* Sawirka la doortay */
+
+let selectedImage = null;
+
+
+/* Fur meesha sawirka laga dooranayo */
+
+if (imageBtn && imageInput) {
+
+  imageBtn.addEventListener("click", () => {
+
+    imageInput.click();
+
+  });
+
+}
+
+
+/* Marka sawir la doorto */
+
+if (imageInput) {
+
+  imageInput.addEventListener("change", () => {
+
+    const file = imageInput.files[0];
+
+    if (!file) return;
+
+
+    /* Hubi inuu yahay sawir */
+
+    if (!file.type.startsWith("image/")) {
+
+      alert("Fadlan dooro sawir sax ah.");
+
+      imageInput.value = "";
+
+      return;
+
+    }
+
+
+    selectedImage = file;
+
+
+    const reader = new FileReader();
+
+
+    reader.onload = function (event) {
+
+      if (imagePreview) {
+
+        imagePreview.src = event.target.result;
+
+      }
+
+
+      if (imagePreviewContainer) {
+
+        imagePreviewContainer.style.display = "flex";
+
+      }
+
+    };
+
+
+    reader.readAsDataURL(file);
+
+  });
+
+}
+
+
+/* Ka saar sawirka */
+
+if (removeImageBtn) {
+
+  removeImageBtn.addEventListener("click", () => {
+
+    selectedImage = null;
+
+
+    if (imageInput) {
+
+      imageInput.value = "";
+
+    }
+
+
+    if (imagePreview) {
+
+      imagePreview.src = "";
+
+    }
+
+
+    if (imagePreviewContainer) {
+
+      imagePreviewContainer.style.display = "none";
+
+    }
+
+  });
+
+}
+
 
 /*
-============================================================
+================================================
 HELPER: ELEMENT SELECTOR
-============================================================
+================================================
 */
 
 function getElement(...selectors) {
-    for (const selector of selectors) {
-        const element = document.querySelector(selector);
-        if (element) return element;
-    }
-    return null;
+
+  for (const selector of selectors) {
+
+    const element = document.querySelector(selector);
+
+    if (element) return element;
+
+  }
+
+  return null;
+
 }
 /* =====================================================
    AI CHAT SOMALI - public/app.js
