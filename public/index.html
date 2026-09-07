@@ -872,297 +872,64 @@
 <body>
 
 
+<body>
+
 <div class="app">
 
-
-    <!-- =========================
-         SIDEBAR
-    ========================= -->
-
+    <!-- SIDEBAR -->
     <aside class="sidebar">
 
+        <!-- BUTTONS -->
+        <div class="sidebar-actions">
 
-        <button
-            class="new-chat-btn"
-            id="newChatBtn"
-            type="button"
-        >
-            + Chat Cusub
-        </button>
+            <button id="newChatBtn" type="button">
+                + Chat Cusub
+            </button>
 
-
-        <div class="history-title">
-
-            TAARIIKHDA CHAT-KA
+            <button id="deleteChatsBtn" type="button">
+                🗑️ Tirtir Chat-yada
+            </button>
 
         </div>
 
 
-        <div id="chatHistory">
+        <h3>TAARIIKHDA CHAT-KA</h3>
 
-        </div>
-
-
-        <button
-            class="delete-history-btn"
-            id="deleteHistoryBtn"
-            type="button"
-        >
-            🗑️ Tirtir Chat-yada
-        </button>
-
+        <!-- CHAT HISTORY -->
+        <div id="chatHistory"></div>
 
     </aside>
 
 
-
-    <!-- =========================
-         MAIN
-    ========================= -->
-
+    <!-- MAIN -->
     <main class="main">
 
-
-        <!-- HEADER -->
-
-        <header class="header">
-
-            <div class="logo">
-
-                🤖 AI Chat Somali
-
-            </div>
+        <div id="chatMessages"></div>
 
 
-            <div id="serverStatus">
+        <div class="input-area">
 
-                • Hubinaya server-ka...
+            <textarea
+                id="messageInput"
+                placeholder="Wax fariin ah qor..."
+            ></textarea>
 
-            </div>
-
-        </header>
-
-
-
-        <!-- =========================
-             CHAT MESSAGES
-        ========================= -->
-
-        <div id="chatMessages">
-
-
-            <!-- WELCOME -->
-
-            <div
-                class="welcome"
-                id="welcomeMessage"
+            <button
+                id="sendBtn"
+                type="button"
             >
-
-                <h1>
-
-                    Ku Soo Dhawoow AI Chat Somali
-
-                </h1>
-
-
-                <p>
-
-                    Wax kasta oo aad rabto waad i weydiin kartaa.
-                    Waxaad sidoo kale dooran kartaa sawir 📷
-                    kadibna waxaad waydiin kartaa AI inuu sharaxo.
-
-                </p>
-
-            </div>
-
+                ➤
+            </button>
 
         </div>
 
-
-
-        <!-- =========================
-             INPUT SECTION
-        ========================= -->
-
-        <section class="input-section">
-
-
-            <!-- IMAGE PREVIEW -->
-
-            <div
-                id="imagePreviewContainer"
-            >
-
-                <img
-                    id="imagePreview"
-                    alt="Sawirka la doortay"
-                >
-
-            </div>
-
-
-
-            <!-- INPUT -->
-
-            <div class="input-wrapper">
-
-
-                <!-- IMAGE BUTTON -->
-
-                <button
-                    id="imageBtn"
-                    type="button"
-                    title="Dooro sawir"
-                >
-                    📷
-                </button>
-
-
-                <!-- FILE INPUT -->
-
-                <input
-                    type="file"
-                    id="imageInput"
-                    accept="image/*"
-                >
-
-
-                <!-- MESSAGE INPUT -->
-
-                <textarea
-                    id="messageInput"
-                    placeholder="Wax fariin ah qor..."
-                    rows="1"
-                ></textarea>
-
-
-                <!-- SEND BUTTON -->
-
-                <button
-                    id="sendBtn"
-                    type="button"
-                    aria-label="Dir fariinta"
-                    title="Dir"
-                >
-                    ➤
-                </button>
-
-
-            </div>
-
-
-            <div class="footer-text">
-
-                AI Chat Somali wuxuu samayn karaa khaladaad. Hubi xogta muhiimka ah.
-
-            </div>
-
-
-        </section>
-
-
     </main>
-
 
 </div>
 
 
+<script src="app.js"></script>
 
-<!-- =========================
-     IMAGE PREVIEW SCRIPT
-========================= -->
-
-<script>
-
-    const imageInput =
-        document.getElementById(
-            "imageInput"
-        );
-
-
-    const imageBtn =
-        document.getElementById(
-            "imageBtn"
-        );
-
-
-    const imagePreview =
-        document.getElementById(
-            "imagePreview"
-        );
-
-
-    const imagePreviewContainer =
-        document.getElementById(
-            "imagePreviewContainer"
-        );
-
-
-    imageBtn.addEventListener(
-
-        "click",
-
-        () => {
-
-            imageInput.click();
-
-        }
-
-    );
-
-
-    imageInput.addEventListener(
-
-        "change",
-
-        () => {
-
-            const file =
-                imageInput.files[0];
-
-
-            if (!file) {
-
-                return;
-
-            }
-
-
-            const reader =
-                new FileReader();
-
-
-            reader.onload =
-                function(event) {
-
-                    imagePreview.src =
-                        event.target.result;
-
-
-                    imagePreviewContainer.style.display =
-                        "block";
-
-                };
-
-
-            reader.readAsDataURL(
-                file
-            );
-
-        }
-
-    );
-
-</script>
-
-
-
-<!-- =========================
-     APP JAVASCRIPT
-========================= -->
-
-<script src="/app.js"></script>
-
-
+</body>
 </body>
 </html>
