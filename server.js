@@ -843,10 +843,7 @@ ku jawaab Af-Soomaali.
 
           body: JSON.stringify({
 
-            model:
-              process.env.AI_MODEL ||
-              "meta-llama/llama-3.3-70b-instruct:free",
-
+          model: process.env.OPENROUTER_MODEL || "openrouter/free",
             messages
 
           })
