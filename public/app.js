@@ -1,671 +1,720 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  console.log("✅ AI Chat Somali app.js started");
+    // =========================================
+    // ELEMENTS
+    // =========================================
 
-  // =====================================
-  // ELEMENTS
-  // =====================================
+    const chatMessages = document.getElementById("chatMessages");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-  const messageInput =
-    document.querySelector("#messageInput") ||
-    document.querySelector("#message") ||
-    document.querySelector("textarea") ||
-    document.querySelector('input[type="text"]');
+    const newChatBtn = document.getElementById("newChatBtn");
+    const deleteChatsBtn = document.getElementById("deleteChatsBtn");
 
-  const sendButton =
-    document.querySelector("#sendBtn") ||
-    document.querySelector("#sendButton") ||
-    document.querySelector(".send-btn") ||
-    document.querySelector('button[type="submit"]');
+    const chatHistory = document.getElementById("chatHistory");
 
-  const chatContainer =
-    document.querySelector("#chatMessages") ||
-    document.querySelector("#messages") ||
-    document.querySelector(".messages") ||
-    document.querySelector(".chat-messages");
 
-  console.log("Input:", messageInput);
-  console.log("Send button:", sendButton);
-  console.log("Chat container:", chatContainer);
-
-
-  // =====================================
-  // IMAGE STATE
-  // =====================================
-
-  let selectedImage = null;
-
-
-  // =====================================
-  // GET TOKEN
-  // =====================================
-
-  function getToken() {
-
-    return (
-      localStorage.getItem("token") ||
-      localStorage.getItem("authToken") ||
-      ""
-    );
-
-  }
-
-
-  // =====================================
-  // ADD MESSAGE
-  // =====================================
-
-  function addMessage(text, type = "user") {
-
-    if (!chatContainer) {
-
-      console.error(
-        "❌ Chat container lama helin"
-      );
-
-      return null;
-
-    }
-
-    const messageDiv =
-      document.createElement("div");
-
-    messageDiv.className =
-      `message ${type}`;
-
-    const content =
-      document.createElement("div");
-
-    content.className =
-      "message-content";
-
-    content.textContent =
-      text;
-
-    messageDiv.appendChild(
-      content
-    );
-
-    chatContainer.appendChild(
-      messageDiv
-    );
-
-    scrollToBottom();
-
-    return messageDiv;
-
-  }
-
-
-  // =====================================
-  // ADD IMAGE MESSAGE
-  // =====================================
-
-  function addImageMessage(imageSrc) {
-
-    if (!chatContainer) {
-      return;
-    }
-
-    const messageDiv =
-      document.createElement("div");
-
-    messageDiv.className =
-      "message user";
-
-    const image =
-      document.createElement("img");
-
-    image.src =
-      imageSrc;
-
-    image.className =
-      "chat-image";
-
-    image.style.maxWidth =
-      "250px";
-
-    image.style.borderRadius =
-      "10px";
-
-    messageDiv.appendChild(
-      image
-    );
-
-    chatContainer.appendChild(
-      messageDiv
-    );
-
-    scrollToBottom();
-
-  }
-
-
-  // =====================================
-  // SCROLL
-  // =====================================
-
-  function scrollToBottom() {
-
-    if (!chatContainer) {
-      return;
-    }
-
-    chatContainer.scrollTop =
-      chatContainer.scrollHeight;
-
-  }
-
-
-  // =====================================
-  // LOADING
-  // =====================================
-
-  function addLoadingMessage() {
-
-    if (!chatContainer) {
-      return null;
-    }
-
-    const loadingDiv =
-      document.createElement("div");
-
-    loadingDiv.className =
-      "message assistant loading";
-
-    loadingDiv.innerHTML =
-      `
-      <div class="message-content">
-        AI ayaa ka jawaabaya...
-      </div>
-      `;
-
-    chatContainer.appendChild(
-      loadingDiv
-    );
-
-    scrollToBottom();
-
-    return loadingDiv;
-
-  }
-
-
-  // =====================================
-  // SEND MESSAGE
-  // =====================================
-
-  async function sendMessage() {
-
-    console.log("📤 sendMessage() started");
-
-
-    if (!messageInput) {
-
-      alert(
-        "Message input lama helin. Hubi id-ka HTML."
-      );
-
-      return;
-
+    // Hubi in elements-ka muhiimka ahi jiraan
+    if (!chatMessages || !messageInput || !sendBtn) {
+        console.error("❌ Waxaa maqan chatMessages, messageInput ama sendBtn gudaha index.html");
+        return;
     }
 
 
-    const message =
-      messageInput.value.trim();
+    // =========================================
+    // STORAGE KEYS
+    // =========================================
 
+    const STORAGE_KEY = "ai_chat_somali_chats";
+    const ACTIVE_CHAT_KEY = "ai_chat_somali_active_chat";
 
-    if (
-      !message &&
-      !selectedImage
-    ) {
 
-      return;
+    // =========================================
+    // VARIABLES
+    // =========================================
 
-    }
+    let chats = [];
+    let activeChatId = null;
+    let isSending = false;
 
 
-    // Disable button
+    // =========================================
+    // LOAD CHATS
+    // =========================================
 
-    if (sendButton) {
+    function loadChats() {
 
-      sendButton.disabled =
-        true;
+        try {
+            const savedChats = localStorage.getItem(STORAGE_KEY);
 
-    }
+            if (savedChats) {
+                chats = JSON.parse(savedChats);
+            } else {
+                chats = [];
+            }
 
+        } catch (error) {
 
-    // User message
-
-    if (message) {
-
-      addMessage(
-        message,
-        "user"
-      );
-
-    }
-
-
-    // Image message
-
-    if (selectedImage) {
-
-      addImageMessage(
-        selectedImage
-      );
-
-    }
-
-
-    // Clear input
-
-    messageInput.value =
-      "";
-
-    messageInput.style.height =
-      "auto";
-
-
-    // Loading
-
-    const loadingMessage =
-      addLoadingMessage();
-
-
-    try {
-
-      const token =
-        getToken();
-
-
-      const headers = {
-
-        "Content-Type":
-          "application/json"
-
-      };
-
-
-      if (token) {
-
-        headers.Authorization =
-          `Bearer ${token}`;
-
-      }
-
-
-      console.log(
-        "🌐 Sending request to /chat"
-      );
-
-
-      const response =
-        await fetch(
-
-          "/chat",
-
-          {
-
-            method:
-              "POST",
-
-            headers:
-
-              headers,
-
-            body:
-              JSON.stringify({
-
-                message:
-
-                  message ||
-
-                  "",
-
-                image:
-
-                  selectedImage ||
-
-                  null
-
-              })
-
-          }
-
-        );
-
-
-      console.log(
-        "📥 Response status:",
-        response.status
-      );
-
-
-      let data;
-
-
-      try {
-
-        data =
-          await response.json();
-
-      } catch (jsonError) {
-
-        throw new Error(
-          "Server-ku JSON sax ah ma soo celin."
-        );
-
-      }
-
-
-      console.log(
-        "📦 Server response:",
-        data
-      );
-
-
-      // Remove loading
-
-      if (loadingMessage) {
-
-        loadingMessage.remove();
-
-      }
-
-
-      // Error response
-
-      if (!response.ok) {
-
-        throw new Error(
-
-          data.error ||
-
-          `Server error: ${response.status}`
-
-        );
-
-      }
-
-
-      // AI Reply
-
-      const reply =
-
-        data.reply ||
-
-        "Waan ka xumahay, jawaab lama helin.";
-
-
-      addMessage(
-        reply,
-        "assistant"
-      );
-
-
-      // Clear image
-
-      selectedImage =
-        null;
-
-
-    } catch (error) {
-
-      console.error(
-        "❌ CHAT ERROR:",
-        error
-      );
-
-
-      if (loadingMessage) {
-
-        loadingMessage.remove();
-
-      }
-
-
-      addMessage(
-
-        "❌ Khalad ayaa dhacay: " +
-        error.message,
-
-        "assistant"
-
-      );
-
-
-    } finally {
-
-      if (sendButton) {
-
-        sendButton.disabled =
-          false;
-
-      }
-
-
-      if (messageInput) {
-
-        messageInput.focus();
-
-      }
-
-    }
-
-  }
-
-
-  // =====================================
-  // SEND BUTTON CLICK
-  // =====================================
-
-  if (sendButton) {
-
-    sendButton.addEventListener(
-
-      "click",
-
-      (event) => {
-
-        event.preventDefault();
-
-        console.log(
-          "🖱️ Send button clicked"
-        );
-
-        sendMessage();
-
-      }
-
-    );
-
-  } else {
-
-    console.warn(
-      "⚠️ Send button lama helin"
-    );
-
-  }
-
-
-  // =====================================
-  // ENTER KEY
-  // =====================================
-
-  if (messageInput) {
-
-    messageInput.addEventListener(
-
-      "keydown",
-
-      (event) => {
-
-        if (
-
-          event.key === "Enter" &&
-
-          !event.shiftKey
-
-        ) {
-
-          event.preventDefault();
-
-          console.log(
-            "⌨️ Enter pressed"
-          );
-
-          sendMessage();
-
-        }
-
-      }
-
-    );
-
-  } else {
-
-    console.warn(
-      "⚠️ Message input lama helin"
-    );
-
-  }
-
-
-  // =====================================
-  // AUTO RESIZE TEXTAREA
-  // =====================================
-
-  if (
-    messageInput &&
-    messageInput.tagName ===
-      "TEXTAREA"
-  ) {
-
-    messageInput.addEventListener(
-
-      "input",
-
-      () => {
-
-        messageInput.style.height =
-          "auto";
-
-        messageInput.style.height =
-          Math.min(
-
-            messageInput.scrollHeight,
-
-            180
-
-          ) + "px";
-
-      }
-
-    );
-
-  }
-
-
-  // =====================================
-  // IMAGE INPUT
-  // =====================================
-
-  const imageInput =
-    document.querySelector("#imageInput") ||
-    document.querySelector(
-      'input[type="file"]'
-    );
-
-
-  if (imageInput) {
-
-    imageInput.addEventListener(
-
-      "change",
-
-      (event) => {
-
-        const file =
-          event.target.files[0];
-
-
-        if (!file) {
-
-          return;
-
+            console.error("Chat loading error:", error);
+            chats = [];
         }
 
 
-        const reader =
-          new FileReader();
+        activeChatId = localStorage.getItem(ACTIVE_CHAT_KEY);
 
 
-        reader.onload =
-          (readerEvent) => {
+        // Haddii chat hore u jiray
+        if (activeChatId) {
 
-            selectedImage =
-              readerEvent.target.result;
-
-            console.log(
-              "🖼️ Image selected"
+            const chatExists = chats.find(
+                chat => chat.id === activeChatId
             );
 
-          };
+            if (!chatExists) {
+                activeChatId = null;
+            }
+        }
 
 
-        reader.readAsDataURL(
-          file
-        );
+        // Haddii chats jiraan laakiin active chat aanu jirin
+        if (!activeChatId && chats.length > 0) {
 
-      }
+            activeChatId = chats[0].id;
 
-    );
-
-  }
-
-
-  // =====================================
-  // SERVER HEALTH CHECK
-  // =====================================
-
-  async function checkServer() {
-
-    try {
-
-      const response =
-        await fetch(
-          "/api/health"
-        );
+            localStorage.setItem(
+                ACTIVE_CHAT_KEY,
+                activeChatId
+            );
+        }
 
 
-      const data =
-        await response.json();
-
-
-      console.log(
-        "🟢 Server online:",
-        data
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "🔴 Server offline:",
-        error
-      );
-
+        renderHistory();
+        renderActiveChat();
     }
 
-  }
+
+    // =========================================
+    // SAVE CHATS
+    // =========================================
+
+    function saveChats() {
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(chats)
+        );
+
+        if (activeChatId) {
+
+            localStorage.setItem(
+                ACTIVE_CHAT_KEY,
+                activeChatId
+            );
+
+        } else {
+
+            localStorage.removeItem(
+                ACTIVE_CHAT_KEY
+            );
+        }
+    }
 
 
-  checkServer();
+    // =========================================
+    // CREATE NEW CHAT
+    // =========================================
+
+    function createNewChat() {
+
+        const newChat = {
+
+            id: "chat_" + Date.now(),
+
+            title: "Chat Cusub",
+
+            messages: [],
+
+            createdAt: new Date().toISOString()
+        };
 
 
-  console.log(
-    "🤖 AI Chat Somali ready"
-  );
+        chats.unshift(newChat);
+
+        activeChatId = newChat.id;
+
+
+        saveChats();
+
+        renderHistory();
+
+        renderActiveChat();
+
+
+        messageInput.focus();
+    }
+
+
+    // =========================================
+    // GET ACTIVE CHAT
+    // =========================================
+
+    function getActiveChat() {
+
+        return chats.find(
+            chat => chat.id === activeChatId
+        );
+    }
+
+
+    // =========================================
+    // ADD MESSAGE
+    // =========================================
+
+    function addMessage(role, content) {
+
+        let activeChat = getActiveChat();
+
+
+        // Haddii chat aanu jirin, samee
+        if (!activeChat) {
+
+            createNewChat();
+
+            activeChat = getActiveChat();
+        }
+
+
+        activeChat.messages.push({
+
+            role: role,
+
+            content: content,
+
+            createdAt: new Date().toISOString()
+        });
+
+
+        // Cinwaanka chat-ka ka dhig fariinta ugu horreysa
+        if (
+            role === "user" &&
+            activeChat.title === "Chat Cusub"
+        ) {
+
+            let title = content.trim();
+
+
+            if (title.length > 30) {
+
+                title = title.substring(0, 30) + "...";
+            }
+
+
+            activeChat.title = title;
+        }
+
+
+        saveChats();
+
+        renderHistory();
+
+        renderActiveChat();
+    }
+
+
+    // =========================================
+    // RENDER CHAT HISTORY
+    // =========================================
+
+    function renderHistory() {
+
+        if (!chatHistory) return;
+
+
+        chatHistory.innerHTML = "";
+
+
+        if (chats.length === 0) {
+
+            chatHistory.innerHTML = `
+                <p class="empty-history">
+                    Weli wax chat ah ma jiro
+                </p>
+            `;
+
+            return;
+        }
+
+
+        chats.forEach(chat => {
+
+            const item = document.createElement("button");
+
+            item.type = "button";
+
+            item.className = "history-item";
+
+
+            if (chat.id === activeChatId) {
+
+                item.classList.add("active");
+            }
+
+
+            item.textContent = chat.title;
+
+
+            item.addEventListener("click", () => {
+
+                activeChatId = chat.id;
+
+                saveChats();
+
+                renderHistory();
+
+                renderActiveChat();
+            });
+
+
+            chatHistory.appendChild(item);
+        });
+    }
+
+
+    // =========================================
+    // RENDER ACTIVE CHAT
+    // =========================================
+
+    function renderActiveChat() {
+
+        chatMessages.innerHTML = "";
+
+
+        const activeChat = getActiveChat();
+
+
+        // Haddii chat aanu jirin
+        if (!activeChat) {
+
+            chatMessages.innerHTML = `
+                <div class="welcome-message">
+
+                    <h1>Ku Soo Dhawoow AI Chat Somali</h1>
+
+                    <p>
+                        Wax kasta oo aad rabto waad i weydiin kartaa.
+                        Waxaad sidoo kale dooran kartaa sawir haddii app-kaagu taageero.
+                    </p>
+
+                </div>
+            `;
+
+            return;
+        }
+
+
+        // Haddii chat-ku madhan yahay
+        if (activeChat.messages.length === 0) {
+
+            chatMessages.innerHTML = `
+                <div class="welcome-message">
+
+                    <h1>Ku Soo Dhawoow AI Chat Somali</h1>
+
+                    <p>
+                        Qor fariintaada hoose si aad u bilowdo.
+                    </p>
+
+                </div>
+            `;
+
+            return;
+        }
+
+
+        // Messages
+        activeChat.messages.forEach(message => {
+
+            const messageDiv = document.createElement("div");
+
+
+            messageDiv.className =
+                message.role === "user"
+                    ? "message user-message"
+                    : "message ai-message";
+
+
+            const contentDiv = document.createElement("div");
+
+            contentDiv.className = "message-content";
+
+
+            // textContent ayaa ka ammaan badan innerHTML
+            contentDiv.textContent = message.content;
+
+
+            messageDiv.appendChild(contentDiv);
+
+
+            chatMessages.appendChild(messageDiv);
+        });
+
+
+        scrollToBottom();
+    }
+
+
+    // =========================================
+    // LOADING MESSAGE
+    // =========================================
+
+    function showLoading() {
+
+        removeLoading();
+
+
+        const loadingDiv = document.createElement("div");
+
+        loadingDiv.id = "aiLoading";
+
+        loadingDiv.className = "message ai-message loading-message";
+
+
+        loadingDiv.innerHTML = `
+            <div class="message-content">
+                AI-ga ayaa ka jawaabaya...
+            </div>
+        `;
+
+
+        chatMessages.appendChild(loadingDiv);
+
+
+        scrollToBottom();
+    }
+
+
+    function removeLoading() {
+
+        const loading = document.getElementById("aiLoading");
+
+        if (loading) {
+            loading.remove();
+        }
+    }
+
+
+    // =========================================
+    // SCROLL
+    // =========================================
+
+    function scrollToBottom() {
+
+        chatMessages.scrollTop =
+            chatMessages.scrollHeight;
+
+
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: "smooth"
+        });
+    }
+
+
+    // =========================================
+    // GET AI RESPONSE
+    // =========================================
+
+    async function sendMessage() {
+
+        if (isSending) return;
+
+
+        const message = messageInput.value.trim();
+
+
+        if (!message) {
+
+            messageInput.focus();
+
+            return;
+        }
+
+
+        // Samee chat haddii aanu jirin
+        if (!getActiveChat()) {
+
+            createNewChat();
+        }
+
+
+        isSending = true;
+
+
+        sendBtn.disabled = true;
+
+
+        // User message
+        addMessage("user", message);
+
+
+        // Nadiifi textarea
+        messageInput.value = "";
+
+
+        // Loading
+        showLoading();
+
+
+        try {
+
+            const response = await fetch("/chat", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    message: message
+
+                })
+
+            });
+
+
+            // Isku day inaad hesho JSON
+            let data;
+
+
+            try {
+
+                data = await response.json();
+
+            } catch (error) {
+
+                throw new Error(
+                    "Server-ku jawaab sax ah ma soo celin."
+                );
+            }
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    data.message ||
+                    "Server error ayaa dhacay."
+                );
+            }
+
+
+            removeLoading();
+
+
+            // Jawaabta server-ka waxay noqon kartaa qaabab kala duwan
+            const reply =
+                data.reply ||
+                data.response ||
+                data.message ||
+                data.answer ||
+                data.content ||
+                "Waan ka xumahay, jawaab lama helin.";
+
+
+            addMessage(
+                "assistant",
+                reply
+            );
+
+
+        } catch (error) {
+
+            console.error("Chat error:", error);
+
+
+            removeLoading();
+
+
+            addMessage(
+                "assistant",
+
+                "❌ Khalad ayaa dhacay: " +
+                error.message
+            );
+
+        } finally {
+
+            isSending = false;
+
+            sendBtn.disabled = false;
+
+            messageInput.focus();
+        }
+    }
+
+
+    // =========================================
+    // SEND BUTTON
+    // =========================================
+
+    sendBtn.addEventListener("click", sendMessage);
+
+
+    // =========================================
+    // ENTER TO SEND
+    // =========================================
+
+    messageInput.addEventListener("keydown", (event) => {
+
+        // Enter = send
+        // Shift + Enter = newline
+
+        if (
+            event.key === "Enter" &&
+            !event.shiftKey
+        ) {
+
+            event.preventDefault();
+
+            sendMessage();
+        }
+    });
+
+
+    // =========================================
+    // NEW CHAT BUTTON
+    // =========================================
+
+    if (newChatBtn) {
+
+        newChatBtn.addEventListener("click", () => {
+
+            createNewChat();
+        });
+    }
+
+
+    // =========================================
+    // DELETE ALL CHATS
+    // =========================================
+
+    if (deleteChatsBtn) {
+
+        deleteChatsBtn.addEventListener("click", () => {
+
+            const confirmed = confirm(
+                "Ma hubtaa inaad tirtirayso dhammaan chat-yada?"
+            );
+
+
+            if (!confirmed) return;
+
+
+            chats = [];
+
+            activeChatId = null;
+
+
+            localStorage.removeItem(
+                STORAGE_KEY
+            );
+
+            localStorage.removeItem(
+                ACTIVE_CHAT_KEY
+            );
+
+
+            renderHistory();
+
+            renderActiveChat();
+        });
+    }
+
+
+    // =========================================
+    // OPTIONAL: IMAGE PREVIEW
+    // =========================================
+
+    const imageInput =
+        document.getElementById("imageInput");
+
+    const imagePreview =
+        document.getElementById("imagePreview");
+
+    const imagePreviewContainer =
+        document.getElementById(
+            "imagePreviewContainer"
+        );
+
+
+    if (imageInput) {
+
+        imageInput.addEventListener(
+            "change",
+            () => {
+
+                const file =
+                    imageInput.files[0];
+
+
+                if (!file) {
+
+                    if (imagePreviewContainer) {
+
+                        imagePreviewContainer.style.display =
+                            "none";
+                    }
+
+                    return;
+                }
+
+
+                if (
+                    !file.type.startsWith("image/")
+                ) {
+
+                    alert(
+                        "Fadlan dooro sawir sax ah."
+                    );
+
+                    imageInput.value = "";
+
+                    return;
+                }
+
+
+                const reader = new FileReader();
+
+
+                reader.onload = (event) => {
+
+                    if (imagePreview) {
+
+                        imagePreview.src =
+                            event.target.result;
+                    }
+
+
+                    if (imagePreviewContainer) {
+
+                        imagePreviewContainer.style.display =
+                            "block";
+                    }
+                };
+
+
+                reader.readAsDataURL(file);
+            }
+        );
+    }
+
+
+    // =========================================
+    // START APP
+    // =========================================
+
+    loadChats();
 
 });
