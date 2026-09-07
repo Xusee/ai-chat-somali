@@ -468,170 +468,79 @@ app.post("/api/login", async (req, res) => {
 
 });
 
-
-// ============================================
+// ==========================================
 // ADMIN LOGIN
 // POST /api/admin/login
-// ============================================
+// ==========================================
 
-app.post("/api/admin/login", (req, res) => {
-
+app.post("/api/admin/login", async (req, res) => {
   try {
+    const { email, password } = req.body;
 
-    let {
-      email,
-      password
-    } = req.body;
-
-
-    // ========================================
-    // CHECK EMPTY
-    // ========================================
-
+    // Hubinta xogta madhan
     if (!email || !password) {
-
       return res.status(400).json({
-
         success: false,
-
-        message: "Email iyo password geli"
-
+        message: "Email ama password waa khalad"
       });
-
     }
 
-
-    // ========================================
-    // CHECK ENV VARIABLES
-    // ========================================
-
-    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-
-      console.error(
-        "❌ ADMIN_EMAIL ama ADMIN_PASSWORD lama helin Environment Variables"
-      );
+    // Hubi Environment Variables
+    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+      console.error("ADMIN_EMAIL ama ADMIN_PASSWORD lama helin .env");
 
       return res.status(500).json({
-
         success: false,
-
-        message:
-          "Admin settings lama helin server-ka"
-
+        message: "Admin settings lama helin"
       });
-
     }
 
+    // Isbarbardhig Email
+    const emailCorrect =
+      email.trim().toLowerCase() ===
+      process.env.ADMIN_EMAIL.trim().toLowerCase();
 
-    // ========================================
-    // CLEAN EMAIL
-    // ========================================
+    // Isbarbardhig Password
+    const passwordCorrect =
+      password === process.env.ADMIN_PASSWORD;
 
-    email =
-      email
-        .trim()
-        .toLowerCase();
-
-
-    const correctEmail =
-      ADMIN_EMAIL
-        .trim()
-        .toLowerCase();
-
-
-    // ========================================
-    // CHECK ADMIN
-    // ========================================
-
-    if (
-      email !== correctEmail ||
-      password !== ADMIN_PASSWORD
-    ) {
-
-      console.log(
-        "❌ Admin login failed:",
-        email
-      );
-
+    if (!emailCorrect || !passwordCorrect) {
       return res.status(401).json({
-
         success: false,
-
         message: "Email ama password waa khalad"
-
       });
-
     }
 
-
-    // ========================================
-    // CREATE ADMIN TOKEN
-    // ========================================
-
-    const adminToken = jwt.sign(
-
+    // JWT Token
+    const token = jwt.sign(
       {
-
-        email: correctEmail,
-
+        email: process.env.ADMIN_EMAIL,
         role: "admin"
-
       },
-
-      JWT_SECRET,
-
+      process.env.JWT_SECRET || "AI_CHAT_SOMALI_SECRET_2026",
       {
-
-        expiresIn: "24h"
-
+        expiresIn: "30d"
       }
-
     );
 
-
-    console.log(
-      "✅ Admin login success:",
-      correctEmail
-    );
-
-
-    res.json({
-
+    return res.status(200).json({
       success: true,
-
-      message: "Admin login waa guulaystay",
-
-      token: adminToken,
-
+      message: "Admin si guul leh ayuu u galay",
+      token: token,
       admin: {
-
-        email: correctEmail,
-
+        email: process.env.ADMIN_EMAIL,
         role: "admin"
-
       }
-
     });
-
 
   } catch (error) {
+    console.error("ADMIN LOGIN ERROR:", error);
 
-    console.error(
-      "ADMIN LOGIN ERROR:",
-      error
-    );
-
-
-    res.status(500).json({
-
+    return res.status(500).json({
       success: false,
-
       message: "Server error"
-
     });
-
   }
-
 });
 
 
