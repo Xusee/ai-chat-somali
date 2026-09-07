@@ -1,436 +1,870 @@
 <!DOCTYPE html>
 <html lang="so">
 <head>
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <title>AI Chat Somali</title>
-
-  <style>
-
-    :root {
-      --primary: #10a37f;
-      --primary-dark: #0d8a6c;
-      --dark: #202123;
-      --sidebar: #171717;
-      --bg: #f7f7f8;
-      --white: #ffffff;
-      --border: #e5e5e5;
-      --text: #202123;
-      --muted: #777;
-      --danger: #dc3545;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    /* ================================
-       APP
-    ================================= */
-
-    .app {
-      display: flex;
-      width: 100%;
-      height: 100vh;
-    }
-
-    /* ================================
-       SIDEBAR
-    ================================= */
-
-    .sidebar {
-      width: 260px;
-      background: var(--sidebar);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      padding: 15px;
-    }
-
-    .new-chat-btn {
-      width: 100%;
-      padding: 13px;
-      border: 1px solid #555;
-      background: transparent;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 15px;
-      margin-bottom: 20px;
-    }
-
-    .new-chat-btn:hover {
-      background: #2d2d2d;
-    }
-
-    .history-title {
-      font-size: 12px;
-      color: #aaa;
-      margin-bottom: 10px;
-      text-transform: uppercase;
-    }
-
-    #chatHistory {
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    .history-item {
-      padding: 10px;
-      margin-bottom: 5px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .history-item:hover {
-      background: #2a2a2a;
-    }
-
-    .clear-btn {
-      width: 100%;
-      padding: 12px;
-      background: #a83232;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .clear-btn:hover {
-      background: #8e2525;
-    }
-
-    /* ================================
-       MAIN
-    ================================= */
-
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    /* ================================
-       HEADER
-    ================================= */
-
-    .header {
-      height: 65px;
-      background: white;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 25px;
-    }
-
-    .header h2 {
-      font-size: 20px;
-      color: var(--primary);
-    }
-
-    #serverStatus {
-      font-size: 13px;
-      color: #777;
-    }
-
-    .status-online {
-      color: #10a37f !important;
-    }
-
-    .status-offline {
-      color: #dc3545 !important;
-    }
-
-    /* ================================
-       CHAT AREA
-    ================================= */
-
-    .chat-container {
-      flex: 1;
-      overflow-y: auto;
-      padding: 25px 15%;
-      scroll-behavior: smooth;
-    }
-
-    .welcome {
-      text-align: center;
-      margin-top: 60px;
-    }
-
-    .welcome h1 {
-      font-size: 28px;
-      margin-bottom: 12px;
-    }
-
-    .welcome p {
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    /* ================================
-       MESSAGES
-    ================================= */
-
-    .message {
-      display: flex;
-      margin-bottom: 20px;
-    }
-
-    .message.user {
-      justify-content: flex-end;
-    }
-
-    .message.assistant {
-      justify-content: flex-start;
-    }
-
-    .message-content {
-      max-width: 80%;
-      padding: 14px 17px;
-      border-radius: 15px;
-      line-height: 1.6;
-      word-wrap: break-word;
-    }
-
-    .message.user .message-content {
-      background: var(--primary);
-      color: white;
-      border-bottom-right-radius: 4px;
-    }
-
-    .message.assistant .message-content {
-      background: white;
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
-    }
-
-    .chat-image {
-      display: block;
-      max-width: 280px;
-      width: 100%;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
-
-    /* ================================
-       TYPING
-    ================================= */
-
-    .typing {
-      display: flex;
-      gap: 5px;
-      padding: 12px;
-    }
-
-    .typing span {
-      width: 8px;
-      height: 8px;
-      background: #999;
-      border-radius: 50%;
-      animation: typing 1.2s infinite;
-    }
-
-    .typing span:nth-child(2) {
-      animation-delay: .2s;
-    }
-
-    .typing span:nth-child(3) {
-      animation-delay: .4s;
-    }
-
-    @keyframes typing {
-
-      0%, 100% {
-        opacity: .3;
-      }
-
-      50% {
-        opacity: 1;
-      }
-
-    }
-
-    /* ================================
-       IMAGE PREVIEW
-    ================================= */
-
-    #imagePreviewContainer {
-      display: none;
-      width: min(900px, 100%);
-      margin: 0 auto 8px;
-      padding: 8px 12px;
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      align-items: center;
-      gap: 10px;
-    }
-
-    #imagePreview {
-      width: 65px;
-      height: 65px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-
-    #removeImageBtn {
-      border: none;
-      background: #fee2e2;
-      color: var(--danger);
-      padding: 8px 12px;
-      border-radius: 7px;
-      cursor: pointer;
-    }
-
-    #removeImageBtn:hover {
-      background: #fecaca;
-    }
-
-    /* ================================
-       INPUT AREA
-    ================================= */
-
-    .input-wrapper {
-      background: white;
-      border-top: 1px solid var(--border);
-      padding: 12px 15%;
-    }
-
-    .chat-input-area {
-      width: 100%;
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      background: white;
-      border: 1px solid #d9d9e3;
-      border-radius: 15px;
-      padding: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
-    }
-
-    #messageInput {
-      flex: 1;
-      resize: none;
-      border: none;
-      outline: none;
-      padding: 12px;
-      font-size: 15px;
-      font-family: inherit;
-      min-height: 48px;
-      max-height: 150px;
-      background: transparent;
-    }
-
-    #imageBtn,
-    #sendBtn {
-      width: 45px;
-      height: 45px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 20px;
-      flex-shrink: 0;
-    }
-
-    #imageBtn {
-      background: #f1f1f1;
-    }
-
-    #imageBtn:hover {
-      background: #e3e3e3;
-    }
-
-    #sendBtn {
-      background: var(--primary);
-      color: white;
-    }
-
-    #sendBtn:hover {
-      background: var(--primary-dark);
-    }
-
-    #sendBtn:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-
-    .input-note {
-      text-align: center;
-      font-size: 11px;
-      color: #999;
-      margin-top: 8px;
-    }
-
-    /* ================================
-       MOBILE
-    ================================= */
-
-    @media (max-width: 768px) {
-
-      .sidebar {
-        width: 70px;
-        padding: 10px;
-      }
-
-      .sidebar .history-title,
-      .sidebar #chatHistory,
-      .sidebar .new-chat-btn {
-        display: none;
-      }
-
-      .clear-btn {
-        font-size: 0;
-        height: 45px;
-      }
-
-      .clear-btn::after {
-        content: "🗑️";
-        font-size: 20px;
-      }
-
-      .header {
-        padding: 0 15px;
-      }
-
-      .header h2 {
-        font-size: 16px;
-      }
-
-      .chat-container {
-        padding: 20px 10px;
-      }
-
-      .input-wrapper {
-        padding: 10px;
-      }
-
-      .message-content {
-        max-width: 90%;
-      }
-
-    }
-
-  </style>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>AI Chat Somali</title>
+
+    <style>
+
+        /* =========================
+           RESET
+        ========================= */
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+
+        :root {
+
+            --primary: #10a37f;
+            --primary-dark: #0b8064;
+
+            --sidebar: #202123;
+
+            --sidebar-hover: #2a2b32;
+
+            --background: #f7f7f8;
+
+            --white: #ffffff;
+
+            --border: #e5e5e5;
+
+            --text: #202123;
+
+            --muted: #6b7280;
+
+            --user-message: #10a37f;
+
+            --assistant-message: #ffffff;
+
+        }
+
+
+        body {
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                var(--background);
+
+            color:
+                var(--text);
+
+            height:
+                100vh;
+
+            overflow:
+                hidden;
+
+        }
+
+
+        /* =========================
+           APP
+        ========================= */
+
+        .app {
+
+            display:
+                flex;
+
+            width:
+                100%;
+
+            height:
+                100vh;
+
+        }
+
+
+        /* =========================
+           SIDEBAR
+        ========================= */
+
+        .sidebar {
+
+            width:
+                260px;
+
+            background:
+                var(--sidebar);
+
+            color:
+                white;
+
+            display:
+                flex;
+
+            flex-direction:
+                column;
+
+            padding:
+                14px;
+
+            flex-shrink:
+                0;
+
+        }
+
+
+        .new-chat-btn {
+
+            width:
+                100%;
+
+            border:
+                1px solid #565869;
+
+            background:
+                transparent;
+
+            color:
+                white;
+
+            border-radius:
+                8px;
+
+            padding:
+                14px;
+
+            font-size:
+                15px;
+
+            cursor:
+                pointer;
+
+            margin-bottom:
+                22px;
+
+        }
+
+
+        .new-chat-btn:hover {
+
+            background:
+                var(--sidebar-hover);
+
+        }
+
+
+        .history-title {
+
+            color:
+                #a5a5a5;
+
+            font-size:
+                12px;
+
+            font-weight:
+                bold;
+
+            margin-bottom:
+                12px;
+
+        }
+
+
+        #chatHistory {
+
+            overflow-y:
+                auto;
+
+            flex:
+                1;
+
+        }
+
+
+        .history-item {
+
+            padding:
+                12px;
+
+            border-radius:
+                7px;
+
+            cursor:
+                pointer;
+
+            margin-bottom:
+                5px;
+
+            font-size:
+                14px;
+
+            overflow:
+                hidden;
+
+            text-overflow:
+                ellipsis;
+
+            white-space:
+                nowrap;
+
+        }
+
+
+        .history-item:hover {
+
+            background:
+                var(--sidebar-hover);
+
+        }
+
+
+        .delete-history-btn {
+
+            width:
+                100%;
+
+            border:
+                none;
+
+            background:
+                #8b3a3a;
+
+            color:
+                white;
+
+            padding:
+                12px;
+
+            border-radius:
+                8px;
+
+            cursor:
+                pointer;
+
+            margin-top:
+                12px;
+
+        }
+
+
+        /* =========================
+           MAIN
+        ========================= */
+
+        .main {
+
+            flex:
+                1;
+
+            height:
+                100vh;
+
+            display:
+                flex;
+
+            flex-direction:
+                column;
+
+            min-width:
+                0;
+
+        }
+
+
+        /* =========================
+           HEADER
+        ========================= */
+
+        .header {
+
+            height:
+                65px;
+
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            justify-content:
+                space-between;
+
+            padding:
+                0 25px;
+
+            background:
+                var(--white);
+
+            border-bottom:
+                1px solid var(--border);
+
+        }
+
+
+        .logo {
+
+            font-size:
+                20px;
+
+            font-weight:
+                bold;
+
+            color:
+                var(--primary);
+
+        }
+
+
+        #serverStatus {
+
+            font-size:
+                13px;
+
+            color:
+                var(--muted);
+
+        }
+
+
+        /* =========================
+           CHAT MESSAGES
+        ========================= */
+
+        #chatMessages {
+
+            flex:
+                1;
+
+            overflow-y:
+                auto;
+
+            padding:
+                30px 15%;
+
+            display:
+                flex;
+
+            flex-direction:
+                column;
+
+            gap:
+                18px;
+
+        }
+
+
+        .welcome {
+
+            text-align:
+                center;
+
+            margin:
+                auto;
+
+            max-width:
+                700px;
+
+            color:
+                var(--text);
+
+        }
+
+
+        .welcome h1 {
+
+            font-size:
+                32px;
+
+            margin-bottom:
+                15px;
+
+        }
+
+
+        .welcome p {
+
+            color:
+                var(--muted);
+
+            line-height:
+                1.7;
+
+            font-size:
+                16px;
+
+        }
+
+
+        /* =========================
+           MESSAGE
+        ========================= */
+
+        .message {
+
+            width:
+                fit-content;
+
+            max-width:
+                85%;
+
+            display:
+                flex;
+
+            flex-direction:
+                column;
+
+        }
+
+
+        .message-content {
+
+            padding:
+                14px 17px;
+
+            border-radius:
+                14px;
+
+            line-height:
+                1.6;
+
+            white-space:
+                pre-wrap;
+
+            word-break:
+                break-word;
+
+        }
+
+
+        .message.user {
+
+            align-self:
+                flex-end;
+
+        }
+
+
+        .message.user .message-content {
+
+            background:
+                var(--user-message);
+
+            color:
+                white;
+
+            border-bottom-right-radius:
+                4px;
+
+        }
+
+
+        .message.assistant {
+
+            align-self:
+                flex-start;
+
+        }
+
+
+        .message.assistant .message-content {
+
+            background:
+                var(--assistant-message);
+
+            border:
+                1px solid var(--border);
+
+            border-bottom-left-radius:
+                4px;
+
+        }
+
+
+        .loading .message-content {
+
+            color:
+                var(--muted);
+
+            font-style:
+                italic;
+
+        }
+
+
+        .chat-image {
+
+            max-width:
+                300px;
+
+            width:
+                100%;
+
+            border-radius:
+                12px;
+
+            border:
+                1px solid var(--border);
+
+        }
+
+
+        /* =========================
+           INPUT AREA
+        ========================= */
+
+        .input-section {
+
+            background:
+                var(--background);
+
+            padding:
+                15px 15% 25px;
+
+        }
+
+
+        .input-wrapper {
+
+            width:
+                100%;
+
+            max-width:
+                850px;
+
+            margin:
+                auto;
+
+            background:
+                white;
+
+            border:
+                1px solid #d9d9d9;
+
+            border-radius:
+                16px;
+
+            padding:
+                8px;
+
+            display:
+                flex;
+
+            align-items:
+                flex-end;
+
+            gap:
+                8px;
+
+            box-shadow:
+                0 3px 15px rgba(0,0,0,0.08);
+
+        }
+
+
+        #messageInput {
+
+            flex:
+                1;
+
+            border:
+                none;
+
+            outline:
+                none;
+
+            resize:
+                none;
+
+            min-height:
+                45px;
+
+            max-height:
+                180px;
+
+            padding:
+                12px;
+
+            font-size:
+                16px;
+
+            font-family:
+                inherit;
+
+            background:
+                transparent;
+
+        }
+
+
+        #sendBtn {
+
+            width:
+                45px;
+
+            height:
+                45px;
+
+            border:
+                none;
+
+            border-radius:
+                10px;
+
+            background:
+                var(--primary);
+
+            color:
+                white;
+
+            font-size:
+                20px;
+
+            cursor:
+                pointer;
+
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            justify-content:
+                center;
+
+            flex-shrink:
+                0;
+
+        }
+
+
+        #sendBtn:hover {
+
+            background:
+                var(--primary-dark);
+
+        }
+
+
+        #sendBtn:disabled {
+
+            opacity:
+                0.5;
+
+            cursor:
+                not-allowed;
+
+        }
+
+
+        #imageBtn {
+
+            width:
+                45px;
+
+            height:
+                45px;
+
+            border:
+                none;
+
+            border-radius:
+                10px;
+
+            background:
+                transparent;
+
+            cursor:
+                pointer;
+
+            font-size:
+                20px;
+
+            flex-shrink:
+                0;
+
+        }
+
+
+        #imageBtn:hover {
+
+            background:
+                #eeeeee;
+
+        }
+
+
+        #imageInput {
+
+            display:
+                none;
+
+        }
+
+
+        /* =========================
+           IMAGE PREVIEW
+        ========================= */
+
+        #imagePreviewContainer {
+
+            display:
+                none;
+
+            position:
+                relative;
+
+            max-width:
+                180px;
+
+            margin:
+                0 auto 8px;
+
+        }
+
+
+        #imagePreview {
+
+            width:
+                100%;
+
+            border-radius:
+                10px;
+
+            display:
+                block;
+
+        }
+
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        .footer-text {
+
+            text-align:
+                center;
+
+            font-size:
+                11px;
+
+            color:
+                var(--muted);
+
+            margin-top:
+                10px;
+
+        }
+
+
+        /* =========================
+           MOBILE
+        ========================= */
+
+        @media (
+            max-width: 700px
+        ) {
+
+            .sidebar {
+
+                width:
+                    70px;
+
+                padding:
+                    8px;
+
+            }
+
+
+            .new-chat-btn {
+
+                font-size:
+                    0;
+
+                padding:
+                    14px 5px;
+
+            }
+
+
+            .new-chat-btn::before {
+
+                content:
+                    "+";
+
+                font-size:
+                    22px;
+
+            }
+
+
+            .history-title {
+
+                display:
+                    none;
+
+            }
+
+
+            .delete-history-btn {
+
+                font-size:
+                    0;
+
+            }
+
+
+            .delete-history-btn::before {
+
+                content:
+                    "🗑️";
+
+                font-size:
+                    18px;
+
+            }
+
+
+            #chatMessages {
+
+                padding:
+                    20px 15px;
+
+            }
+
+
+            .input-section {
+
+                padding:
+                    10px;
+
+            }
+
+
+            .welcome h1 {
+
+                font-size:
+                    24px;
+
+            }
+
+
+            .message {
+
+                max-width:
+                    95%;
+
+            }
+
+        }
+
+    </style>
 
 </head>
 
@@ -441,203 +875,294 @@
 <div class="app">
 
 
-  <!-- =========================
-       SIDEBAR
-  ========================== -->
-
-  <aside class="sidebar">
-
-    <button
-      class="new-chat-btn"
-      id="newChatBtn"
-    >
-      + Chat Cusub
-    </button>
-
-
-    <div class="history-title">
-      Taariikhda Chat-ka
-    </div>
-
-
-    <div id="chatHistory">
-
-    </div>
-
-
-    <button
-      class="clear-btn"
-      id="clearChatsBtn"
-    >
-      🗑️ Tirtir Chat-yada
-    </button>
-
-  </aside>
-
-
-
-  <!-- =========================
-       MAIN
-  ========================== -->
-
-  <main class="main">
-
-
-    <!-- HEADER -->
-
-    <header class="header">
-
-      <h2>
-        🤖 AI Chat Somali
-      </h2>
-
-
-      <div id="serverStatus">
-        ● Hubinaya server-ka...
-      </div>
-
-    </header>
-
-
-
     <!-- =========================
-         CHAT MESSAGES
-    ========================== -->
+         SIDEBAR
+    ========================= -->
 
-    <section
-      class="chat-container"
-      id="chatContainer"
-    >
-
-
-      <div
-        class="welcome"
-        id="welcomeScreen"
-      >
-
-        <h1>
-          Ku Soo Dhawoow AI Chat Somali
-        </h1>
-
-        <p>
-          Wax kasta oo aad rabto waad i weydiin kartaa.
-          Waxaad sidoo kale dooran kartaa sawir 📷
-          kadibna waxaad waydiin kartaa AI inuu sharaxo.
-        </p>
-
-      </div>
-
-
-    </section>
-
-
-
-    <!-- =========================
-         IMAGE PREVIEW + INPUT
-    ========================== -->
-
-    <div class="input-wrapper">
-
-
-      <!-- Sawirka la doortay -->
-
-      <div
-        id="imagePreviewContainer"
-      >
-
-        <img
-          id="imagePreview"
-          alt="Sawirka la doortay"
-        >
+    <aside class="sidebar">
 
 
         <button
-          type="button"
-          id="removeImageBtn"
-        >
-          ✕ Ka saar
-        </button>
-
-
-      </div>
-
-
-
-      <!-- CHAT INPUT -->
-
-      <div class="chat-input-area">
-
-
-        <!-- FILE INPUT -->
-
-        <input
-          type="file"
-          id="imageInput"
-          accept="image/*"
-          hidden
-        >
-
-
-
-        <!-- IMAGE BUTTON -->
-
-        <button
-          type="button"
-          id="imageBtn"
-          title="Dooro sawir"
-        >
-          📷
-        </button>
-
-
-
-            <!-- HALKAN USER-KU WAX KU QORAYAA -->
-    <div class="input-area">
-
-        <textarea
-            id="messageInput"
-            placeholder="Wax fariin ah qor..."
-            rows="1"
-        ></textarea>
-
-
-        <button
-            id="sendBtn"
+            class="new-chat-btn"
+            id="newChatBtn"
             type="button"
-            aria-label="Dir fariinta"
         >
-            ➤
+            + Chat Cusub
         </button>
 
-    </div>
+
+        <div class="history-title">
+
+            TAARIIKHDA CHAT-KA
+
+        </div>
+
+
+        <div id="chatHistory">
+
+        </div>
+
+
+        <button
+            class="delete-history-btn"
+            id="deleteHistoryBtn"
+            type="button"
+        >
+            🗑️ Tirtir Chat-yada
+        </button>
+
+
+    </aside>
+
+
+
+    <!-- =========================
+         MAIN
+    ========================= -->
+
+    <main class="main">
+
+
+        <!-- HEADER -->
+
+        <header class="header">
+
+            <div class="logo">
+
+                🤖 AI Chat Somali
+
+            </div>
+
+
+            <div id="serverStatus">
+
+                • Hubinaya server-ka...
+
+            </div>
+
+        </header>
+
+
+
+        <!-- =========================
+             CHAT MESSAGES
+        ========================= -->
+
+        <div id="chatMessages">
+
+
+            <!-- WELCOME -->
+
+            <div
+                class="welcome"
+                id="welcomeMessage"
+            >
+
+                <h1>
+
+                    Ku Soo Dhawoow AI Chat Somali
+
+                </h1>
+
+
+                <p>
+
+                    Wax kasta oo aad rabto waad i weydiin kartaa.
+                    Waxaad sidoo kale dooran kartaa sawir 📷
+                    kadibna waxaad waydiin kartaa AI inuu sharaxo.
+
+                </p>
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- =========================
+             INPUT SECTION
+        ========================= -->
+
+        <section class="input-section">
+
+
+            <!-- IMAGE PREVIEW -->
+
+            <div
+                id="imagePreviewContainer"
+            >
+
+                <img
+                    id="imagePreview"
+                    alt="Sawirka la doortay"
+                >
+
+            </div>
+
+
+
+            <!-- INPUT -->
+
+            <div class="input-wrapper">
+
+
+                <!-- IMAGE BUTTON -->
+
+                <button
+                    id="imageBtn"
+                    type="button"
+                    title="Dooro sawir"
+                >
+                    📷
+                </button>
+
+
+                <!-- FILE INPUT -->
+
+                <input
+                    type="file"
+                    id="imageInput"
+                    accept="image/*"
+                >
+
+
+                <!-- MESSAGE INPUT -->
+
+                <textarea
+                    id="messageInput"
+                    placeholder="Wax fariin ah qor..."
+                    rows="1"
+                ></textarea>
+
+
+                <!-- SEND BUTTON -->
+
+                <button
+                    id="sendBtn"
+                    type="button"
+                    aria-label="Dir fariinta"
+                    title="Dir"
+                >
+                    ➤
+                </button>
+
+
+            </div>
+
+
+            <div class="footer-text">
+
+                AI Chat Somali wuxuu samayn karaa khaladaad. Hubi xogta muhiimka ah.
+
+            </div>
+
+
+        </section>
+
+
+    </main>
+
 
 </div>
 
-      
-
-      <div 
-      class="input-note">
-
-        AI Chat Somali wuxuu kaa caawin karaa qoraal iyo sharaxaadda sawirrada.
-
-      </div>
 
 
-    </div>
+<!-- =========================
+     IMAGE PREVIEW SCRIPT
+========================= -->
+
+<script>
+
+    const imageInput =
+        document.getElementById(
+            "imageInput"
+        );
 
 
-  </main>
+    const imageBtn =
+        document.getElementById(
+            "imageBtn"
+        );
 
 
-</div>
+    const imagePreview =
+        document.getElementById(
+            "imagePreview"
+        );
+
+
+    const imagePreviewContainer =
+        document.getElementById(
+            "imagePreviewContainer"
+        );
+
+
+    imageBtn.addEventListener(
+
+        "click",
+
+        () => {
+
+            imageInput.click();
+
+        }
+
+    );
+
+
+    imageInput.addEventListener(
+
+        "change",
+
+        () => {
+
+            const file =
+                imageInput.files[0];
+
+
+            if (!file) {
+
+                return;
+
+            }
+
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function(event) {
+
+                    imagePreview.src =
+                        event.target.result;
+
+
+                    imagePreviewContainer.style.display =
+                        "block";
+
+                };
+
+
+            reader.readAsDataURL(
+                file
+            );
+
+        }
+
+    );
+
+</script>
 
 
 
-<!-- APP JAVASCRIPT -->
+<!-- =========================
+     APP JAVASCRIPT
+========================= -->
 
 <script src="/app.js"></script>
 
 
 </body>
-
 </html>
