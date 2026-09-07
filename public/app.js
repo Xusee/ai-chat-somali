@@ -13,16 +13,15 @@ API CONFIG
 */
 
 // Render server-kaaga
-const API_URL = "https://ai-chat-somali-1.onrender.com";
 
-// API endpoints
 const API = {
-    chat: `${API_URL}/chat`,
-    health: `${API_URL}/api/health`,
-    chats: `${API_URL}/api/chats`,
-    login: `${API_URL}/api/login`,
-    register: `${API_URL}/api/register`
+  chat: "/chat",
+  health: "/api/health",
+  chats: "/api/chats",
+  login: "/api/login",
+  register: "/api/register"
 };
+
 
 
 /*
