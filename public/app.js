@@ -1,651 +1,803 @@
-// ============================================
-// AI CHAT SOMALI - PUBLIC APP
-// LOGIN / REGISTER MA JIRO
-// ============================================
+/*
+============================================================
+AI CHAT SOMALI - public/app.js
+============================================================
+*/
 
-const API = window.location.origin;
+"use strict";
 
-// Chat history
-let chats = JSON.parse(localStorage.getItem("ai_chat_history")) || [];
+/*
+============================================================
+API CONFIG
+============================================================
+*/
 
-// Current chat
-let currentChat = null;
+// Render server-kaaga
+const API_URL = "https://ai-chat-somali-1.onrender.com";
+
+// API endpoints
+const API = {
+    chat: `${API_URL}/chat`,
+    health: `${API_URL}/api/health`,
+    chats: `${API_URL}/api/chats`,
+    login: `${API_URL}/api/login`,
+    register: `${API_URL}/api/register`
+};
 
 
-// ============================================
-// MARKA PAGE-KA FURMO
-// ============================================
+/*
+============================================================
+HELPER: ELEMENT SELECTOR
+============================================================
+*/
 
-document.addEventListener("DOMContentLoaded", () => {
-
-    console.log("AI Chat Somali started");
-
-    // Si toos ah u muuji chat-ka
-    showChatApp();
-
-    // Hel elements
-    const sendBtn = document.getElementById("sendBtn");
-    const messageInput = document.getElementById("messageInput");
-
-    // Send button
-    if (sendBtn) {
-        sendBtn.addEventListener("click", sendMessage);
+function getElement(...selectors) {
+    for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element) return element;
     }
+    return null;
+}
+/* =====================================================
+   AI CHAT SOMALI - public/app.js
+ 
 
-    // Enter si fariin loo diro
-    if (messageInput) {
+/* =====================================================
+   FIND HTML ELEMENTS
+   ===================================================== */
 
-        messageInput.addEventListener("keydown", (event) => {
+const messageInput = getElement(
+    "#messageInput",
+    "#userInput",
+    "#chatInput",
+    "textarea[name='message']",
+    ".message-input"
+);
 
-            if (event.key === "Enter" && !event.shiftKey) {
+const sendButton = getElement(
+    "#sendButton",
+    "#sendBtn",
+    ".send-btn",
+    "button[type='submit']"
+);
 
-                event.preventDefault();
+const chatMessages = getElement(
+    "#chatMessages",
+    "#messages",
+    "#chatContainer",
+    ".chat-messages",
+    ".messages"
+);
 
-                sendMessage();
+const newChatButton = getElement(
+    "#newChatBtn",
+    "#newChat",
+    ".new-chat-btn"
+);
 
-            }
+const clearChatButton = getElement(
+    "#clearChatBtn",
+    "#deleteChatBtn",
+    ".clear-chat-btn"
+);
 
-        });
+const connectionStatus = getElement(
+    "#connectionStatus",
+    "#serverStatus",
+    ".connection-status"
+);
 
+
+/* =====================================================
+   APP STATE
+   ===================================================== */
+
+let isSending = false;
+
+
+/* =====================================================
+   CONNECTION STATUS
+   ===================================================== */
+
+function updateConnectionStatus(online) {
+    if (!connectionStatus) return;
+
+    if (online) {
+        connectionStatus.textContent = "🟢 Server-ku wuu shaqaynayaa";
+        connectionStatus.classList.remove("offline");
+        connectionStatus.classList.add("online");
+    } else {
+        connectionStatus.textContent = "🔴 Server-ka lama xiriiri karo";
+        connectionStatus.classList.remove("online");
+        connectionStatus.classList.add("offline");
     }
-
-
-    // New Chat
-    const newChatBtn = document.getElementById("newChatBtn");
-
-    if (newChatBtn) {
-
-        newChatBtn.addEventListener("click", newChat);
-
-    }
-
-
-    // Delete All Chats
-    const deleteAllBtn = document.getElementById("deleteAllBtn");
-
-    if (deleteAllBtn) {
-
-        deleteAllBtn.addEventListener("click", deleteAllChats);
-
-    }
-
-
-    // Load local chats
-    renderChats();
-
-});
-
-
-// ============================================
-// MUUJI CHAT APP
-// ============================================
-
-function showChatApp() {
-
-    const loginPage = document.getElementById("loginPage");
-
-    if (loginPage) {
-
-        loginPage.style.display = "none";
-
-    }
-
-
-    const registerPage = document.getElementById("registerPage");
-
-    if (registerPage) {
-
-        registerPage.style.display = "none";
-
-    }
-
-
-    const chatPage = document.getElementById("chatPage");
-
-    if (chatPage) {
-
-        chatPage.style.display = "block";
-
-    }
-
-
-    const app = document.getElementById("app");
-
-    if (app) {
-
-        app.style.display = "block";
-
-    }
-
 }
 
 
-// ============================================
-// DIR FARIIN
-// ============================================
+/* =====================================================
+   CHECK SERVER
+   ===================================================== */
+
+async function checkServer() {
+    try {
+        const response = await fetch(API.health, {
+            method: "GET",
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            throw new Error("Server caafimaadkiisa lama xaqiijin karo");
+        }
+
+        updateConnectionStatus(true);
+        return true;
+
+    } catch (error) {
+        console.error("Health Check Error:", error);
+        updateConnectionStatus(false);
+        return false;
+    }
+}
+
+
+/* =====================================================
+   CREATE MESSAGE
+   ===================================================== */
+
+function addMessage(text, sender = "assistant") {
+
+    if (!chatMessages) {
+        console.error("Chat container lama helin.");
+        return null;
+    }
+
+    const messageWrapper = document.createElement("div");
+
+    messageWrapper.className =
+        sender === "user"
+            ? "message user-message"
+            : "message assistant-message";
+
+    const messageContent = document.createElement("div");
+
+    messageContent.className = "message-content";
+
+    messageContent.textContent = text;
+
+    messageWrapper.appendChild(messageContent);
+
+    chatMessages.appendChild(messageWrapper);
+
+    scrollToBottom();
+
+    return messageWrapper;
+}
+
+
+/* =====================================================
+   ADD LOADING MESSAGE
+   ===================================================== */
+
+function addLoadingMessage() {
+
+    if (!chatMessages) return null;
+
+    const wrapper = document.createElement("div");
+
+    wrapper.className = "message assistant-message loading-message";
+
+    wrapper.innerHTML = `
+        <div class="message-content">
+            <span class="typing-text">
+                AI Chat Somali ayaa ka fikiraya...
+            </span>
+            <span class="typing-dots">
+                <span>.</span>
+                <span>.</span>
+                <span>.</span>
+            </span>
+        </div>
+    `;
+
+    chatMessages.appendChild(wrapper);
+
+    scrollToBottom();
+
+    return wrapper;
+}
+
+
+/* =====================================================
+   REMOVE LOADING
+   ===================================================== */
+
+function removeLoadingMessage(element) {
+    if (element && element.parentNode) {
+        element.remove();
+    }
+}
+
+
+/* =====================================================
+   SCROLL
+   ===================================================== */
+
+function scrollToBottom() {
+    if (!chatMessages) return;
+
+    setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 50);
+}
+
+
+/* =====================================================
+   BUTTON STATE
+   ===================================================== */
+
+function setSendingState(sending) {
+
+    isSending = sending;
+
+    if (!sendButton) return;
+
+    sendButton.disabled = sending;
+
+    if (sending) {
+        sendButton.dataset.originalText =
+            sendButton.textContent;
+
+        sendButton.textContent = "Sug...";
+    } else {
+
+        if (sendButton.dataset.originalText) {
+            sendButton.textContent =
+                sendButton.dataset.originalText;
+        } else {
+            sendButton.textContent = "Dir";
+        }
+    }
+}
+
+
+/* =====================================================
+   EXTRACT AI RESPONSE
+   ===================================================== */
+
+function getAIResponse(data) {
+
+    if (!data) return null;
+
+    // Qaabab kala duwan oo server.js soo celin karo
+
+    if (typeof data === "string") {
+        return data;
+    }
+
+    if (data.reply) {
+        return data.reply;
+    }
+
+    if (data.response) {
+        return data.response;
+    }
+
+    if (data.message) {
+        return data.message;
+    }
+
+    if (data.answer) {
+        return data.answer;
+    }
+
+    if (data.text) {
+        return data.text;
+    }
+
+    if (
+        data.choices &&
+        data.choices[0] &&
+        data.choices[0].message &&
+        data.choices[0].message.content
+    ) {
+        return data.choices[0].message.content;
+    }
+
+    return null;
+}
+
+
+/* =====================================================
+   SEND CHAT MESSAGE
+   ===================================================== */
 
 async function sendMessage() {
 
-    const messageInput = document.getElementById("messageInput");
+    if (isSending) return;
 
     if (!messageInput) {
-
-        console.error("messageInput lama helin");
-
+        console.error("Message input lama helin.");
         return;
-
     }
-
 
     const message = messageInput.value.trim();
 
+    if (!message) return;
 
-    if (!message) {
+    // User message
+    addMessage(message, "user");
 
-        return;
-
-    }
-
-
-    // Muuji fariinta user-ka
-    addMessage("user", message);
-
-
-    // Nadiifi input
+    // Input nadiifi
     messageInput.value = "";
 
+    // Disable send
+    setSendingState(true);
 
-    // Disable button inta AI jawaabayo
-    const sendBtn = document.getElementById("sendBtn");
-
-    if (sendBtn) {
-
-        sendBtn.disabled = true;
-
-    }
-
-
-    // Loading message
-    const loadingId = addLoadingMessage();
-
+    // Loading
+    const loadingMessage = addLoadingMessage();
 
     try {
 
-        const response = await fetch(`${API}/chat`, {
+        console.log("Sending message:", message);
 
+        const response = await fetch(API.chat, {
             method: "POST",
 
             headers: {
-
                 "Content-Type": "application/json"
-
             },
 
             body: JSON.stringify({
-
                 message: message
-
             })
-
         });
 
 
-        const data = await response.json();
+        /* ==========================================
+           READ RESPONSE
+           ========================================== */
 
+        let data;
 
-        // Ka saar loading
-        removeLoadingMessage(loadingId);
+        const contentType =
+            response.headers.get("content-type") || "";
 
+        if (contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
 
-        if (!response.ok) {
-
-            throw new Error(
-
-                data.error ||
-                "Wax qalad ah ayaa dhacay"
-
-            );
-
+            data = {
+                response: text
+            };
         }
 
 
-        // AI response
-        const reply =
-
-            data.reply ||
-            data.message ||
-            data.response ||
-            "Waan ka xumahay, jawaab lama helin.";
+        console.log("Server Response:", data);
 
 
-        addMessage("assistant", reply);
+        /* ==========================================
+           CHECK ERROR
+           ========================================== */
+
+        if (!response.ok) {
+
+            const errorMessage =
+                data?.error ||
+                data?.message ||
+                `Server error: ${response.status}`;
+
+            throw new Error(errorMessage);
+        }
 
 
-        // Save chat
-        saveChat(message, reply);
+        /* ==========================================
+           GET AI ANSWER
+           ========================================== */
+
+        const aiResponse = getAIResponse(data);
+
+        if (!aiResponse) {
+            throw new Error(
+                "AI jawaab sax ah lama helin. Hubi server.js endpoint-ka /chat."
+            );
+        }
 
 
-    }
+        /* ==========================================
+           REMOVE LOADING
+           ========================================== */
 
-    catch (error) {
-
-        console.error(error);
+        removeLoadingMessage(loadingMessage);
 
 
-        removeLoadingMessage(loadingId);
+        /* ==========================================
+           SHOW AI MESSAGE
+           ========================================== */
 
+        addMessage(aiResponse, "assistant");
+
+        updateConnectionStatus(true);
+
+
+        /* ==========================================
+           SAVE LOCAL CHAT
+           ========================================== */
+
+        saveChatLocally();
+
+    } catch (error) {
+
+        console.error("CHAT ERROR:", error);
+
+        removeLoadingMessage(loadingMessage);
+
+        updateConnectionStatus(false);
 
         addMessage(
+            "⚠️ Waan ka xumahay, jawaabta AI lama helin. " +
+            "Hubi server.js, API Key-ga iyo internet-ka. " +
+            "Error: " + error.message,
+            "assistant"
+        );
 
-            "assistant",
+    } finally {
 
-            "⚠️ Waan ka xumahay, server-ka lama xiriiri karo. Fadlan hubi server.js iyo internet-ka."
+        setSendingState(false);
 
+        if (messageInput) {
+            messageInput.focus();
+        }
+    }
+}
+
+
+/* =====================================================
+   SAVE CHAT LOCAL STORAGE
+   ===================================================== */
+
+function saveChatLocally() {
+
+    if (!chatMessages) return;
+
+    const messages = [];
+
+    chatMessages
+        .querySelectorAll(".message")
+        .forEach((message) => {
+
+            const content =
+                message.querySelector(".message-content");
+
+            if (!content) return;
+
+            if (message.classList.contains("loading-message")) {
+                return;
+            }
+
+            messages.push({
+                role:
+                    message.classList.contains("user-message")
+                        ? "user"
+                        : "assistant",
+
+                content: content.textContent.trim()
+            });
+        });
+
+    localStorage.setItem(
+        "aiChatSomaliMessages",
+        JSON.stringify(messages)
+    );
+}
+
+
+/* =====================================================
+   LOAD LOCAL CHAT
+   ===================================================== */
+
+function loadLocalChat() {
+
+    if (!chatMessages) return;
+
+    try {
+
+        const saved =
+            localStorage.getItem("aiChatSomaliMessages");
+
+        if (!saved) return;
+
+        const messages =
+            JSON.parse(saved);
+
+        if (!Array.isArray(messages)) return;
+
+        // Haddii container hore wax ugu jiraan
+        if (chatMessages.children.length > 0) return;
+
+        messages.forEach((message) => {
+
+            addMessage(
+                message.content,
+                message.role === "user"
+                    ? "user"
+                    : "assistant"
+            );
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Local chat loading error:",
+            error
+        );
+
+    }
+}
+
+
+/* =====================================================
+   LOAD SERVER CHAT HISTORY
+   ===================================================== */
+
+async function loadChatHistory() {
+
+    try {
+
+        const response =
+            await fetch(API.chats, {
+                method: "GET"
+            });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data =
+            await response.json();
+
+        console.log(
+            "Chat History:",
+            data
+        );
+
+        // Haddii server-ku chats array soo celiyo
+        const chats =
+            data.chats ||
+            data.messages ||
+            data;
+
+        if (!Array.isArray(chats)) {
+            return;
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Server chat history lama helin:",
+            error.message
+        );
+
+    }
+}
+
+
+/* =====================================================
+   NEW CHAT
+   ===================================================== */
+
+function newChat() {
+
+    if (chatMessages) {
+        chatMessages.innerHTML = "";
+    }
+
+    localStorage.removeItem(
+        "aiChatSomaliMessages"
+    );
+
+    addMessage(
+        "Salaan! 👋 Waxaan ahay AI Chat Somali. Sideen kuu caawin karaa maanta?",
+        "assistant"
+    );
+
+    if (messageInput) {
+        messageInput.focus();
+    }
+}
+
+
+/* =====================================================
+   CLEAR CHAT
+   ===================================================== */
+
+async function clearChat() {
+
+    const confirmed =
+        confirm(
+            "Ma hubtaa inaad tirtirayso dhammaan chat-ka?"
+        );
+
+    if (!confirmed) return;
+
+
+    /* Local */
+    localStorage.removeItem(
+        "aiChatSomaliMessages"
+    );
+
+
+    /* Server */
+
+    try {
+
+        await fetch(API.chats, {
+            method: "DELETE"
+        });
+
+    } catch (error) {
+
+        console.warn(
+            "Server chat delete error:",
+            error.message
         );
 
     }
 
-    finally {
 
-        if (sendBtn) {
+    /* UI */
 
-            sendBtn.disabled = false;
+    if (chatMessages) {
+        chatMessages.innerHTML = "";
+    }
 
+
+    addMessage(
+        "Chat-ka waa la tirtiray. 🗑️",
+        "assistant"
+    );
+}
+
+
+/* =====================================================
+   ENTER KEY
+   ===================================================== */
+
+function handleKeyboard(event) {
+
+    // Enter = Send
+    // Shift + Enter = New line
+
+    if (
+        event.key === "Enter" &&
+        !event.shiftKey
+    ) {
+
+        event.preventDefault();
+
+        sendMessage();
+    }
+}
+
+
+/* =====================================================
+   EVENT LISTENERS
+   ===================================================== */
+
+if (sendButton) {
+
+    sendButton.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            sendMessage();
+
+        }
+    );
+
+}
+
+
+if (messageInput) {
+
+    messageInput.addEventListener(
+        "keydown",
+        handleKeyboard
+    );
+
+}
+
+
+if (newChatButton) {
+
+    newChatButton.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            newChat();
+
+        }
+    );
+
+}
+
+
+if (clearChatButton) {
+
+    clearChatButton.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            clearChat();
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   START APPLICATION
+   ===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async function () {
+
+        console.log(
+            "AI Chat Somali App Started"
+        );
+
+        // Check server
+        const online =
+            await checkServer();
+
+        // Load local history
+        loadLocalChat();
+
+        // Try server history
+        loadChatHistory();
+
+
+        // Welcome message
+        if (
+            chatMessages &&
+            chatMessages.children.length === 0
+        ) {
+
+            if (online) {
+
+                addMessage(
+                    "Salaan! 👋 Ku soo dhowow AI Chat Somali. Sideen kuu caawin karaa?",
+                    "assistant"
+                );
+
+            } else {
+
+                addMessage(
+                    "⚠️ Server-ka lama xiriiri karo hadda. Fadlan hubi server.js.",
+                    "assistant"
+                );
+
+            }
         }
 
     }
+);
 
-}
 
+/* =====================================================
+   CHECK CONNECTION EVERY 30 SECONDS
+   ===================================================== */
 
-// ============================================
-// KU DAR MESSAGE SCREEN-KA
-// ============================================
-
-function addMessage(role, text) {
-
-    const messagesContainer =
-
-        document.getElementById("messages") ||
-        document.getElementById("chatMessages") ||
-        document.querySelector(".messages") ||
-        document.querySelector(".chat-messages");
-
-
-    if (!messagesContainer) {
-
-        console.error("Messages container lama helin");
-
-        return;
-
-    }
-
-
-    const messageDiv = document.createElement("div");
-
-
-    messageDiv.className =
-
-        role === "user"
-            ? "message user-message"
-            : "message ai-message";
-
-
-    const content = document.createElement("div");
-
-
-    content.className = "message-content";
-
-
-    content.textContent = text;
-
-
-    messageDiv.appendChild(content);
-
-
-    messagesContainer.appendChild(messageDiv);
-
-
-    // Hoos ugu scroll garee
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-}
-
-
-// ============================================
-// LOADING
-// ============================================
-
-function addLoadingMessage() {
-
-    const messagesContainer =
-
-        document.getElementById("messages") ||
-        document.getElementById("chatMessages") ||
-        document.querySelector(".messages") ||
-        document.querySelector(".chat-messages");
-
-
-    if (!messagesContainer) {
-
-        return null;
-
-    }
-
-
-    const loading = document.createElement("div");
-
-
-    loading.className = "message ai-message loading-message";
-
-
-    const id = "loading-" + Date.now();
-
-
-    loading.id = id;
-
-
-    loading.innerHTML = `
-
-        <div class="message-content">
-
-            <span>AI Chat Somali ayaa ka fikiraya</span>
-
-            <span class="typing-dots">...</span>
-
-        </div>
-
-    `;
-
-
-    messagesContainer.appendChild(loading);
-
-
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-
-    return id;
-
-}
-
-
-// ============================================
-// KA SAAR LOADING
-// ============================================
-
-function removeLoadingMessage(id) {
-
-    if (!id) return;
-
-
-    const loading = document.getElementById(id);
-
-
-    if (loading) {
-
-        loading.remove();
-
-    }
-
-}
-
-
-// ============================================
-// SAVE CHAT LOCALSTORAGE
-// ============================================
-
-function saveChat(question, answer) {
-
-    const chat = {
-
-        id: Date.now(),
-
-        question: question,
-
-        answer: answer,
-
-        date: new Date().toISOString()
-
-    };
-
-
-    chats.unshift(chat);
-
-
-    localStorage.setItem(
-
-        "ai_chat_history",
-
-        JSON.stringify(chats)
-
-    );
-
-
-    renderChats();
-
-}
-
-
-// ============================================
-// RENDER CHAT HISTORY
-// ============================================
-
-function renderChats() {
-
-    const chatList =
-
-        document.getElementById("chatList") ||
-        document.getElementById("historyList") ||
-        document.querySelector(".chat-list");
-
-
-    if (!chatList) {
-
-        return;
-
-    }
-
-
-    chatList.innerHTML = "";
-
-
-    chats.forEach(chat => {
-
-        const item = document.createElement("div");
-
-
-        item.className = "chat-history-item";
-
-
-        item.textContent =
-
-            chat.question.length > 40
-
-                ? chat.question.substring(0, 40) + "..."
-
-                : chat.question;
-
-
-        item.addEventListener("click", () => {
-
-            openChat(chat);
-
-        });
-
-
-        chatList.appendChild(item);
-
-    });
-
-}
-
-
-// ============================================
-// FUR CHAT HORE
-// ============================================
-
-function openChat(chat) {
-
-    clearMessages();
-
-
-    addMessage("user", chat.question);
-
-
-    addMessage("assistant", chat.answer);
-
-}
-
-
-// ============================================
-// CHAT CUSUB
-// ============================================
-
-function newChat() {
-
-    currentChat = null;
-
-
-    clearMessages();
-
-
-    const messageInput = document.getElementById("messageInput");
-
-
-    if (messageInput) {
-
-        messageInput.focus();
-
-    }
-
-}
-
-
-// ============================================
-// NADIIFI MESSAGES
-// ============================================
-
-function clearMessages() {
-
-    const messagesContainer =
-
-        document.getElementById("messages") ||
-        document.getElementById("chatMessages") ||
-        document.querySelector(".messages") ||
-        document.querySelector(".chat-messages");
-
-
-    if (!messagesContainer) {
-
-        return;
-
-    }
-
-
-    messagesContainer.innerHTML = "";
-
-}
-
-
-// ============================================
-// DELETE ALL CHATS
-// ============================================
-
-function deleteAllChats() {
-
-    const confirmDelete = confirm(
-
-        "Ma hubtaa inaad tirtirayso dhammaan chat-yada?"
-
-    );
-
-
-    if (!confirmDelete) {
-
-        return;
-
-    }
-
-
-    chats = [];
-
-
-    localStorage.removeItem("ai_chat_history");
-
-
-    renderChats();
-
-
-    clearMessages();
-
-
-    // Haddii server-ku leeyahay endpoint-kan
-    fetch(`${API}/api/chats`, {
-
-        method: "DELETE"
-
-    })
-
-    .catch(error => {
-
-        console.log("Server chat delete error:", error);
-
-    });
-
-}
-
-
-// ============================================
-// DARK MODE
-// ============================================
-
-function toggleDarkMode() {
-
-    document.body.classList.toggle("dark-mode");
-
-
-    const darkMode = document.body.classList.contains("dark-mode");
-
-
-    localStorage.setItem(
-
-        "ai_dark_mode",
-
-        darkMode
-
-    );
-
-}
-
-
-// ============================================
-// LOAD DARK MODE
-// ============================================
-
-(function loadDarkMode() {
-
-    const darkMode =
-
-        localStorage.getItem("ai_dark_mode");
-
-
-    if (darkMode === "true") {
-
-        document.body.classList.add("dark-mode");
-
-    }
-
-})();
-
-
-// ============================================
-// GLOBAL FUNCTIONS
-// ============================================
-
-window.sendMessage = sendMessage;
-
-window.newChat = newChat;
-
-window.deleteAllChats = deleteAllChats;
-
-window.toggleDarkMode = toggleDarkMode;
+setInterval(
+    checkServer,
+    30000
+);
