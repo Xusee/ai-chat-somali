@@ -8,26 +8,14 @@
 // ELEMENTS
 // ==========================================
 
-const messageInput =
-  document.getElementById("messageInput");
+const messageInput = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
+const chatMessages = document.getElementById("chatMessages");
 
-const sendButton =
-  document.getElementById("sendButton");
-
-const chatMessages =
-  document.getElementById("chatMessages");
-
-const imageInput =
-  document.getElementById("imageInput");
-
-const imagePreview =
-  document.getElementById("imagePreview");
-
-const previewImage =
-  document.getElementById("previewImage");
-
-const removeImageButton =
-  document.getElementById("removeImage");
+const imageInput = document.getElementById("imageInput");
+const imagePreview = document.getElementById("imagePreview");
+const previewImage = document.getElementById("previewImage");
+const removeImageButton = document.getElementById("removeImage");
 
 
 // ==========================================
@@ -36,15 +24,16 @@ const removeImageButton =
 
 let imageBase64 = null;
 let selectedImageName = null;
-
 let isSending = false;
 
 
 // ==========================================
-// LOAD CHAT HISTORY
+// APP START
 // ==========================================
 
 document.addEventListener("DOMContentLoaded", () => {
+
+  console.log("AI Chat Somali app.js loaded");
 
   loadChatHistory();
 
@@ -65,7 +54,8 @@ if (imageInput) {
       return;
     }
 
-    // Hubi inuu sawir yahay
+
+    // Hubi inuu yahay sawir
     if (!file.type.startsWith("image/")) {
 
       alert("Fadlan dooro sawir sax ah.");
@@ -73,9 +63,11 @@ if (imageInput) {
       imageInput.value = "";
 
       return;
+
     }
 
-    // Xadka sawirka
+
+    // Maximum 10MB
     const maxSize = 10 * 1024 * 1024;
 
     if (file.size > maxSize) {
@@ -85,21 +77,40 @@ if (imageInput) {
       imageInput.value = "";
 
       return;
+
     }
+
 
     try {
 
       selectedImageName = file.name;
 
+
+      // Sawirka Base64 u beddel
       imageBase64 = await convertImageToBase64(file);
 
+
+      console.log(
+        "IMAGE SELECTED:",
+        selectedImageName
+      );
+
+
+      // Preview muuji
       showImagePreview(imageBase64);
+
 
     } catch (error) {
 
-      console.error("IMAGE ERROR:", error);
+      console.error(
+        "IMAGE ERROR:",
+        error
+      );
 
-      alert("Sawirka lama akhrin karin.");
+
+      alert(
+        "Sawirka lama akhrin karin."
+      );
 
     }
 
@@ -118,19 +129,24 @@ function convertImageToBase64(file) {
 
     const reader = new FileReader();
 
+
     reader.onload = () => {
 
       resolve(reader.result);
 
     };
 
+
     reader.onerror = () => {
 
       reject(
-        new Error("Sawirka lama beddeli karin.")
+        new Error(
+          "Sawirka lama beddeli karin."
+        )
       );
 
     };
+
 
     reader.readAsDataURL(file);
 
@@ -145,35 +161,43 @@ function convertImageToBase64(file) {
 
 function showImagePreview(image) {
 
-  if (imagePreview) {
-
-    imagePreview.style.display = "block";
-
-  }
-
   if (previewImage) {
 
     previewImage.src = image;
 
   }
 
+
+  if (imagePreview) {
+
+    imagePreview.style.display = "block";
+
+  }
+
 }
 
 
 // ==========================================
-// REMOVE IMAGE
+// REMOVE IMAGE BUTTON
 // ==========================================
 
 if (removeImageButton) {
 
-  removeImageButton.addEventListener("click", () => {
+  removeImageButton.addEventListener(
+    "click",
+    () => {
 
-    removeSelectedImage();
+      removeSelectedImage();
 
-  });
+    }
+  );
 
 }
 
+
+// ==========================================
+// REMOVE SELECTED IMAGE
+// ==========================================
 
 function removeSelectedImage() {
 
@@ -181,11 +205,13 @@ function removeSelectedImage() {
 
   selectedImageName = null;
 
+
   if (imageInput) {
 
     imageInput.value = "";
 
   }
+
 
   if (previewImage) {
 
@@ -193,11 +219,17 @@ function removeSelectedImage() {
 
   }
 
+
   if (imagePreview) {
 
     imagePreview.style.display = "none";
 
   }
+
+
+  console.log(
+    "IMAGE REMOVED"
+  );
 
 }
 
@@ -208,11 +240,14 @@ function removeSelectedImage() {
 
 if (sendButton) {
 
-  sendButton.addEventListener("click", () => {
+  sendButton.addEventListener(
+    "click",
+    () => {
 
-    sendMessage();
+      sendMessage();
 
-  });
+    }
+  );
 
 }
 
@@ -223,23 +258,26 @@ if (sendButton) {
 
 if (messageInput) {
 
-  messageInput.addEventListener("keydown", (event) => {
+  messageInput.addEventListener(
+    "keydown",
+    (event) => {
 
-    // Enter = Send
-    // Shift + Enter = New line
+      // ENTER = SEND
+      // SHIFT + ENTER = NEW LINE
 
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
 
-      event.preventDefault();
+        event.preventDefault();
 
-      sendMessage();
+        sendMessage();
+
+      }
 
     }
-
-  });
+  );
 
 }
 
@@ -250,7 +288,7 @@ if (messageInput) {
 
 async function sendMessage() {
 
-  // Ha dirin labo mar
+  // Ha dirin laba request
   if (isSending) {
 
     return;
@@ -258,33 +296,42 @@ async function sendMessage() {
   }
 
 
+  // Qaado qoraalka
   const message =
+
     messageInput
+
       ? messageInput.value.trim()
+
       : "";
 
 
-  // Hubi qoraal ama sawir
-  if (!message && !imageBase64) {
+  // Qaado sawirka
+  const currentImage = imageBase64;
 
-    alert("Fadlan qor fariin ama dooro sawir.");
+
+  // Hubi inuu jiro qoraal ama sawir
+  if (!message && !currentImage) {
+
+    alert(
+      "Fadlan qor su'aal ama dooro sawir."
+    );
 
     return;
 
   }
 
 
+  // Bilow sending
   isSending = true;
 
   setSendingState(true);
 
 
-  // Kaydi sawirka hadda
-  const currentImage =
-    imageBase64;
-
-
+  // ==========================================
   // USER MESSAGE
+  // ==========================================
+
   addMessageToChat(
     "user",
     message,
@@ -292,7 +339,7 @@ async function sendMessage() {
   );
 
 
-  // Clear input
+  // Nadiifi text input
   if (messageInput) {
 
     messageInput.value = "";
@@ -300,13 +347,12 @@ async function sendMessage() {
   }
 
 
-  // Remove selected image
+  // Nadiifi image input
   removeSelectedImage();
 
 
-  // Loading message
-  const loadingId =
-    showLoadingMessage();
+  // Loading
+  const loadingId = showLoadingMessage();
 
 
   try {
@@ -316,10 +362,21 @@ async function sendMessage() {
     // SEND TO SERVER
     // ==========================================
 
-    const response =
-      await fetch("/chat", {
+    console.log(
+      "SENDING CHAT:",
+      {
+        hasMessage: !!message,
+        hasImage: !!currentImage
+      }
+    );
+
+
+    const response = await fetch(
+      "/chat",
+      {
 
         method: "POST",
+
 
         headers: {
 
@@ -328,16 +385,26 @@ async function sendMessage() {
 
         },
 
-        body:
-          JSON.stringify({
 
-            message: message,
+        // ======================================
+        // TEXT ONLY
+        // IMAGE ONLY
+        // TEXT + IMAGE
+        // ======================================
 
-            image: currentImage
+        body: JSON.stringify({
 
-          })
+          message:
+            message || "",
 
-      });
+
+          image:
+            currentImage || null
+
+        })
+
+      }
+    );
 
 
     // Remove loading
@@ -346,7 +413,10 @@ async function sendMessage() {
     );
 
 
-    // Parse response
+    // ==========================================
+    // PARSE RESPONSE
+    // ==========================================
+
     let data;
 
 
@@ -357,6 +427,12 @@ async function sendMessage() {
 
     } catch (jsonError) {
 
+      console.error(
+        "JSON ERROR:",
+        jsonError
+      );
+
+
       throw new Error(
         "Server-ka jawaab sax ah ma soo celin."
       );
@@ -364,12 +440,23 @@ async function sendMessage() {
     }
 
 
-    // Server error
+    console.log(
+      "SERVER RESPONSE:",
+      data
+    );
+
+
+    // ==========================================
+    // SERVER ERROR
+    // ==========================================
+
     if (!response.ok) {
 
       throw new Error(
 
         data.error ||
+
+        data.message ||
 
         "Server-ka ayaa khalad soo celiyay."
 
@@ -378,7 +465,10 @@ async function sendMessage() {
     }
 
 
-    // AI response
+    // ==========================================
+    // AI REPLY
+    // ==========================================
+
     const aiReply =
 
       data.reply ||
@@ -390,7 +480,7 @@ async function sendMessage() {
       "Jawaab lama helin.";
 
 
-    // Add AI message
+    // Add AI response
     addMessageToChat(
       "assistant",
       aiReply,
@@ -407,13 +497,15 @@ async function sendMessage() {
     );
 
 
-    // Remove loading
+    // Loading ka saar
     removeLoadingMessage(
       loadingId
     );
 
 
+    // Error message
     addMessageToChat(
+
       "assistant",
 
       "❌ Waxaa dhacay khalad: " +
@@ -421,12 +513,14 @@ async function sendMessage() {
       error.message,
 
       null
+
     );
 
 
   } finally {
 
 
+    // Sending dhameeyay
     isSending = false;
 
     setSendingState(false);
@@ -445,7 +539,7 @@ function addMessageToChat(
 
   role,
 
-  text,
+  text = "",
 
   image = null
 
@@ -468,7 +562,7 @@ function addMessageToChat(
 
 
   messageElement.className =
-    `message ${role}`;
+    messageElement.className = `message ${role}`;
 
 
   const bubble =
@@ -502,10 +596,13 @@ function addMessageToChat(
       "Sawirka isticmaalaha";
 
 
+    imageElement.loading =
+      "lazy";
+
+
     bubble.appendChild(
       imageElement
     );
-
 
   }
 
@@ -525,7 +622,7 @@ function addMessageToChat(
       "message-text";
 
 
-    // XSS safe
+    // XSS SAFE
     textElement.textContent =
       text;
 
@@ -533,7 +630,6 @@ function addMessageToChat(
     bubble.appendChild(
       textElement
     );
-
 
   }
 
@@ -551,15 +647,14 @@ function addMessageToChat(
   scrollToBottom();
 
 
-  // Save history
+  // History kaydi
   saveChatHistory();
-
 
 }
 
 
 // ==========================================
-// LOADING MESSAGE
+// SHOW LOADING
 // ==========================================
 
 function showLoadingMessage() {
@@ -588,29 +683,34 @@ function showLoadingMessage() {
     "message assistant loading-message";
 
 
-  loadingElement.innerHTML = `
+  const bubble =
+    document.createElement("div");
 
-    <div class="message-bubble">
 
-      <div class="typing-indicator">
+  bubble.className =
+    "message-bubble";
 
-        <span></span>
 
-        <span></span>
+  const loadingText =
+    document.createElement("div");
 
-        <span></span>
 
-      </div>
+  loadingText.className =
+    "loading-text";
 
-      <div class="loading-text">
 
-        AI Chat Somali ayaa ka fikiraya...
+  loadingText.textContent =
+    "🤖 AI Chat Somali ayaa ka fikiraya...";
 
-      </div>
 
-    </div>
+  bubble.appendChild(
+    loadingText
+  );
 
-  `;
+
+  loadingElement.appendChild(
+    bubble
+  );
 
 
   chatMessages.appendChild(
@@ -622,7 +722,6 @@ function showLoadingMessage() {
 
 
   return loadingId;
-
 
 }
 
@@ -654,7 +753,6 @@ function removeLoadingMessage(
     loadingElement.remove();
 
   }
-
 
 }
 
@@ -697,7 +795,6 @@ function setSendingState(
 
   }
 
-
 }
 
 
@@ -721,7 +818,6 @@ function scrollToBottom() {
       chatMessages.scrollHeight;
 
   }, 50);
-
 
 }
 
@@ -758,6 +854,7 @@ function saveChatHistory() {
 
 
         const role =
+
           element.classList.contains(
             "user"
           )
@@ -783,6 +880,7 @@ function saveChatHistory() {
 
           role:
 
+
             role,
 
 
@@ -804,7 +902,6 @@ function saveChatHistory() {
               : null
 
         });
-
 
       }
     );
@@ -829,9 +926,7 @@ function saveChatHistory() {
       error
     );
 
-
   }
-
 
 }
 
@@ -873,11 +968,9 @@ function loadChatHistory() {
 
 
     if (
-
       !Array.isArray(
         messages
       )
-
     ) {
 
       return;
@@ -885,28 +978,23 @@ function loadChatHistory() {
     }
 
 
-    // Haddii history jiro
-    // nadiifi chat-ka
-    if (messages.length > 0) {
-
-      chatMessages.innerHTML =
-        "";
-
-    }
+    // Chat nadiifi
+    chatMessages.innerHTML =
+      "";
 
 
     messages.forEach(
       (item) => {
 
-
         addMessageToChat(
+
           item.role,
 
-          item.text,
+          item.text || "",
 
-          item.image
+          item.image || null
+
         );
-
 
       }
     );
@@ -920,9 +1008,7 @@ function loadChatHistory() {
       error
     );
 
-
   }
-
 
 }
 
@@ -941,18 +1027,14 @@ function clearChatHistory() {
 
   if (chatMessages) {
 
-    chatMessages.innerHTML = "";
+    chatMessages.innerHTML =
+      "";
 
   }
 
 
+  console.log(
+    "CHAT HISTORY CLEARED"
+  );
+
 }
-
-
-// ==========================================
-// APP START
-// ==========================================
-
-console.log(
-  "AI Chat Somali app.js loaded"
-);
