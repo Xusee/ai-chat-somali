@@ -1,35 +1,37 @@
+// ============================================
+// AI CHAT SOMALI - COMPLETE SERVER
+// server.js
+// ============================================
+
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const sqlite3 = require("sqlite3").verbose();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const sqlite3 = require("sqlite3").verbose();
+
+// ============================================
+// APP
+// ============================================
 
 const app = express();
 
 const PORT = process.env.PORT || 10000;
 
-// ADMIN LOGIN
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-app.use(cors());
-app.use(express.json());
+const JWT_SECRET =
+  process.env.JWT_SECRET || "change_this_to_a_long_random_secret";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-const AI_MODEL =
-  process.env.OPENROUTER_MODEL ||
-  "meta-llama/llama-3.3-70b-instruct:free";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "ai-chat-somali-secret-key-change-this";
 
-// ==========================================
+// ============================================
 // MIDDLEWARE
-// ==========================================
+// ============================================
 
 app.use(cors());
 
@@ -38,122 +40,79 @@ app.use(express.json({
 }));
 
 app.use(express.urlencoded({
-  extended: true
+  extended: true,
+  limit: "20mb"
 }));
 
-// ==========================================
-// STATIC FILES
-// ==========================================
 
-// Folder-ka main
-app.use(express.static(__dirname));
+// ============================================
+// STATIC PUBLIC FOLDER
+// ============================================
 
-// Admin folder
-app.use("/admin", express.static(path.join(__dirname, "admin")));
+app.use(express.static(path.join(__dirname, "public")));
 
-// ==========================================
+
+// ============================================
 // DATABASE
-// ==========================================
+// ============================================
 
-const dbPath = path.join(__dirname, "database.db");
-
-const db = new sqlite3.Database(dbPath, (error) => {
-  if (error) {
-    console.error("Database Error:", error.message);
-  } else {
-    console.log("SQLite Database Connected");
-  }
-});
-
-// ==========================================
-// CREATE TABLES
-// ==========================================
-
-db.serialize(() => {
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS chats (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      role TEXT NOT NULL,
-      content TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-});
-
-// ==========================================
-// JWT AUTH MIDDLEWARE
-// ==========================================
-
-function authenticateToken(req, res, next) {
-
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).json({
-      success: false,
-      error: "Authorization token lama helin"
-    });
-  }
-
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.substring(7)
-    : authHeader;
-
-  jwt.verify(token, JWT_SECRET, (error, user) => {
-
-    if (error) {
-      return res.status(403).json({
-        success: false,
-        error: "Token-ka ma saxna ama wuu dhacay"
-      });
+const db = new sqlite3.Database(
+  path.join(__dirname, "database.db"),
+  (err) => {
+    if (err) {
+      console.error("❌ SQLite Error:", err.message);
+    } else {
+      console.log("✅ SQLite Database Connected");
     }
+  }
+);
 
-    req.user = user;
 
-    next();
+// ============================================
+// CREATE USERS TABLE
+// ============================================
 
-  });
+db.run(`
+CREATE TABLE IF NOT EXISTS users (
 
-}
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-// ==========================================
-// HOME
-// ==========================================
+  name TEXT NOT NULL,
 
-app.get("/", (req, res) => {
+  email TEXT NOT NULL UNIQUE,
 
-  res.sendFile(path.join(__dirname, "index.html"));
+  password TEXT NOT NULL,
 
-});
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 
-// ==========================================
-// ADMIN PAGE
-// ==========================================
+)
+`);
 
-app.get("/admin", (req, res) => {
 
-  res.sendFile(
-    path.join(__dirname, "admin", "index.html")
-  );
+// ============================================
+// CREATE CHATS TABLE
+// ============================================
 
-});
+db.run(`
+CREATE TABLE IF NOT EXISTS chats (
 
-// ==========================================
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  user_id INTEGER,
+
+  question TEXT,
+
+  answer TEXT,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+
+)
+`);
+
+
+// ============================================
 // HEALTH CHECK
-// ==========================================
+// ============================================
 
 app.get("/api/health", (req, res) => {
 
@@ -161,11 +120,9 @@ app.get("/api/health", (req, res) => {
 
     success: true,
 
-    message: "AI Chat Somali Server waa shaqaynayaa",
-
     status: "healthy",
 
-    model: OPENROUTER_MODEL,
+    message: "AI Chat Somali Server waa shaqaynayaa",
 
     timestamp: new Date().toISOString()
 
@@ -173,19 +130,24 @@ app.get("/api/health", (req, res) => {
 
 });
 
-// ==========================================
+
+// ============================================
 // REGISTER
-// ==========================================
+// POST /api/register
+// ============================================
 
 app.post("/api/register", async (req, res) => {
 
   try {
 
-    const {
+    let {
       name,
       email,
       password
     } = req.body;
+
+
+    // VALIDATION
 
     if (!name || !email || !password) {
 
@@ -193,43 +155,55 @@ app.post("/api/register", async (req, res) => {
 
         success: false,
 
-        error: "Fadlan buuxi magaca, email-ka iyo password-ka"
+        message: "Magaca, email-ka iyo password-ka waa required"
 
       });
 
     }
 
-    if (password.length < 4) {
+
+    name = name.trim();
+
+    email = email.trim().toLowerCase();
+
+
+    if (password.length < 6) {
 
       return res.status(400).json({
 
         success: false,
 
-        error: "Password-ku waa inuu ahaadaa ugu yaraan 4 xaraf"
+        message: "Password-ku waa inuu ka badan yahay 6 xaraf"
 
       });
 
     }
 
+
+    // CHECK USER
+
     db.get(
 
       "SELECT id FROM users WHERE email = ?",
 
-      [email.toLowerCase()],
+      [email],
 
-      async (error, existingUser) => {
+      async (err, existingUser) => {
 
-        if (error) {
+        if (err) {
+
+          console.error(err);
 
           return res.status(500).json({
 
             success: false,
 
-            error: "Database error"
+            message: "Database error"
 
           });
 
         }
+
 
         if (existingUser) {
 
@@ -237,53 +211,65 @@ app.post("/api/register", async (req, res) => {
 
             success: false,
 
-            error: "Email-kan hore ayaa loo isticmaalay"
+            message: "Email-kan hore ayaa loo isticmaalay"
 
           });
 
         }
 
+
+        // HASH PASSWORD
+
         const hashedPassword =
           await bcrypt.hash(password, 10);
+
+
+        // INSERT USER
 
         db.run(
 
           `
-          INSERT INTO users (name, email, password)
+          INSERT INTO users
+          (name, email, password)
+
           VALUES (?, ?, ?)
           `,
 
           [
-            name.trim(),
-            email.toLowerCase(),
+            name,
+            email,
             hashedPassword
           ],
 
-          function (error) {
+          function (err) {
 
-            if (error) {
+            if (err) {
 
-              console.error(error);
+              console.error(err);
 
               return res.status(500).json({
 
                 success: false,
 
-                error: "User lama abuuri karin"
+                message: "User lama samayn karin"
 
               });
 
             }
 
+
             const user = {
 
               id: this.lastID,
 
-              name: name.trim(),
+              name: name,
 
-              email: email.toLowerCase()
+              email: email
 
             };
+
+
+            // CREATE TOKEN
 
             const token = jwt.sign(
 
@@ -297,15 +283,16 @@ app.post("/api/register", async (req, res) => {
 
             );
 
+
             res.status(201).json({
 
               success: true,
 
               message: "Account-ka si guul leh ayaa loo sameeyay",
 
-              token,
+              user,
 
-              user
+              token
 
             });
 
@@ -317,6 +304,7 @@ app.post("/api/register", async (req, res) => {
 
     );
 
+
   } catch (error) {
 
     console.error("REGISTER ERROR:", error);
@@ -325,7 +313,7 @@ app.post("/api/register", async (req, res) => {
 
       success: false,
 
-      error: "Server error"
+      message: "Server error"
 
     });
 
@@ -333,151 +321,507 @@ app.post("/api/register", async (req, res) => {
 
 });
 
-// ==========================================
-// LOGIN
-// ==========================================
 
-app.post("/api/login", (req, res) => {
+// ============================================
+// USER LOGIN
+// POST /api/login
+// ============================================
 
-  const {
-    email,
-    password
-  } = req.body;
+app.post("/api/login", async (req, res) => {
 
-  if (!email || !password) {
+  try {
 
-    return res.status(400).json({
+    let {
+      email,
+      password
+    } = req.body;
 
-      success: false,
 
-      error: "Email iyo password ayaa loo baahan yahay"
+    if (!email || !password) {
 
-    });
+      return res.status(400).json({
 
-  }
+        success: false,
 
-  db.get(
-
-    "SELECT * FROM users WHERE email = ?",
-
-    [email.toLowerCase()],
-
-    async (error, user) => {
-
-      if (error) {
-
-        return res.status(500).json({
-
-          success: false,
-
-          error: "Database error"
-
-        });
-
-      }
-
-      if (!user) {
-
-        return res.status(401).json({
-
-          success: false,
-
-          error: "Email ama password waa khalad"
-
-        });
-
-      }
-
-      const passwordCorrect =
-        await bcrypt.compare(password, user.password);
-
-      if (!passwordCorrect) {
-
-        return res.status(401).json({
-
-          success: false,
-
-          error: "Email ama password waa khalad"
-
-        });
-
-      }
-
-      const token = jwt.sign(
-
-        {
-
-          id: user.id,
-
-          name: user.name,
-
-          email: user.email
-
-        },
-
-        JWT_SECRET,
-
-        {
-
-          expiresIn: "30d"
-
-        }
-
-      );
-
-      res.json({
-
-        success: true,
-
-        message: "Login successful",
-
-        token,
-
-        user: {
-
-          id: user.id,
-
-          name: user.name,
-
-          email: user.email
-
-        }
+        message: "Email iyo password waa required"
 
       });
 
     }
 
-  );
+
+    email = email.trim().toLowerCase();
+
+
+    db.get(
+
+      "SELECT * FROM users WHERE email = ?",
+
+      [email],
+
+      async (err, user) => {
+
+        if (err) {
+
+          console.error(err);
+
+          return res.status(500).json({
+
+            success: false,
+
+            message: "Database error"
+
+          });
+
+        }
+
+
+        if (!user) {
+
+          return res.status(401).json({
+
+            success: false,
+
+            message: "Email ama password waa khalad"
+
+          });
+
+        }
+
+
+        // CHECK PASSWORD
+
+        const passwordCorrect =
+          await bcrypt.compare(
+            password,
+            user.password
+          );
+
+
+        if (!passwordCorrect) {
+
+          return res.status(401).json({
+
+            success: false,
+
+            message: "Email ama password waa khalad"
+
+          });
+
+        }
+
+
+        const userData = {
+
+          id: user.id,
+
+          name: user.name,
+
+          email: user.email
+
+        };
+
+
+        const token = jwt.sign(
+
+          userData,
+
+          JWT_SECRET,
+
+          {
+            expiresIn: "30d"
+          }
+
+        );
+
+
+        res.json({
+
+          success: true,
+
+          message: "Login waa guulaystay",
+
+          user: userData,
+
+          token
+
+        });
+
+      }
+
+    );
+
+
+  } catch (error) {
+
+    console.error("LOGIN ERROR:", error);
+
+    res.status(500).json({
+
+      success: false,
+
+      message: "Server error"
+
+    });
+
+  }
 
 });
 
-// ==========================================
-// GET CURRENT USER
-// ==========================================
 
-app.get(
-  "/api/me",
-  authenticateToken,
-  (req, res) => {
+// ============================================
+// ADMIN LOGIN
+// POST /api/admin/login
+// ============================================
+
+app.post("/api/admin/login", (req, res) => {
+
+  try {
+
+    let {
+      email,
+      password
+    } = req.body;
+
+
+    // ========================================
+    // CHECK EMPTY
+    // ========================================
+
+    if (!email || !password) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message: "Email iyo password geli"
+
+      });
+
+    }
+
+
+    // ========================================
+    // CHECK ENV VARIABLES
+    // ========================================
+
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+
+      console.error(
+        "❌ ADMIN_EMAIL ama ADMIN_PASSWORD lama helin Environment Variables"
+      );
+
+      return res.status(500).json({
+
+        success: false,
+
+        message:
+          "Admin settings lama helin server-ka"
+
+      });
+
+    }
+
+
+    // ========================================
+    // CLEAN EMAIL
+    // ========================================
+
+    email =
+      email
+        .trim()
+        .toLowerCase();
+
+
+    const correctEmail =
+      ADMIN_EMAIL
+        .trim()
+        .toLowerCase();
+
+
+    // ========================================
+    // CHECK ADMIN
+    // ========================================
+
+    if (
+      email !== correctEmail ||
+      password !== ADMIN_PASSWORD
+    ) {
+
+      console.log(
+        "❌ Admin login failed:",
+        email
+      );
+
+      return res.status(401).json({
+
+        success: false,
+
+        message: "Email ama password waa khalad"
+
+      });
+
+    }
+
+
+    // ========================================
+    // CREATE ADMIN TOKEN
+    // ========================================
+
+    const adminToken = jwt.sign(
+
+      {
+
+        email: correctEmail,
+
+        role: "admin"
+
+      },
+
+      JWT_SECRET,
+
+      {
+
+        expiresIn: "24h"
+
+      }
+
+    );
+
+
+    console.log(
+      "✅ Admin login success:",
+      correctEmail
+    );
+
 
     res.json({
 
       success: true,
 
-      user: req.user
+      message: "Admin login waa guulaystay",
+
+      token: adminToken,
+
+      admin: {
+
+        email: correctEmail,
+
+        role: "admin"
+
+      }
+
+    });
+
+
+  } catch (error) {
+
+    console.error(
+      "ADMIN LOGIN ERROR:",
+      error
+    );
+
+
+    res.status(500).json({
+
+      success: false,
+
+      message: "Server error"
 
     });
 
   }
-);
 
-// ==========================================
-// CHAT WITH OPENROUTER
-// ==========================================
+});
+
+
+// ============================================
+// VERIFY USER TOKEN
+// ============================================
+
+function authenticateToken(
+  req,
+  res,
+  next
+) {
+
+  const authHeader =
+    req.headers.authorization;
+
+
+  if (!authHeader) {
+
+    return res.status(401).json({
+
+      success: false,
+
+      message: "Token lama helin"
+
+    });
+
+  }
+
+
+  const token =
+    authHeader.split(" ")[1];
+
+
+  if (!token) {
+
+    return res.status(401).json({
+
+      success: false,
+
+      message: "Token lama helin"
+
+    });
+
+  }
+
+
+  jwt.verify(
+
+    token,
+
+    JWT_SECRET,
+
+    (err, user) => {
+
+      if (err) {
+
+        return res.status(403).json({
+
+          success: false,
+
+          message:
+            "Token waa khalad ama wuu dhacay"
+
+        });
+
+      }
+
+
+      req.user = user;
+
+      next();
+
+    }
+
+  );
+
+}
+
+
+// ============================================
+// ADMIN AUTH
+// ============================================
+
+function authenticateAdmin(
+  req,
+  res,
+  next
+) {
+
+  const authHeader =
+    req.headers.authorization;
+
+
+  if (!authHeader) {
+
+    return res.status(401).json({
+
+      success: false,
+
+      message: "Admin token lama helin"
+
+    });
+
+  }
+
+
+  const token =
+    authHeader.split(" ")[1];
+
+
+  jwt.verify(
+
+    token,
+
+    JWT_SECRET,
+
+    (err, admin) => {
+
+      if (err) {
+
+        return res.status(403).json({
+
+          success: false,
+
+          message:
+            "Admin token waa khalad"
+
+        });
+
+      }
+
+
+      if (admin.role !== "admin") {
+
+        return res.status(403).json({
+
+          success: false,
+
+          message:
+            "Admin permission ma lihid"
+
+        });
+
+      }
+
+
+      req.admin = admin;
+
+      next();
+
+    }
+
+  );
+
+}
+
+
+// ============================================
+// CHAT
+// POST /chat
+// ============================================
 
 app.post("/chat", async (req, res) => {
 
   try {
+
+    const {
+      message,
+      userId,
+      history
+    } = req.body;
+
+
+    if (!message) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message: "Fariin geli"
+
+      });
+
+    }
+
+
+    // ========================================
+    // CHECK API KEY
+    // ========================================
 
     if (!OPENROUTER_API_KEY) {
 
@@ -485,139 +829,131 @@ app.post("/chat", async (req, res) => {
 
         success: false,
 
-        error:
-          "OPENROUTER_API_KEY lagama helin Environment Variables"
+        message:
+          "OPENROUTER_API_KEY lama helin server-ka"
 
       });
 
     }
 
-    let {
-      message,
-      messages,
-      userId
-    } = req.body;
 
-    let chatMessages = [];
+    // ========================================
+    // SYSTEM MESSAGE
+    // ========================================
 
-    // Haddii frontend-ku soo diro messages array
-    if (Array.isArray(messages) && messages.length > 0) {
-
-      chatMessages = messages;
-
-    } else if (message) {
-
-      chatMessages = [
-        {
-          role: "user",
-          content: message
-        }
-      ];
-
-    } else {
-
-      return res.status(400).json({
-
-        success: false,
-
-        error: "Fariin lama helin"
-
-      });
-
-    }
-
-    // System message
-    const finalMessages = [
+    const messages = [
 
       {
+
         role: "system",
 
         content: `
 Waxaad tahay AI Chat Somali.
 
-Had iyo jeer ugu jawaab isticmaalaha Af-Soomaali haddii aanu luqad kale codsan.
+Waxaad si fiican ugu jawaabtaa Af-Soomaali.
 
-Noqo mid:
-- saaxiibtinimo leh
-- caawimaad badan
-- jawaab cad bixiya
-- sharaxaad fiican sameeya
-- code sax ah sameeya marka programming la weydiiyo
-        `.trim()
-      },
+Noqo mid saaxiibtinimo leh,
+fudud,
+caawin badan,
+oo jawaab cad bixiya.
 
-      ...chatMessages
-
-    ];
-
-    // Last user message
-    const lastUserMessage =
-      chatMessages
-        .filter((item) => item.role === "user")
-        .pop();
-
-    // Save user message haddii userId jiro
-    if (userId && lastUserMessage) {
-
-      db.run(
-
-        `
-        INSERT INTO chats (user_id, role, content)
-        VALUES (?, ?, ?)
-        `,
-
-        [
-          userId,
-          "user",
-          typeof lastUserMessage.content === "string"
-            ? lastUserMessage.content
-            : JSON.stringify(lastUserMessage.content)
-        ]
-
-      );
-
-    }
-
-    const response = await fetch(
-
-      "https://openrouter.ai/api/v1/chat/completions",
-
-      {
-
-        method: "POST",
-
-        headers: {
-
-          "Content-Type": "application/json",
-
-          "Authorization":
-            `Bearer ${OPENROUTER_API_KEY}`,
-
-          "HTTP-Referer":
-            "https://ai-chat-somali.onrender.com",
-
-          "X-Title":
-            "AI Chat Somali"
-
-        },
-
-        body: JSON.stringify({
-
-          model: OPENROUTER_MODEL,
-
-          messages: finalMessages,
-
-          temperature: 0.7,
-
-          max_tokens: 2000
-
-        })
+Haddii qofku ku qoro Ingiriisi,
+waad fahmi kartaa laakiin haddii uu
+Af-Soomaali ku qoro,
+ku jawaab Af-Soomaali.
+`
 
       }
 
-    );
+    ];
 
-    const data = await response.json();
+
+    // ========================================
+    // HISTORY
+    // ========================================
+
+    if (
+      Array.isArray(history)
+    ) {
+
+      history.forEach((item) => {
+
+        if (
+          item.role &&
+          item.content
+        ) {
+
+          messages.push({
+
+            role: item.role,
+
+            content: item.content
+
+          });
+
+        }
+
+      });
+
+    }
+
+
+    // USER MESSAGE
+
+    messages.push({
+
+      role: "user",
+
+      content: message
+
+    });
+
+
+    // ========================================
+    // OPENROUTER REQUEST
+    // ========================================
+
+    const response =
+      await fetch(
+
+        "https://openrouter.ai/api/v1/chat/completions",
+
+        {
+
+          method: "POST",
+
+          headers: {
+
+            "Authorization":
+              `Bearer ${OPENROUTER_API_KEY}`,
+
+            "Content-Type":
+              "application/json"
+
+          },
+
+          body: JSON.stringify({
+
+            model:
+              process.env.AI_MODEL ||
+              "meta-llama/llama-3.3-70b-instruct:free",
+
+            messages
+
+          })
+
+        }
+
+      );
+
+
+    const data =
+      await response.json();
+
+
+    // ========================================
+    // API ERROR
+    // ========================================
 
     if (!response.ok) {
 
@@ -626,65 +962,81 @@ Noqo mid:
         data
       );
 
-      return res.status(response.status).json({
+      return res.status(
+        response.status
+      ).json({
 
         success: false,
 
-        error:
+        message:
           data?.error?.message ||
-          "OpenRouter API error"
+          "AI service error"
 
       });
 
     }
 
-    const aiMessage =
-      data?.choices?.[0]?.message?.content;
 
-    if (!aiMessage) {
+    const answer =
+      data?.choices?.[0]?.message?.content ||
+      "Waan ka xumahay, jawaab lama helin.";
 
-      return res.status(500).json({
 
-        success: false,
+    // ========================================
+    // SAVE CHAT
+    // ========================================
 
-        error:
-          "AI jawaab sax ah ma soo celin"
-
-      });
-
-    }
-
-    // Save AI response
     if (userId) {
 
       db.run(
 
         `
-        INSERT INTO chats (user_id, role, content)
+        INSERT INTO chats
+        (user_id, question, answer)
+
         VALUES (?, ?, ?)
         `,
 
         [
+
           userId,
-          "assistant",
-          aiMessage
-        ]
+
+          message,
+
+          answer
+
+        ],
+
+        (err) => {
+
+          if (err) {
+
+            console.error(
+              "SAVE CHAT ERROR:",
+              err
+            );
+
+          }
+
+        }
 
       );
 
     }
 
+
+    // ========================================
+    // RESPONSE
+    // ========================================
+
     res.json({
 
       success: true,
 
-      reply: aiMessage,
-
-      message: aiMessage,
-
-      model: OPENROUTER_MODEL
+      answer
 
     });
+
 
   } catch (error) {
 
@@ -693,13 +1045,13 @@ Noqo mid:
       error
     );
 
+
     res.status(500).json({
 
       success: false,
 
-      error:
-        error.message ||
-        "Chat server error"
+      message:
+        "Server error ayaa dhacay"
 
     });
 
@@ -707,47 +1059,66 @@ Noqo mid:
 
 });
 
-// ==========================================
-// GET CHAT HISTORY
-// ==========================================
+
+// ============================================
+// GET CHATS
+// GET /api/chats
+// ============================================
 
 app.get(
   "/api/chats",
-  authenticateToken,
+
   (req, res) => {
 
-    const userId = req.user.id;
+    const userId =
+      req.query.userId;
+
+
+    if (!userId) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          "userId lama helin"
+
+      });
+
+    }
+
 
     db.all(
 
       `
-      SELECT
-        id,
-        role,
-        content,
-        created_at
+      SELECT *
+
       FROM chats
+
       WHERE user_id = ?
-      ORDER BY id ASC
+
+      ORDER BY id DESC
       `,
 
       [userId],
 
-      (error, rows) => {
+      (err, rows) => {
 
-        if (error) {
+        if (err) {
 
-          console.error(error);
+          console.error(err);
 
           return res.status(500).json({
 
             success: false,
 
-            error: "Chat history lama soo qaadi karin"
+            message:
+              "Chats lama heli karo"
 
           });
 
         }
+
 
         res.json({
 
@@ -762,260 +1133,368 @@ app.get(
     );
 
   }
+
 );
 
-// ==========================================
-// DELETE CHAT HISTORY
-// ==========================================
+
+// ============================================
+// DELETE CHATS
+// DELETE /api/chats
+// ============================================
 
 app.delete(
   "/api/chats",
-  authenticateToken,
+
   (req, res) => {
 
-    const userId = req.user.id;
+    const userId =
+      req.query.userId;
 
-    db.run(
 
-      "DELETE FROM chats WHERE user_id = ?",
+    if (!userId) {
 
-      [userId],
+      return res.status(400).json({
 
-      function (error) {
+        success: false,
 
-        if (error) {
-
-          console.error(error);
-
-          return res.status(500).json({
-
-            success: false,
-
-            error: "Chat history lama tirtiri karin"
-
-          });
-
-        }
-
-        res.json({
-
-          success: true,
-
-          message: "Chat history waa la tirtiray",
-
-          deleted: this.changes
-
-        });
-
-      }
-
-    );
-
-  }
-);
-
-// ==========================================
-// DELETE SINGLE CHAT
-// ==========================================
-
-app.delete(
-  "/api/chats/:id",
-  authenticateToken,
-  (req, res) => {
-
-    const userId = req.user.id;
-
-    const chatId = req.params.id;
-
-    db.run(
-
-      `
-      DELETE FROM chats
-      WHERE id = ? AND user_id = ?
-      `,
-
-      [
-        chatId,
-        userId
-      ],
-
-      function (error) {
-
-        if (error) {
-
-          return res.status(500).json({
-
-            success: false,
-
-            error: "Chat lama tirtiri karin"
-
-          });
-
-        }
-
-        res.json({
-
-          success: true,
-
-          deleted: this.changes
-
-        });
-
-      }
-
-    );
-
-  }
-);
-
-// ==========================================
-// ADMIN USERS
-// ==========================================
-
-app.get("/api/admin/users", (req, res) => {
-
-  db.all(
-
-    `
-    SELECT
-      id,
-      name,
-      email,
-      created_at
-    FROM users
-    ORDER BY id DESC
-    `,
-
-    [],
-
-    (error, rows) => {
-
-      if (error) {
-
-        return res.status(500).json({
-
-          success: false,
-
-          error: "Users lama soo qaadi karin"
-
-        });
-
-      }
-
-      res.json({
-
-        success: true,
-
-        users: rows
+        message:
+          "userId lama helin"
 
       });
 
     }
 
-  );
 
-});
+    db.run(
 
-// ==========================================
-// ADMIN STATS
-// ==========================================
+      `
+      DELETE FROM chats
 
-app.get("/api/admin/stats", (req, res) => {
+      WHERE user_id = ?
+      `,
 
-  db.get(
+      [userId],
 
-    "SELECT COUNT(*) AS totalUsers FROM users",
+      function (err) {
 
-    [],
+        if (err) {
 
-    (error1, userResult) => {
+          console.error(err);
 
-      if (error1) {
+          return res.status(500).json({
 
-        return res.status(500).json({
+            success: false,
 
-          success: false,
-
-          error: "Database error"
-
-        });
-
-      }
-
-      db.get(
-
-        "SELECT COUNT(*) AS totalChats FROM chats",
-
-        [],
-
-        (error2, chatResult) => {
-
-          if (error2) {
-
-            return res.status(500).json({
-
-              success: false,
-
-              error: "Database error"
-
-            });
-
-          }
-
-          res.json({
-
-            success: true,
-
-            totalUsers:
-              userResult.totalUsers,
-
-            totalChats:
-              chatResult.totalChats
+            message:
+              "Chats lama tirtiri karo"
 
           });
 
         }
 
-      );
 
-    }
+        res.json({
 
-  );
+          success: true,
 
-});
+          message:
+            "Chat history waa la tirtiray",
 
-// ==========================================
+          deleted:
+            this.changes
+
+        });
+
+      }
+
+    );
+
+  }
+
+);
+
+
+// ============================================
+// ADMIN GET USERS
+// ============================================
+
+app.get(
+  "/api/admin/users",
+
+  authenticateAdmin,
+
+  (req, res) => {
+
+    db.all(
+
+      `
+      SELECT
+        id,
+        name,
+        email,
+        created_at
+
+      FROM users
+
+      ORDER BY id DESC
+      `,
+
+      [],
+
+      (err, users) => {
+
+        if (err) {
+
+          return res.status(500).json({
+
+            success: false,
+
+            message:
+              "Users lama heli karo"
+
+          });
+
+        }
+
+
+        res.json({
+
+          success: true,
+
+          users
+
+        });
+
+      }
+
+    );
+
+  }
+
+);
+
+
+// ============================================
+// ADMIN GET CHATS
+// ============================================
+
+app.get(
+  "/api/admin/chats",
+
+  authenticateAdmin,
+
+  (req, res) => {
+
+    db.all(
+
+      `
+      SELECT
+        chats.*,
+        users.name,
+        users.email
+
+      FROM chats
+
+      LEFT JOIN users
+
+      ON chats.user_id = users.id
+
+      ORDER BY chats.id DESC
+
+      LIMIT 100
+      `,
+
+      [],
+
+      (err, chats) => {
+
+        if (err) {
+
+          return res.status(500).json({
+
+            success: false,
+
+            message:
+              "Chats lama heli karo"
+
+          });
+
+        }
+
+
+        res.json({
+
+          success: true,
+
+          chats
+
+        });
+
+      }
+
+    );
+
+  }
+
+);
+
+
+// ============================================
+// ADMIN STATS
+// ============================================
+
+app.get(
+  "/api/admin/stats",
+
+  authenticateAdmin,
+
+  (req, res) => {
+
+    db.get(
+
+      `
+      SELECT
+      (
+        SELECT COUNT(*)
+        FROM users
+      ) AS users,
+
+      (
+        SELECT COUNT(*)
+        FROM chats
+      ) AS chats
+      `,
+
+      [],
+
+      (err, stats) => {
+
+        if (err) {
+
+          return res.status(500).json({
+
+            success: false,
+
+            message:
+              "Stats lama heli karo"
+
+          });
+
+        }
+
+
+        res.json({
+
+          success: true,
+
+          stats
+
+        });
+
+      }
+
+    );
+
+  }
+
+);
+
+
+// ============================================
+// ADMIN PAGE
+// IMPORTANT:
+// public/admin.html file must exist
+// ============================================
+
+app.get(
+  "/admin",
+
+  (req, res) => {
+
+    res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "admin.html"
+      )
+    );
+
+  }
+
+);
+
+
+// ============================================
+// HOME PAGE
+// ============================================
+
+app.get(
+  "/",
+
+  (req, res) => {
+
+    res.sendFile(
+
+      path.join(
+        __dirname,
+        "public",
+        "index.html"
+      )
+
+    );
+
+  }
+
+);
+
+
+// ============================================
 // 404
-// ==========================================
+// ============================================
 
-app.use((req, res) => {
+app.use(
+  (req, res) => {
 
-  res.status(404).json({
+    res.status(404).json({
 
-    success: false,
+      success: false,
 
-    error: "Endpoint lama helin",
+      message:
+        "Endpoint lama helin",
 
-    path: req.originalUrl
+      path:
+        req.originalUrl
 
-  });
+    });
 
-});
+  }
 
-// ==========================================
+);
+
+
+// ============================================
 // SERVER START
-// ==========================================
+// ============================================
 
 app.listen(
+
   PORT,
+
   "0.0.0.0",
+
   () => {
 
-    console.log("====================================");
+    console.log(
+      "========================================"
+    );
 
-    console.log("AI Chat Somali Server Started");
+    console.log(
+      "🤖 AI Chat Somali Server Started"
+    );
 
-    console.log(`Port: ${PORT}`);
+    console.log(
+      `Port: ${PORT}`
+    );
 
     console.log(
       `Server: http://localhost:${PORT}`
@@ -1029,9 +1508,14 @@ app.listen(
       `Health: http://localhost:${PORT}/api/health`
     );
 
-    console.log(`Model: ${AI_MODEL}`);
+    console.log(
+      "SQLite Database Connected"
+    );
 
-    console.log("====================================");
+    console.log(
+      "========================================"
+    );
 
   }
+
 );
