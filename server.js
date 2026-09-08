@@ -967,15 +967,16 @@ const response = await fetch(
 
     signal: controller.signal,
 
-    body: JSON.stringify({
-      model: process.env.AI_MODEL,
+   body: JSON.stringify({
+  model: image
+    ? process.env.VISION_MODEL
+    : process.env.AI_MODEL,
 
-      messages: messages,
+  messages,
 
-      max_tokens: 500,
-
-      temperature: 0.7,
-    }),
+  max_tokens: 500,
+  temperature: 0.7
+})
   }
 );
 
@@ -999,7 +1000,6 @@ const response = await fetch(
                 console.error(
 
                     "OPENROUTER ERROR:",
-
                     response.status,
 
                     errorText
