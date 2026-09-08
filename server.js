@@ -951,92 +951,123 @@ ${JSON.stringify(
                 );
 
 
-   // --------------------------------
-// 🤖 OPENROUTER REQUEST
-// --------------------------------
+            // --------------------------------
+            // 🤖 OPENROUTER REQUEST
+            // --------------------------------
 
-const selectedModel = image
-  ? (process.env.VISION_MODEL || process.env.AI_MODEL)
-  : process.env.AI_MODEL;
+            const selectedModel = image
+              ? process.env.VISION_MODEL
+              : process.env.AI_MODEL;
 
-console.log("OPENROUTER MODEL:", selectedModel);
+            console.log("IMAGE:", !!image);
+            console.log("OPENROUTER MODEL:", selectedModel);
 
-if (!selectedModel || selectedModel.trim() === "") {
-  return res.status(500).json({
-    error: "AI model lama helin. Hubi AI_MODEL iyo VISION_MODEL ee Environment Variables."
-  });
-}
+            if (!selectedModel || selectedModel.trim() === "") {
+              return res.status(500).json({
+                error: "AI_MODEL ama VISION_MODEL lama helin."
+              });
+            }
 
-if (!process.env.OPENROUTER_API_KEY) {
-  return res.status(500).json({
-    error: "OPENROUTER_API_KEY lama helin."
-  });
-}
+            if (!process.env.OPENROUTER_API_KEY) {
+              return res.status(500).json({
+                error: "OPENROUTER_API_KEY lama helin."
+              });
+            }
 
-try {
+            try {
 
-  const response = await fetch(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
+              const response = await fetch(
+                "https://openrouter.ai/api/v1/chat/completions",
+                {
+                  method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                    "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
+                    "X-Title": "AI Chat Somali"
+                  },
 
-        "Authorization":
-          `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                  signal: controller.signal,
 
-        "HTTP-Referer":
-          process.env.APP_URL || "http://localhost:10000",
-
-        "X-Title": "AI Chat Somali"
-      },
-
-      signal: controller.signal,
-
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: messages,
-        max_tokens: 500,
-        temperature: 0.7
-      })
-    }
-  );
+                  body: JSON.stringify({
+                    model: selectedModel.trim(),
+                    messages: messages,
+                    max_tokens: 500,
+                    temperature: 0.7
+                  })
+                }
+              );
 
   clearTimeout(timeoutId);
 
   const data = await response.json();
 
+  console.log(
+    "OPENROUTER STATUS:",
+    response.status
+  );
+
+  console.log(
+    "OPENROUTER RESPONSE:",
+    JSON.stringify(data, null, 2)
+  );
+
   if (!response.ok) {
 
-    console.error("OPENROUTER ERROR:", response.status, data);
+    console.error(
+      "OPENROUTER ERROR:",
+      response.status,
+      JSON.stringify(data)
+    );
 
     return res.status(response.status).json({
       error:
         data?.error?.message ||
-        "OpenRouter error ayaa dhacay."
+        "OpenRouter qalad ayaa dhacay."
     });
   }
 
-  return res.json(data);
+  const reply =
+    data?.choices?.[0]?.message?.content;
+
+  if (!reply) {
+
+    console.error(
+      "JAWIIB LAMA HELIN:",
+      JSON.stringify(data)
+    );
+
+    return res.status(500).json({
+      error: "AI jawaab ma soo celin."
+    });
+  }
+
+  return res.json({
+    reply: reply
+  });
 
 } catch (error) {
 
   clearTimeout(timeoutId);
 
-  console.error("OPENROUTER FETCH ERROR:", error);
+  console.error(
+    "CHAT ERROR:",
+    error
+  );
 
   if (error.name === "AbortError") {
     return res.status(504).json({
-      error: "Codsiga AI-ga wakhti badan ayuu qaatay."
+      error: "Codsiga AI-ga waqtigiisu wuu dhammaaday."
     });
   }
 
   return res.status(500).json({
-    error: error.message || "Server error ayaa dhacay."
+    error:
+      error.message ||
+      "Server qalad ayaa dhacay."
   });
 }
-
             // --------------------------------
             // OPENROUTER ERROR
             // --------------------------------
