@@ -435,13 +435,10 @@ async function searchDatabase(
                     LIMIT 10
                     `,
 
-                    [
-
-                        `%${searchWord}%`,
-
-                        `%${searchWord}%`
-
-                    ]
+[
+    %${searchWord}%,
+    %${searchWord}%
+]
 
                 );
 
