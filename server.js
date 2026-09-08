@@ -416,7 +416,7 @@ async function searchDatabase(
             searchWord.length > 1
         ) {
 
-   const rows = await new Promise((resolve, reject) => {
+        const rows = await new Promise((resolve, reject) => {
     db.all(
         `
         SELECT name, email
@@ -426,8 +426,8 @@ async function searchDatabase(
         LIMIT 10
         `,
         [
-            %${searchWord}%,
-            %${searchWord}%
+            `%${searchWord}%`,
+            `%${searchWord}%`
         ],
         (err, rows) => {
             if (err) {
@@ -440,6 +440,10 @@ async function searchDatabase(
 });
 
 databaseInfo.searchResults = rows;
+
+    }
+
+    }
 
 
     // ------------------------------------
