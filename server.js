@@ -955,6 +955,12 @@ ${JSON.stringify(
             // 🤖 OPENROUTER REQUEST
             // --------------------------------
 
+const selectedModel = image
+  ? (process.env.VISION_MODEL || process.env.AI_MODEL)
+  : process.env.AI_MODEL;
+
+console.log("OPENROUTER MODEL:", selectedModel);
+
 const response = await fetch(
   "https://openrouter.ai/api/v1/chat/completions",
   {
@@ -962,21 +968,22 @@ const response = await fetch(
 
     headers: {
       "Content-Type": "application/json",
-    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": process.env.APP_URL || "http://localhost:10000",
+      "X-Title": "AI Chat Somali"
     },
 
     signal: controller.signal,
 
-   body: JSON.stringify({
-  model: image
-    ? process.env.VISION_MODEL
-    : process.env.AI_MODEL,
+    body: JSON.stringify({
+      model: selectedModel,
 
-  messages,
+      messages,
 
-  max_tokens: 500,
-  temperature: 0.7
-})
+      max_tokens: 500,
+
+      temperature: 0.7
+    })
   }
 );
 
