@@ -1,1905 +1,1289 @@
-// ==========================================
-// AI CHAT SOMALI - SERVER.JS
-// Express + SQLite + JWT + OpenRouter
-// Text Chat + Image Chat
-// ==========================================
-
 require("dotenv").config();
 
 const express = require("express");
-const cors = require("cors");
 const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 
 const app = express();
 
-
-// ==========================================
-// SETTINGS
-// ==========================================
-
-const PORT =
-  process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 const OPENROUTER_API_KEY =
-  process.env.OPENROUTER_API_KEY;
+    process.env.OPENROUTER_API_KEY;
 
 const OPENROUTER_MODEL =
-  process.env.OPENROUTER_MODEL ||
-  "google/gemini-2.0-flash-exp:free";
+    process.env.OPENROUTER_MODEL ||
+    "google/gemma-3-27b-it:free";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  "change_this_secret_to_something_long_and_secure";
+const MAX_IMAGE_SIZE =
+    7 * 1024 * 1024;
 
-
-// ==========================================
-// CHECK FETCH
-// Node.js 18+ wuxuu leeyahay fetch
-// ==========================================
-
-if (typeof fetch === "undefined") {
-
-  console.error(
-    "❌ Fetch lama helin. Isticmaal Node.js 18 ama ka sareeya."
-  );
-
-}
+const REQUEST_TIMEOUT =
+    30000;
 
 
-// ==========================================
+// ========================================
 // MIDDLEWARE
-// ==========================================
+// ========================================
 
-app.use(cors());
+app.use(express.json({
+    limit: "12mb"
+}));
 
-
-// Base64 images waxay noqon karaan waaweyn
-app.use(
-  express.json({
-
-    limit: "25mb"
-
-  })
-);
-
-
-app.use(
-  express.urlencoded({
-
+app.use(express.urlencoded({
     extended: true,
+    limit: "12mb"
+}));
 
-    limit: "25mb"
-
-  })
-);
-
-
-// ==========================================
-// STATIC PUBLIC FOLDER
-// ==========================================
-
-app.use(
-
-  express.static(
-
-    path.join(
-      __dirname,
-      "public"
-    )
-
-  )
-
-);
+app.use(express.static(
+    path.join(__dirname, "public")
+));
 
 
-// ==========================================
-// DATABASE
-// ==========================================
+// ========================================
+// SQLITE DATABASE
+// ========================================
 
-const databasePath =
-  path.join(
-    __dirname,
-    "database.db"
-  );
-
-
-const db =
-  new sqlite3.Database(
-
-    databasePath,
-
+const db = new sqlite3.Database(
+    "./database.db",
     (error) => {
 
-      if (error) {
+        if (error) {
 
-        console.error(
-          "❌ DATABASE ERROR:",
-          error.message
-        );
+            console.error(
+                "DATABASE ERROR:",
+                error.message
+            );
 
-      } else {
+        } else {
 
-        console.log(
-          "✅ SQLite Database Connected"
-        );
+            console.log(
+                "🗄️ SQLite Database Connected"
+            );
 
-      }
+        }
 
     }
+);
 
-  );
 
-
-// ==========================================
+// ========================================
 // CREATE USERS TABLE
-// ==========================================
+// ========================================
 
-db.run(
+db.run(`
+    CREATE TABLE IF NOT EXISTS users (
 
-  `
-  CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    id INTEGER
-      PRIMARY KEY
-      AUTOINCREMENT,
+        name TEXT,
 
-    name TEXT
-      NOT NULL,
+        email TEXT UNIQUE,
 
-    email TEXT
-      UNIQUE
-      NOT NULL,
+        password TEXT,
 
-    password TEXT
-      NOT NULL,
+        created_at DATETIME
+        DEFAULT CURRENT_TIMESTAMP
 
-    created_at DATETIME
-      DEFAULT CURRENT_TIMESTAMP
-
-  )
-  `,
-
-  (error) => {
-
-    if (error) {
-
-      console.error(
-        "CREATE USERS TABLE ERROR:",
-        error
-      );
-
-    }
-
-  }
-
-);
-
-
-// ==========================================
-// CREATE CHATS TABLE
-// ==========================================
-
-db.run(
-
-  `
-  CREATE TABLE IF NOT EXISTS chats (
-
-    id INTEGER
-      PRIMARY KEY
-      AUTOINCREMENT,
-
-    user_id INTEGER,
-
-    message TEXT,
-
-    image TEXT,
-
-    reply TEXT,
-
-    created_at DATETIME
-      DEFAULT CURRENT_TIMESTAMP
-
-  )
-  `,
-
-  (error) => {
-
-    if (error) {
-
-      console.error(
-        "CREATE CHATS TABLE ERROR:",
-        error
-      );
-
-    }
-
-  }
-
-);
-
-
-// ==========================================
-// AUTHENTICATION MIDDLEWARE
-// ==========================================
-
-function authenticateToken(
-  req,
-  res,
-  next
-) {
-
-  const authHeader =
-    req.headers.authorization;
-
-
-  let token = null;
-
-
-  if (
-
-    authHeader &&
-
-    authHeader.startsWith(
-      "Bearer "
     )
-
-  ) {
-
-    token =
-      authHeader.substring(
-        7
-      );
-
-  }
+`);
 
 
-  // Login la'aan chat waa la isticmaali karaa
-  if (!token) {
+// ========================================
+// CREATE CHATS TABLE
+// ========================================
 
-    req.user = null;
+db.run(`
+    CREATE TABLE IF NOT EXISTS chats (
 
-    return next();
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-  }
+        message TEXT,
 
+        image TEXT,
 
-  try {
+        reply TEXT,
 
-    const decoded =
-      jwt.verify(
+        created_at DATETIME
+        DEFAULT CURRENT_TIMESTAMP
 
-        token,
-
-        JWT_SECRET
-
-      );
-
-
-    req.user =
-      decoded;
+    )
+`);
 
 
-    return next();
+// ========================================
+// DATABASE HELPERS
+// ========================================
 
+function dbAll(query, params = []) {
 
-  } catch (error) {
+    return new Promise(
+        (resolve, reject) => {
 
-    console.log(
-      "⚠️ JWT Token invalid ama dhacay"
+            db.all(
+                query,
+                params,
+
+                (error, rows) => {
+
+                    if (error) {
+
+                        reject(error);
+
+                    } else {
+
+                        resolve(rows);
+
+                    }
+
+                }
+
+            );
+
+        }
     );
-
-
-    req.user =
-      null;
-
-
-    return next();
-
-  }
 
 }
 
 
-// ==========================================
-// REGISTER
-// POST /api/register
-// ==========================================
+function dbGet(query, params = []) {
 
-app.post(
+    return new Promise(
+        (resolve, reject) => {
 
-  "/api/register",
+            db.get(
+                query,
+                params,
 
-  async (
-    req,
-    res
-  ) => {
+                (error, row) => {
 
-    try {
+                    if (error) {
 
-      const {
+                        reject(error);
 
-        name,
+                    } else {
 
-        email,
+                        resolve(row);
 
-        password
+                    }
 
-      } = req.body;
+                }
 
+            );
 
-      const cleanName =
-        String(
-          name || ""
-        ).trim();
+        }
+    );
+
+}
 
 
-      const cleanEmail =
-        String(
-          email || ""
-        )
-          .trim()
-          .toLowerCase();
+function dbRun(query, params = []) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            db.run(
+                query,
+                params,
+
+                function (error) {
+
+                    if (error) {
+
+                        reject(error);
+
+                    } else {
+
+                        resolve({
+                            id: this.lastID,
+                            changes: this.changes
+                        });
+
+                    }
+
+                }
+
+            );
+
+        }
+    );
+
+}
 
 
-      // -------------------------------
-      // VALIDATION
-      // -------------------------------
+// ========================================
+// IMAGE VALIDATION
+// ========================================
 
-      if (
+function validateImage(image) {
 
-        !cleanName ||
+    if (!image) {
 
-        !cleanEmail ||
+        return {
+            valid: true
+        };
 
-        !password
-
-      ) {
-
-        return res
-          .status(400)
-          .json({
-
-            success:
-              false,
-
-            error:
-              "Fadlan buuxi dhammaan xogta."
-
-          });
-
-      }
+    }
 
 
-      if (
+    if (
+        typeof image !== "string" ||
+        !image.startsWith("data:image/")
+    ) {
 
-        String(
-          password
-        ).length < 4
+        return {
 
-      ) {
+            valid: false,
 
-        return res
-          .status(400)
-          .json({
+            message:
+                "Sawirka ma aha image sax ah."
 
-            success:
-              false,
+        };
 
-            error:
-              "Password-ku waa inuu ahaadaa ugu yaraan 4 xaraf."
-
-          });
-
-      }
+    }
 
 
-      // -------------------------------
-      // HASH PASSWORD
-      // -------------------------------
+    const parts =
+        image.split(",");
 
-      const hashedPassword =
-        await bcrypt.hash(
 
-          password,
+    if (parts.length < 2) {
 
-          10
+        return {
 
+            valid: false,
+
+            message:
+                "Sawirka waa khaldan yahay."
+
+        };
+
+    }
+
+
+    const base64Data =
+        parts[1];
+
+
+    const size =
+        Buffer.byteLength(
+            base64Data,
+            "base64"
         );
 
 
-      // -------------------------------
-      // SAVE USER
-      // -------------------------------
+    if (
+        size > MAX_IMAGE_SIZE
+    ) {
 
-      db.run(
+        return {
 
-        `
-        INSERT INTO users
-        (
-          name,
-          email,
-          password
-        )
-        VALUES (?, ?, ?)
-        `,
+            valid: false,
 
-        [
+            message:
+                "Sawirku aad buu u weyn yahay. Dooro sawir ka yar 7MB."
 
-          cleanName,
+        };
 
-          cleanEmail,
+    }
 
-          hashedPassword
 
-        ],
+    return {
 
-        function (
-          error
+        valid: true,
+
+        size: size
+
+    };
+
+}
+
+
+// ========================================
+// 🔎 DATABASE SEARCH
+// ========================================
+
+async function searchDatabase(
+    searchText
+) {
+
+    if (
+        !searchText ||
+        !searchText.trim()
+    ) {
+
+        return null;
+
+    }
+
+
+    const text =
+        searchText.trim();
+
+
+    const lowerText =
+        text.toLowerCase();
+
+
+    const databaseInfo = {
+
+        users: null,
+
+        chats: null,
+
+        searchResults: null
+
+    };
+
+
+    // ------------------------------------
+    // USER COUNT
+    // ------------------------------------
+
+    if (
+        lowerText.includes("immisa qof") ||
+        lowerText.includes("immisa user") ||
+        lowerText.includes("tirada user") ||
+        lowerText.includes("users")
+    ) {
+
+        const result =
+            await dbGet(
+                `
+                SELECT COUNT(*) AS total
+                FROM users
+                `
+            );
+
+
+        databaseInfo.users = {
+
+            total:
+                result.total
+
+        };
+
+    }
+
+
+    // ------------------------------------
+    // CHAT COUNT
+    // ------------------------------------
+
+    if (
+        lowerText.includes("immisa chat") ||
+        lowerText.includes("tirada chat")
+    ) {
+
+        const result =
+            await dbGet(
+                `
+                SELECT COUNT(*) AS total
+                FROM chats
+                `
+            );
+
+
+        databaseInfo.chats = {
+
+            total:
+                result.total
+
+        };
+
+    }
+
+
+    // ------------------------------------
+    // SEARCH USERS BY NAME
+    // ------------------------------------
+
+    if (
+        lowerText.includes("raadi") ||
+        lowerText.includes("search") ||
+        lowerText.includes("hel")
+    ) {
+
+        const words =
+            text.split(" ");
+
+
+        const searchWord =
+            words[words.length - 1];
+
+
+        if (
+            searchWord.length > 1
         ) {
 
-          if (error) {
+            const rows =
+                await dbAll(
+
+                    `
+                    SELECT
+                        id,
+                        name,
+                        email,
+                        created_at
+
+                    FROM users
+
+                    WHERE name LIKE ?
+
+                    OR email LIKE ?
+
+                    LIMIT 10
+                    `,
+
+                    [
+
+                        %${searchWord}%,
+
+                        %${searchWord}%
+
+                    ]
+
+                );
+
+
+            databaseInfo.searchResults =
+                rows;
+
+        }
+
+    }
+
+
+    // ------------------------------------
+    // RETURN ONLY IF DATA EXISTS
+    // ------------------------------------
+
+    const hasData =
+
+        databaseInfo.users ||
+
+        databaseInfo.chats ||
+
+        databaseInfo.searchResults;
+
+
+    return hasData
+        ? databaseInfo
+        : null;
+
+}
+
+
+// ========================================
+// ❤️ GET /api/health
+// ========================================
+
+app.get(
+    "/api/health",
+
+    async (req, res) => {
+
+        try {
+
+            const userCount =
+                await dbGet(
+                    `
+                    SELECT COUNT(*) AS total
+                    FROM users
+                    `
+                );
+
+
+            const chatCount =
+                await dbGet(
+                    `
+                    SELECT COUNT(*) AS total
+                    FROM chats
+                    `
+                );
+
+
+            res.json({
+
+                success: true,
+
+                status: "online",
+
+                service:
+                    "AI Chat Somali",
+
+                model:
+                    OPENROUTER_MODEL,
+
+                database: {
+
+                    users:
+                        userCount.total,
+
+                    chats:
+                        chatCount.total
+
+                },
+
+                time:
+                    new Date()
+                        .toISOString()
+
+            });
+
+        } catch (error) {
+
+            res.status(500).json({
+
+                success: false,
+
+                error:
+                    "Health check error"
+
+            });
+
+        }
+
+    }
+);
+
+
+// ========================================
+// 📜 GET /api/chats
+// ========================================
+
+app.get(
+    "/api/chats",
+
+    async (req, res) => {
+
+        try {
+
+            const chats =
+                await dbAll(
+                    `
+                    SELECT
+                        id,
+                        message,
+                        image,
+                        reply,
+                        created_at
+
+                    FROM chats
+
+                    ORDER BY id DESC
+
+                    LIMIT 100
+                    `
+                );
+
+
+            res.json({
+
+                success: true,
+
+                total:
+                    chats.length,
+
+                chats:
+                    chats
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "GET CHATS ERROR:",
+                error
+            );
+
+
+            res.status(500).json({
+
+                success: false,
+
+                error:
+                    "Chat history lama soo qaadi karin."
+
+            });
+
+        }
+
+    }
+);
+
+
+// ========================================
+// 🗑️ DELETE /api/chats
+// ========================================
+
+app.delete(
+    "/api/chats",
+
+    async (req, res) => {
+
+        try {
+
+            const result =
+                await dbRun(
+                    `
+                    DELETE FROM chats
+                    `
+                );
+
+
+            res.json({
+
+                success: true,
+
+                message:
+                    "Dhammaan chat-yada waa la tirtiray.",
+
+                deleted:
+                    result.changes
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "DELETE CHATS ERROR:",
+                error
+            );
+
+
+            res.status(500).json({
+
+                success: false,
+
+                error:
+                    "Chat-yada lama tirtiri karin."
+
+            });
+
+        }
+
+    }
+);
+
+
+// ========================================
+// 💬 POST /chat
+// ========================================
+
+app.post(
+    "/chat",
+
+    async (req, res) => {
+
+        let timeoutId;
+
+
+        try {
+
+            const {
+
+                message,
+
+                image,
+
+                history
+
+            } = req.body;
+
+
+            const cleanMessage =
+
+                typeof message === "string"
+
+                    ? message.trim()
+
+                    : "";
+
+
+            // --------------------------------
+            // INPUT CHECK
+            // --------------------------------
 
             if (
-
-              error.message.includes(
-                "UNIQUE"
-              )
-
+                !cleanMessage &&
+                !image
             ) {
 
-              return res
-                .status(400)
-                .json({
+                return res.status(400).json({
 
-                  success:
-                    false,
+                    success: false,
 
-                  error:
-                    "Email-kan hore ayaa loo isticmaalay."
+                    error:
+                        "Fadlan qor su'aal ama geli sawir."
 
                 });
 
             }
 
 
-            console.error(
-              "REGISTER ERROR:",
-              error
-            );
+            // --------------------------------
+            // API KEY CHECK
+            // --------------------------------
 
+            if (
+                !OPENROUTER_API_KEY
+            ) {
 
-            return res
-              .status(500)
-              .json({
+                return res.status(500).json({
 
-                success:
-                  false,
+                    success: false,
 
-                error:
-                  "Server-ka ayaa khalad la kulmay."
+                    error:
+                        "OPENROUTER_API_KEY lama helin."
 
-              });
-
-          }
-
-
-          // -----------------------------
-          // CREATE JWT
-          // -----------------------------
-
-          const token =
-            jwt.sign(
-
-              {
-
-                id:
-                  this.lastID,
-
-                name:
-                  cleanName,
-
-                email:
-                  cleanEmail
-
-              },
-
-              JWT_SECRET,
-
-              {
-
-                expiresIn:
-                  "30d"
-
-              }
-
-            );
-
-
-          return res.json({
-
-            success:
-              true,
-
-            message:
-              "Akoonkaaga waa la sameeyay.",
-
-            token:
-              token,
-
-            user: {
-
-              id:
-                this.lastID,
-
-              name:
-                cleanName,
-
-              email:
-                cleanEmail
+                });
 
             }
 
-          });
 
-        }
+            // --------------------------------
+            // IMAGE CHECK
+            // --------------------------------
 
-      );
+            const imageCheck =
+                validateImage(
+                    image
+                );
 
 
-    } catch (
-      error
-    ) {
+            if (
+                !imageCheck.valid
+            ) {
 
-      console.error(
-        "REGISTER ERROR:",
-        error
-      );
+                return res.status(400).json({
 
+                    success: false,
 
-      return res
-        .status(500)
-        .json({
+                    error:
+                        imageCheck.message
 
-          success:
-            false,
-
-          error:
-            "Server-ka ayaa khalad la kulmay."
-
-        });
-
-    }
-
-  }
-
-);
-
-
-// ==========================================
-// LOGIN
-// POST /api/login
-// ==========================================
-
-app.post(
-
-  "/api/login",
-
-  async (
-    req,
-    res
-  ) => {
-
-    try {
-
-      const {
-
-        email,
-
-        password
-
-      } = req.body;
-
-
-      const cleanEmail =
-        String(
-          email || ""
-        )
-          .trim()
-          .toLowerCase();
-
-
-      if (
-
-        !cleanEmail ||
-
-        !password
-
-      ) {
-
-        return res
-          .status(400)
-          .json({
-
-            success:
-              false,
-
-            error:
-              "Email iyo password geli."
-
-          });
-
-      }
-
-
-      db.get(
-
-        `
-        SELECT *
-        FROM users
-        WHERE email = ?
-        `,
-
-        [
-
-          cleanEmail
-
-        ],
-
-        async (
-          error,
-          user
-        ) => {
-
-          if (error) {
-
-            console.error(
-              "LOGIN DATABASE ERROR:",
-              error
-            );
-
-
-            return res
-              .status(500)
-              .json({
-
-                success:
-                  false,
-
-                error:
-                  "Server-ka ayaa khalad la kulmay."
-
-              });
-
-          }
-
-
-          if (!user) {
-
-            return res
-              .status(401)
-              .json({
-
-                success:
-                  false,
-
-                error:
-                  "Email ama password waa khaldan yahay."
-
-              });
-
-          }
-
-
-          // -----------------------------
-          // CHECK PASSWORD
-          // -----------------------------
-
-          const passwordCorrect =
-            await bcrypt.compare(
-
-              password,
-
-              user.password
-
-            );
-
-
-          if (
-            !passwordCorrect
-          ) {
-
-            return res
-              .status(401)
-              .json({
-
-                success:
-                  false,
-
-                error:
-                  "Email ama password waa khaldan yahay."
-
-              });
-
-          }
-
-
-          // -----------------------------
-          // CREATE TOKEN
-          // -----------------------------
-
-          const token =
-            jwt.sign(
-
-              {
-
-                id:
-                  user.id,
-
-                name:
-                  user.name,
-
-                email:
-                  user.email
-
-              },
-
-              JWT_SECRET,
-
-              {
-
-                expiresIn:
-                  "30d"
-
-              }
-
-            );
-
-
-          return res.json({
-
-            success:
-              true,
-
-            message:
-              "Soo dhowow!",
-
-            token:
-              token,
-
-            user: {
-
-              id:
-                user.id,
-
-              name:
-                user.name,
-
-              email:
-                user.email
+                });
 
             }
 
-          });
 
-        }
+            // --------------------------------
+            // 🔎 SEARCH DATABASE
+            // --------------------------------
 
-      );
+            const databaseData =
+                await searchDatabase(
+                    cleanMessage
+                );
 
 
-    } catch (
-      error
-    ) {
+            // --------------------------------
+            // SYSTEM MESSAGE
+            // --------------------------------
 
-      console.error(
-        "LOGIN ERROR:",
-        error
-      );
+            let systemPrompt = `
+Waxaad tahay AI Chat Somali.
 
+Ku jawaab Af-Soomaali oo cad.
 
-      return res
-        .status(500)
-        .json({
+Waxaad leedahay awood aad ku isticmaasho
+macluumaad laga helay Database-ka.
 
-          success:
-            false,
+Haddii DATABASE DATA laguu soo diro:
+- Isticmaal xogtaas.
+- Ha samayn xog aan Database-ka ku jirin.
+- Sharax xogta si fudud.
+- Haddii xog la waayo, sheeg inaan la helin.
 
-          error:
-            "Server-ka ayaa khalad la kulmay."
+Haddii sawir laguu soo diro:
+- Sharax waxa sawirka ka muuqda.
+- Ka jawaab su'aasha isticmaalaha.
+            `.trim();
 
-        });
 
-    }
+            if (
+                databaseData
+            ) {
 
-  }
+                systemPrompt += `
 
-);
+DATABASE DATA:
+${JSON.stringify(
+    databaseData,
+    null,
+    2
+)}
+`;
 
+            }
 
-// ==========================================
-// CHAT
-// POST /chat
-//
-// APP.JS SENDS:
-//
-// {
-//   message: "...",
-//   image: "data:image/...;base64,..."
-// }
-// ==========================================
 
-app.post(
+            // --------------------------------
+            // BUILD MESSAGES
+            // --------------------------------
 
-  "/chat",
+            const messages = [
 
-  authenticateToken,
+                {
 
-  async (
-    req,
-    res
-  ) => {
+                    role:
+                        "system",
 
-    try {
+                    content:
+                        systemPrompt
 
+                }
 
-      // =====================================
-      // GET DATA
-      // =====================================
+            ];
 
-      const {
 
-        message,
+            // --------------------------------
+            // HISTORY
+            // --------------------------------
 
-        image
+            if (
+                Array.isArray(
+                    history
+                )
+            ) {
 
-      } = req.body || {};
+                history
+                    .slice(-6)
+                    .forEach(
+                        item => {
 
+                            if (
+                                item.role &&
+                                item.content
+                            ) {
 
-      // =====================================
-      // CLEAN MESSAGE
-      // =====================================
+                                messages.push({
 
-      const cleanMessage =
+                                    role:
+                                        item.role,
 
-        typeof message === "string"
+                                    content:
+                                        item.content
 
-          ? message.trim()
+                                });
 
-          : "";
+                            }
 
+                        }
+                    );
 
-      // =====================================
-      // CLEAN IMAGE
-      // =====================================
+            }
 
-      const cleanImage =
 
-        typeof image === "string" &&
-        image.trim()
+            // --------------------------------
+            // USER CONTENT
+            // --------------------------------
 
-          ? image.trim()
+            let userContent;
 
-          : null;
 
+            if (
+                image
+            ) {
 
-      // =====================================
-      // LOG REQUEST
-      // =====================================
+                userContent = [
 
-      console.log(
-        ""
-      );
+                    {
 
-      console.log(
-        "========================================"
-      );
+                        type:
+                            "text",
 
-      console.log(
-        "📩 NEW CHAT REQUEST"
-      );
+                        text:
 
-      console.log(
-        "📝 Message:",
-        cleanMessage ||
-        "(Qoraal ma jiro)"
-      );
+                            cleanMessage ||
 
-      console.log(
-        "🖼️ Image:",
-        cleanImage
-          ? "Sawir waa jiraa"
-          : "Sawir ma jiro"
-      );
+                            "Sawirkan ii sharax Af-Soomaali."
 
-      console.log(
-        "========================================"
-      );
+                    },
 
+                    {
 
-      // =====================================
-      // CHECK INPUT
-      // =====================================
+                        type:
+                            "image_url",
 
-      if (
+                        image_url: {
 
-        !cleanMessage &&
+                            url:
+                                image
 
-        !cleanImage
+                        }
 
-      ) {
+                    }
 
-        return res
-          .status(400)
-          .json({
+                ];
 
-            success:
-              false,
+            } else {
 
-            error:
-              "Fadlan qor fariin ama dooro sawir."
+                userContent =
+                    cleanMessage;
 
-          });
+            }
 
-      }
 
+            messages.push({
 
-      // =====================================
-      // CHECK IMAGE FORMAT
-      // =====================================
+                role:
+                    "user",
 
-      if (
-        cleanImage
-      ) {
-
-        if (
-
-          !cleanImage.startsWith(
-            "data:image/"
-          )
-
-        ) {
-
-          console.error(
-            "❌ Invalid image format"
-          );
-
-
-          return res
-            .status(400)
-            .json({
-
-              success:
-                false,
-
-              error:
-                "Sawirka la soo diray ma aha Base64 image sax ah."
+                content:
+                    userContent
 
             });
 
-        }
 
-      }
+            // --------------------------------
+            // ⏳ 30 SECOND TIMEOUT
+            // --------------------------------
 
+            const controller =
+                new AbortController();
 
-      // =====================================
-      // CHECK OPENROUTER KEY
-      // =====================================
 
-      if (
+            timeoutId =
+                setTimeout(
 
-        !OPENROUTER_API_KEY
+                    () => {
 
-      ) {
+                        controller.abort();
 
-        console.error(
-          "❌ OPENROUTER_API_KEY lama helin."
-        );
+                    },
 
+                    REQUEST_TIMEOUT
 
-        return res
-          .status(500)
-          .json({
+                );
 
-            success:
-              false,
 
-            error:
-              "OPENROUTER_API_KEY lama dejin. Hubi faylka .env."
+            // --------------------------------
+            // 🤖 OPENROUTER REQUEST
+            // --------------------------------
 
-          });
+            const response =
+                await fetch(
 
-      }
+                    "https://openrouter.ai/api/v1/chat/completions",
 
+                    {
 
-      // =====================================
-      // BUILD AI USER CONTENT
-      // =====================================
+                        method:
+                            "POST",
 
-      const userContent =
-        [];
+                        headers: {
 
+                            "Content-Type":
+                                "application/json",
 
-      // -------------------------------------
-      // TEXT
-      // -------------------------------------
+                            "Authorization":
+                                Bearer ${OPENROUTER_API_KEY},
 
-      if (
-        cleanMessage
-      ) {
+                            "HTTP-Referer":
+                                http://localhost:${PORT},
 
-        userContent.push({
+                            "X-Title":
+                                "AI Chat Somali"
 
-          type:
-            "text",
+                        },
 
-          text:
-            cleanMessage
+                        body:
 
-        });
+                            JSON.stringify({
 
-      }
+                                model:
+                                    OPENROUTER_MODEL,
 
+                                messages:
+                                    messages,
 
-      // -------------------------------------
-      // IMAGE
-      // -------------------------------------
+                                temperature:
+                                    0.7,
 
-      if (
-        cleanImage
-      ) {
+                                max_tokens:
+                                    1000
 
-        userContent.push({
+                            }),
 
-          type:
-            "image_url",
+                        signal:
+                            controller.signal
 
-          image_url: {
+                    }
 
-            url:
-              cleanImage
+                );
 
-          }
 
-        });
-
-      }
-
-
-      console.log(
-        "📦 AI Content:",
-        userContent.length,
-        "qaybood"
-      );
-
-
-      // =====================================
-      // OPENROUTER REQUEST
-      // =====================================
-
-      console.log(
-        "🤖 Sending request to OpenRouter..."
-      );
-
-
-      const aiResponse =
-
-        await fetch(
-
-          "https://openrouter.ai/api/v1/chat/completions",
-
-          {
-
-            method:
-              "POST",
-
-
-            headers: {
-
-              "Authorization":
-                `Bearer ${OPENROUTER_API_KEY}`,
-
-              "Content-Type":
-                "application/json",
-
-              "HTTP-Referer":
-
-                process.env.APP_URL ||
-
-                `http://localhost:${PORT}`,
-
-
-              "X-Title":
-                "AI Chat Somali"
-
-            },
-
-
-            body:
-
-              JSON.stringify({
-
-                model:
-                  OPENROUTER_MODEL,
-
-
-                messages: [
-
-                  // -----------------------
-                  // SYSTEM
-                  // -----------------------
-
-                  {
-
-                    role:
-                      "system",
-
-                    content:
-                      `
-Waxaad tahay AI Chat Somali, caawiye caqli badan.
-
-XEERARKA:
-
-1. Mar walba ku jawaab Af-Soomaali.
-2. Jawaabaha ka dhig kuwo cad oo fudud.
-3. Haddii user-ku sawir kuu soo diro, si taxaddar leh u eeg sawirka.
-4. Haddii user-ku sawir keliya soo diro, sharax waxa sawirka ka muuqda.
-5. Haddii sawir iyo su'aal la isku daro, ka jawaab su'aasha sawirka ku saabsan.
-6. Haddii qoraal keliya la soo diro, si fiican uga jawaab.
-7. Noqo caawiye saaxiibtinimo leh.
-8. Haddii aanad wax sawirka ka hubin karin, si daacad ah u sheeg.
-`
-
-                  },
-
-
-                  // -----------------------
-                  // USER
-                  // -----------------------
-
-                  {
-
-                    role:
-                      "user",
-
-                    content:
-                      userContent
-
-                  }
-
-                ],
-
-
-                temperature:
-                  0.7,
-
-
-                max_tokens:
-                  1500
-
-              })
-
-          }
-
-        );
-
-
-      // =====================================
-      // READ RESPONSE
-      // =====================================
-
-      let data;
-
-
-      try {
-
-        data =
-          await aiResponse.json();
-
-      } catch (
-        error
-      ) {
-
-        console.error(
-          "❌ OpenRouter JSON ERROR:",
-          error
-        );
-
-
-        return res
-          .status(500)
-          .json({
-
-            success:
-              false,
-
-            error:
-              "OpenRouter jawaab sax ah ma soo celin."
-
-          });
-
-      }
-
-
-      // =====================================
-      // OPENROUTER ERROR
-      // =====================================
-
-      if (
-
-        !aiResponse.ok
-
-      ) {
-
-        console.error(
-          "========================================"
-        );
-
-        console.error(
-          "❌ OPENROUTER ERROR"
-        );
-
-        console.error(
-          "STATUS:",
-          aiResponse.status
-        );
-
-        console.error(
-
-          JSON.stringify(
-
-            data,
-
-            null,
-
-            2
-
-          )
-
-        );
-
-        console.error(
-          "========================================"
-        );
-
-
-        return res
-          .status(
-            aiResponse.status
-          )
-          .json({
-
-            success:
-              false,
-
-            error:
-
-              data?.error?.message ||
-
-              "OpenRouter API ayaa khalad bixisay."
-
-          });
-
-      }
-
-
-      // =====================================
-      // GET AI REPLY
-      // =====================================
-
-      let reply =
-
-        data?.choices?.[0]
-          ?.message?.content;
-
-
-      // Haddii content null yahay
-      if (
-
-        !reply
-
-      ) {
-
-        reply =
-          "Waan ka xumahay, AI jawaab ma soo celin.";
-
-      }
-
-
-      // Hubi inuu string yahay
-      if (
-
-        typeof reply !== "string"
-
-      ) {
-
-        reply =
-          JSON.stringify(
-            reply
-          );
-
-      }
-
-
-      console.log(
-        "✅ AI RESPONSE RECEIVED"
-      );
-
-
-      // =====================================
-      // GET USER ID
-      // =====================================
-
-      const userId =
-
-        req.user
-
-          ? req.user.id
-
-          : null;
-
-
-      // =====================================
-      // SAVE CHAT TO DATABASE
-      // =====================================
-
-      db.run(
-
-        `
-        INSERT INTO chats
-        (
-          user_id,
-          message,
-          image,
-          reply
-        )
-        VALUES (?, ?, ?, ?)
-        `,
-
-        [
-
-          userId,
-
-          cleanMessage,
-
-          cleanImage,
-
-          reply
-
-        ],
-
-        function (
-          error
-        ) {
-
-          if (
-            error
-          ) {
-
-            console.error(
-
-              "❌ SAVE CHAT ERROR:",
-
-              error.message
-
-            );
-
-          } else {
-
-            console.log(
-
-              "💾 CHAT SAVED:",
-
-              this.lastID
-
-            );
-
-          }
-
-        }
-
-      );
-
-
-      // =====================================
-      // SEND RESPONSE TO APP.JS
-      // =====================================
-
-      return res.json({
-
-        success:
-          true,
-
-        reply:
-          reply
-
-      });
-
-
-    } catch (
-      error
-    ) {
-
-      console.error(
-        "========================================"
-      );
-
-      console.error(
-        "❌ CHAT SERVER ERROR"
-      );
-
-      console.error(
-        error
-      );
-
-      console.error(
-        "========================================"
-      );
-
-
-      return res
-        .status(500)
-        .json({
-
-          success:
-            false,
-
-          error:
-            "Server-ka ayaa khalad la kulmay.",
-
-          details:
-            error.message
-
-        });
-
-    }
-
-  }
-
-);
-
-
-// ==========================================
-// GET CHAT HISTORY
-// GET /api/chats
-// ==========================================
-
-app.get(
-
-  "/api/chats",
-
-  authenticateToken,
-
-  (
-    req,
-    res
-  ) => {
-
-    try {
-
-
-      let query;
-
-      let values;
-
-
-      if (
-        req.user
-      ) {
-
-        query =
-          `
-          SELECT *
-          FROM chats
-          WHERE user_id = ?
-          ORDER BY id ASC
-          `;
-
-
-        values = [
-
-          req.user.id
-
-        ];
-
-
-      } else {
-
-        query =
-          `
-          SELECT *
-          FROM chats
-          WHERE user_id IS NULL
-          ORDER BY id ASC
-          `;
-
-
-        values =
-          [];
-
-      }
-
-
-      db.all(
-
-        query,
-
-        values,
-
-        (
-          error,
-          chats
-        ) => {
-
-          if (
-            error
-          ) {
-
-            console.error(
-              "GET CHATS ERROR:",
-              error
+            clearTimeout(
+                timeoutId
             );
 
 
-            return res
-              .status(500)
-              .json({
+            // --------------------------------
+            // OPENROUTER ERROR
+            // --------------------------------
+
+            if (
+                !response.ok
+            ) {
+
+                const errorText =
+                    await response.text();
+
+
+                console.error(
+
+                    "OPENROUTER ERROR:",
+
+                    response.status,
+
+                    errorText
+
+                );
+
+
+                return res
+                    .status(
+                        response.status
+                    )
+                    .json({
+
+                        success:
+                            false,
+
+                        error:
+                            "AI server-ka ayaa khalad soo celiyay."
+
+                    });
+
+            }
+
+
+            // --------------------------------
+            // AI RESPONSE
+            // --------------------------------
+
+            const data =
+                await response.json();
+
+
+            const reply =
+
+                data
+                    ?.choices?.[0]
+                    ?.message
+                    ?.content;
+
+
+            if (
+                !reply
+            ) {
+
+                return res
+                    .status(500)
+                    .json({
+
+                        success:
+                            false,
+
+                        error:
+                            "AI jawaab ma soo celin."
+
+                    });
+
+            }
+
+
+            // --------------------------------
+            // SAVE CHAT DATABASE
+            // --------------------------------
+
+            const savedChat =
+                await dbRun(
+
+                    `
+                    INSERT INTO chats
+                    (
+                        message,
+                        image,
+                        reply
+                    )
+
+                    VALUES (?, ?, ?)
+                    `,
+
+                    [
+
+                        cleanMessage ||
+                            "📷 Sawir",
+
+                        image ||
+                            null,
+
+                        reply
+
+                    ]
+
+                );
+
+
+            // --------------------------------
+            // SUCCESS
+            // --------------------------------
+
+            res.json({
 
                 success:
-                  false,
+                    true,
 
-                error:
-                  "Chat history lama soo qaadi karin."
+                reply:
+                    reply,
 
-              });
+                chatId:
+                    savedChat.id,
 
-          }
+                databaseUsed:
+                    !!databaseData
 
-
-          return res.json({
-
-            success:
-              true,
-
-            chats:
-              chats || []
-
-          });
-
-        }
-
-      );
+            });
 
 
-    } catch (
-      error
-    ) {
-
-      console.error(
-        "GET CHATS ERROR:",
-        error
-      );
-
-
-      return res
-        .status(500)
-        .json({
-
-          success:
-            false,
-
-          error:
-            "Server-ka ayaa khalad la kulmay."
-
-        });
-
-    }
-
-  }
-
-);
-
-
-// ==========================================
-// DELETE CHAT HISTORY
-// DELETE /api/chats
-// ==========================================
-
-app.delete(
-
-  "/api/chats",
-
-  authenticateToken,
-
-  (
-    req,
-    res
-  ) => {
-
-    try {
-
-
-      let query;
-
-      let values;
-
-
-      if (
-        req.user
-      ) {
-
-        query =
-          `
-          DELETE FROM chats
-          WHERE user_id = ?
-          `;
-
-
-        values = [
-
-          req.user.id
-
-        ];
-
-
-      } else {
-
-        query =
-          `
-          DELETE FROM chats
-          WHERE user_id IS NULL
-          `;
-
-
-        values =
-          [];
-
-      }
-
-
-      db.run(
-
-        query,
-
-        values,
-
-        function (
-          error
+        } catch (
+            error
         ) {
 
-          if (
-            error
-          ) {
-
             console.error(
-              "DELETE CHAT ERROR:",
-              error
+                "CHAT ERROR:",
+                error
             );
 
 
-            return res
-              .status(500)
-              .json({
+            if (
+                error.name ===
+                "AbortError"
+            ) {
+
+                return res
+                    .status(408)
+                    .json({
+
+                        success:
+                            false,
+
+                        error:
+                            "AI-ga wuxuu ka jawaabi waayay 30 ilbiriqsi gudahood."
+
+                    });
+
+            }
+
+
+            res.status(500).json({
 
                 success:
-                  false,
+                    false,
 
                 error:
-                  "Chats lama tirtiri karin."
+                    "Server-ka ayaa khalad la kulmay.",
 
-              });
+                details:
+                    error.message
 
-          }
+            });
 
 
-          return res.json({
+        } finally {
 
-            success:
-              true,
+            if (
+                timeoutId
+            ) {
 
-            message:
-              "Chat history waa la tirtiray."
+                clearTimeout(
+                    timeoutId
+                );
 
-          });
+            }
 
         }
 
-      );
+    }
+);
 
 
-    } catch (
-      error
-    ) {
+// ========================================
+// HOME
+// ========================================
 
-      console.error(
-        "DELETE CHAT ERROR:",
-        error
-      );
+app.get(
+    "*",
 
+    (req, res) => {
 
-      return res
-        .status(500)
-        .json({
+        res.sendFile(
 
-          success:
-            false,
+            path.join(
+                __dirname,
+                "public",
+                "index.html"
+            )
 
-          error:
-            "Server-ka ayaa khalad la kulmay."
-
-        });
+        );
 
     }
-
-  }
-
 );
 
 
-// ==========================================
-// HEALTH CHECK
-// GET /api/health
-// ==========================================
-
-app.get(
-
-  "/api/health",
-
-  (
-    req,
-    res
-  ) => {
-
-    return res.json({
-
-      success:
-        true,
-
-      status:
-        "ok",
-
-      service:
-        "AI Chat Somali",
-
-      imageChat:
-        true,
-
-      time:
-        new Date()
-          .toISOString()
-
-    });
-
-  }
-
-);
-
-
-// ==========================================
-// HOME PAGE
-// ==========================================
-
-app.get(
-
-  "/",
-
-  (
-    req,
-    res
-  ) => {
-
-    return res.sendFile(
-
-      path.join(
-
-        __dirname,
-
-        "public",
-
-        "index.html"
-
-      )
-
-    );
-
-  }
-
-);
-
-
-// ==========================================
-// 404
-// ==========================================
-
-app.use(
-
-  (
-    req,
-    res
-  ) => {
-
-    return res
-      .status(404)
-      .json({
-
-        success:
-          false,
-
-        error:
-          "Endpoint lama helin."
-
-      });
-
-  }
-
-);
-
-
-// ==========================================
+// ========================================
 // SERVER START
-// ==========================================
+// ========================================
 
 app.listen(
 
-  PORT,
+    PORT,
 
-  "0.0.0.0",
+    "0.0.0.0",
 
-  () => {
+    () => {
 
-    console.log(
-      ""
-    );
+        console.log("");
+        console.log(
+            "================================"
+        );
 
-    console.log(
-      "========================================"
-    );
+        console.log(
+            "🤖 AI CHAT SOMALI"
+        );
 
-    console.log(
-      "🤖 AI CHAT SOMALI SERVER STARTED"
-    );
+        console.log(
+            "🗄️ SQLite Database Connected"
+        );
 
-    console.log(
-      "========================================"
-    );
+        console.log(
+            🚀 Server: http://localhost:${PORT}
+        );
 
-    console.log(
-      `🚀 http://localhost:${PORT}`
-    );
+        console.log(
+            🤖 Model: ${OPENROUTER_MODEL}
+        );
 
-    console.log(
-      `📡 Port: ${PORT}`
-    );
+        console.log(
+            "📷 Image Chat: Enabled"
+        );
 
-    console.log(
-      "💬 Text Chat: Enabled"
-    );
+        console.log(
+            "🔎 Database Search: Enabled"
+        );
 
-    console.log(
-      "🖼️ Image Chat: Enabled"
-    );
+        console.log(
+            "❤️ Health: /api/health"
+        );
 
-    console.log(
-      "💾 SQLite: Enabled"
-    );
+        console.log(
+            "================================"
+        );
+        console.log("");
 
-    console.log(
-      "🔐 JWT: Enabled"
-    );
-
-    console.log(
-      `🤖 Model: ${OPENROUTER_MODEL}`
-    );
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      ""
-    );
-
-  }
+    }
 
 );
