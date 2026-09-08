@@ -1146,6 +1146,15 @@ app.use(
    START SERVER
 ===================================================== */
 
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "ok",
+    message: "Server-ka AI Chat Somali wuu shaqaynayaa",
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.listen(
   PORT,
 
@@ -1179,7 +1188,7 @@ app.listen(
 
     console.log(
       "❤️ HEALTH:",
-      /api/health
+      "http://localhost:" + PORT + "/api/health"
     );
 
     console.log(
