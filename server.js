@@ -662,600 +662,304 @@ app.delete(
 // ========================================
 // 💬 POST /chat
 // ========================================
+app.post("/chat", async (req, res) => {
+  try {
+    const {
+      message = "",
+      image = null
+    } = req.body;
 
-app.post(
-    "/chat",
+    // -----------------------------
+    // Hubinta API KEY
+    // -----------------------------
 
-    async (req, res) => {
+    if (!process.env.OPENROUTER_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: "OPENROUTER_API_KEY lama helin."
+      });
+    }
 
-        let timeoutId;
+    // -----------------------------
+    // Hubinta message ama image
+    // -----------------------------
 
+    if (!message.trim() && !image) {
+      return res.status(400).json({
+        success: false,
+        error: "Fadlan geli su'aal ama sawir."
+      });
+    }
 
-        try {
+    // -----------------------------
+    // MODEL
+    // -----------------------------
 
-            const {
+    const selectedModel = image
+      ? process.env.VISION_MODEL
+      : process.env.AI_MODEL;
 
-                message,
+    console.log("=================================");
+    console.log("CHAT REQUEST");
+    console.log("MESSAGE:", message);
+    console.log("HAS IMAGE:", !!image);
+    console.log("MODEL:", selectedModel);
+    console.log("=================================");
 
-                image,
+    if (!selectedModel || !selectedModel.trim()) {
+      return res.status(500).json({
+        success: false,
+        error: image
+          ? "VISION_MODEL lama helin."
+          : "AI_MODEL lama helin."
+      });
+    }
 
-                history
+    // -----------------------------
+    // MESSAGES
+    // -----------------------------
 
-            } = req.body;
+    let messages;
 
+    // Haddii sawir jiro
+    if (image) {
 
-            const cleanMessage =
-
-                typeof message === "string"
-
-                    ? message.trim()
-
-                    : "";
-
-
-            // --------------------------------
-            // INPUT CHECK
-            // --------------------------------
-
-            if (
-                !cleanMessage &&
-                !image
-            ) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    error:
-                        "Fadlan qor su'aal ama geli sawir."
-
-                });
-
-            }
-
-
-            // --------------------------------
-            // API KEY CHECK
-            // --------------------------------
-
-            if (
-                !OPENROUTER_API_KEY
-            ) {
-
-                return res.status(500).json({
-
-                    success: false,
-
-                    error:
-                        "OPENROUTER_API_KEY lama helin."
-
-                });
-
-            }
-
-
-            // --------------------------------
-            // IMAGE CHECK
-            // --------------------------------
-
-            const imageCheck =
-                validateImage(
-                    image
-                );
-
-
-            if (
-                !imageCheck.valid
-            ) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    error:
-                        imageCheck.message
-
-                });
-
-            }
-
-
-            // --------------------------------
-            // 🔎 SEARCH DATABASE
-            // --------------------------------
-
-            const databaseData =
-                await searchDatabase(
-                    cleanMessage
-                );
-
-
-            // --------------------------------
-            // SYSTEM MESSAGE
-            // --------------------------------
-
-            let systemPrompt = `
+      messages = [
+        {
+          role: "system",
+          content: `
 Waxaad tahay AI Chat Somali.
 
-Ku jawaab Af-Soomaali oo cad.
+Ku jawaab Af-Soomaali.
 
-Waxaad leedahay awood aad ku isticmaasho
-macluumaad laga helay Database-ka.
+Haddii sawir lagu soo diro:
+- Sawirka si taxaddar leh u eeg.
+- Sharax waxa ka muuqda.
+- Ka jawaab su'aasha isticmaaleha.
+- Haddii su'aal jirto, su'aasha mudnaanta sii.
+- Ha sheegin wax aan sawirka ka muuqan adigoo hubin.
+`
+        },
 
-Haddii DATABASE DATA laguu soo diro:
-- Isticmaal xogtaas.
-- Ha samayn xog aan Database-ka ku jirin.
-- Sharax xogta si fudud.
-- Haddii xog la waayo, sheeg inaan la helin.
+        {
+          role: "user",
 
-Haddii sawir laguu soo diro:
-- Sharax waxa sawirka ka muuqda.
-- Ka jawaab su'aasha isticmaalaha.
-            `.trim();
+          content: [
+            {
+              type: "text",
 
+              text:
+                message.trim() ||
+                "Fadlan sawirkan ii sharax Af-Soomaali."
+            },
 
-            if (
-                databaseData
-            ) {
+            {
+              type: "image_url",
 
-                systemPrompt += `
-
-DATABASE DATA:
-${JSON.stringify(
-    databaseData,
-    null,
-    2
-)}
-`;
-
+              image_url: {
+                url: image
+              }
             }
-
-
-            // --------------------------------
-            // BUILD MESSAGES
-            // --------------------------------
-
-            const messages = [
-
-                {
-
-                    role:
-                        "system",
-
-                    content:
-                        systemPrompt
-
-                }
-
-            ];
-
-
-            // --------------------------------
-            // HISTORY
-            // --------------------------------
-
-            if (
-                Array.isArray(
-                    history
-                )
-            ) {
-
-                history
-                    .slice(-6)
-                    .forEach(
-                        item => {
-
-                            if (
-                                item.role &&
-                                item.content
-                            ) {
-
-                                messages.push({
-
-                                    role:
-                                        item.role,
-
-                                    content:
-                                        item.content
-
-                                });
-
-                            }
-
-                        }
-                    );
-
-            }
-
-
-            // --------------------------------
-            // USER CONTENT
-            // --------------------------------
-
-            let userContent;
-
-
-            if (
-                image
-            ) {
-
-                userContent = [
-
-                    {
-
-                        type:
-                            "text",
-
-                        text:
-
-                            cleanMessage ||
-
-                            "Sawirkan ii sharax Af-Soomaali."
-
-                    },
-
-                    {
-
-                        type:
-                            "image_url",
-
-                        image_url: {
-
-                            url:
-                                image
-
-                        }
-
-                    }
-
-                ];
-
-            } else {
-
-                userContent =
-                    cleanMessage;
-
-            }
-
-
-            messages.push({
-
-                role:
-                    "user",
-
-                content:
-                    userContent
-
-            });
-
-
-            // --------------------------------
-            // ⏳ 30 SECOND TIMEOUT
-            // --------------------------------
-
-            const controller =
-                new AbortController();
-
-
-            timeoutId =
-                setTimeout(
-
-                    () => {
-
-                        controller.abort();
-
-                    },
-
-                    REQUEST_TIMEOUT
-
-                );
-
-
-            // --------------------------------
-            // 🤖 OPENROUTER REQUEST
-            // --------------------------------
-
-            const selectedModel = image
-              ? process.env.VISION_MODEL
-              : process.env.AI_MODEL;
-
-            console.log("IMAGE:", !!image);
-            console.log("OPENROUTER MODEL:", selectedModel);
-
-            if (!selectedModel || selectedModel.trim() === "") {
-              return res.status(500).json({
-                error: "AI_MODEL ama VISION_MODEL lama helin."
-              });
-            }
-
-            if (!process.env.OPENROUTER_API_KEY) {
-              return res.status(500).json({
-                error: "OPENROUTER_API_KEY lama helin."
-              });
-            }
-
-            try {
-
-              const response = await fetch(
-                "https://openrouter.ai/api/v1/chat/completions",
-                {
-                  method: "POST",
-
-                  headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                    "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
-                    "X-Title": "AI Chat Somali"
-                  },
-
-                  signal: controller.signal,
-
-                  body: JSON.stringify({
-                    model: selectedModel.trim(),
-                    messages: messages,
-                    max_tokens: 500,
-                    temperature: 0.7
-                  })
-                }
-              );
-
-  clearTimeout(timeoutId);
-
-  const data = await response.json();
-
-  console.log(
-    "OPENROUTER STATUS:",
-    response.status
-  );
-
-  console.log(
-    "OPENROUTER RESPONSE:",
-    JSON.stringify(data, null, 2)
-  );
-
-  if (!response.ok) {
-
-    console.error(
-      "OPENROUTER ERROR:",
-      response.status,
-      JSON.stringify(data)
-    );
-
-    return res.status(response.status).json({
-      error:
-        data?.error?.message ||
-        "OpenRouter qalad ayaa dhacay."
-    });
-  }
-
-  const reply =
-    data?.choices?.[0]?.message?.content;
-
-  if (!reply) {
-
-    console.error(
-      "JAWIIB LAMA HELIN:",
-      JSON.stringify(data)
-    );
-
-    return res.status(500).json({
-      error: "AI jawaab ma soo celin."
-    });
-  }
-
-  return res.json({
-    reply: reply
-  });
-
-} catch (error) {
-
-  clearTimeout(timeoutId);
-
-  console.error(
-    "CHAT ERROR:",
-    error
-  );
-
-  if (error.name === "AbortError") {
-    return res.status(504).json({
-      error: "Codsiga AI-ga waqtigiisu wuu dhammaaday."
-    });
-  }
-
-  return res.status(500).json({
-    error:
-      error.message ||
-      "Server qalad ayaa dhacay."
-  });
-}
-            // --------------------------------
-            // OPENROUTER ERROR
-            // --------------------------------
-
-            if (
-                !response.ok
-            ) {
-
-                const errorText =
-                    await response.text();
-
-
-                console.error(
-
-                    "OPENROUTER ERROR:",
-                    response.status,
-
-                    errorText
-
-                );
-
-
-                return res
-                    .status(
-                        response.status
-                    )
-                    .json({
-
-                        success:
-                            false,
-
-                        error:
-                            "AI server-ka ayaa khalad soo celiyay."
-
-                    });
-
-            }
-
-
-            // --------------------------------
-            // AI RESPONSE
-            // --------------------------------
-
-            const data =
-                await response.json();
-
-
-            const reply =
-
-                data
-                    ?.choices?.[0]
-                    ?.message
-                    ?.content;
-
-
-            if (
-                !reply
-            ) {
-
-                return res
-                    .status(500)
-                    .json({
-
-                        success:
-                            false,
-
-                        error:
-                            "AI jawaab ma soo celin."
-
-                    });
-
-            }
-
-
-            // --------------------------------
-            // SAVE CHAT DATABASE
-            // --------------------------------
-
-            const savedChat =
-                await dbRun(
-
-                    `
-                    INSERT INTO chats
-                    (
-                        message,
-                        image,
-                        reply
-                    )
-
-                    VALUES (?, ?, ?)
-                    `,
-
-                    [
-
-                        cleanMessage ||
-                            "📷 Sawir",
-
-                        image ||
-                            null,
-
-                        reply
-
-                    ]
-
-                );
-
-
-            // --------------------------------
-            // SUCCESS
-            // --------------------------------
-
-            res.json({
-
-                success:
-                    true,
-
-                reply:
-                    reply,
-
-                chatId:
-                    savedChat.id,
-
-                databaseUsed:
-                    !!databaseData
-
-            });
-
-
-        } catch (
-            error
-        ) {
-
-            console.error(
-                "CHAT ERROR:",
-                error
-            );
-
-
-            if (
-                error.name ===
-                "AbortError"
-            ) {
-
-                return res
-                    .status(408)
-                    .json({
-
-                        success:
-                            false,
-
-                        error:
-                            "AI-ga wuxuu ka jawaabi waayay 30 ilbiriqsi gudahood."
-
-                    });
-
-            }
-
-
-            res.status(500).json({
-
-                success:
-                    false,
-
-                error:
-                    "Server-ka ayaa khalad la kulmay.",
-
-                details:
-                    error.message
-
-            });
-
-
-        } finally {
-
-            if (
-                timeoutId
-            ) {
-
-                clearTimeout(
-                    timeoutId
-                );
-
-            }
-
+          ]
         }
+      ];
 
     }
-);
+
+    // Haddii qoraal keliya jiro
+    else {
+
+      messages = [
+        {
+          role: "system",
+
+          content: `
+Waxaad tahay AI Chat Somali.
+
+Ku jawaab Af-Soomaali si cad, dabiici ah, oo waxtar leh.
+
+Haddii isticmaaluhu ku qoro Ingiriisi ama luqad kale,
+waad fahmi kartaa laakiin jawaabta ugu weyn ku bixi Af-Soomaali,
+haddii aanu si gaar ah u codsan luqad kale.
+`
+        },
+
+        {
+          role: "user",
+
+          content: message.trim()
+        }
+      ];
+
+    }
+
+    // -----------------------------
+    // TIMEOUT
+    // -----------------------------
+
+    const controller =
+      new AbortController();
+
+    const timeoutId =
+      setTimeout(() => {
+        controller.abort();
+      }, 60000);
+
+    // -----------------------------
+    // OPENROUTER REQUEST
+    // -----------------------------
+
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          "Authorization":
+            `Bearer ${process.env.OPENROUTER_API_KEY}`,
+
+          "HTTP-Referer":
+            process.env.APP_URL ||
+            "http://localhost:3000",
+
+          "X-Title":
+            "AI Chat Somali"
+        },
+
+        signal: controller.signal,
+
+        body: JSON.stringify({
+          model: selectedModel.trim(),
+
+          messages: messages,
+
+          max_tokens: 700,
+
+          temperature: 0.7
+        })
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    // -----------------------------
+    // RESPONSE
+    // -----------------------------
+
+    const data =
+      await response.json();
+
+    console.log(
+      "OPENROUTER STATUS:",
+      response.status
+    );
+
+    console.log(
+      "OPENROUTER RESPONSE:",
+      JSON.stringify(data, null, 2)
+    );
+
+    // -----------------------------
+    // OPENROUTER ERROR
+    // -----------------------------
+
+    if (!response.ok) {
+
+      const errorMessage =
+        data?.error?.message ||
+        "OpenRouter qalad ayaa dhacay.";
+
+      console.error(
+        "OPENROUTER ERROR:",
+        response.status,
+        errorMessage
+      );
+
+      return res.status(response.status).json({
+        success: false,
+        error: errorMessage
+      });
+    }
+
+    // -----------------------------
+    // AI REPLY
+    // -----------------------------
+
+    const reply =
+      data?.choices?.[0]?.message?.content;
+
+    console.log(
+      "AI REPLY:",
+      reply
+    );
+
+    // -----------------------------
+    // JAWAAB LAMA HELIN
+    // -----------------------------
+
+    if (
+      !reply ||
+      typeof reply !== "string" ||
+      !reply.trim()
+    ) {
+
+      console.error(
+        "AI jawaab madhan:",
+        JSON.stringify(data, null, 2)
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          "AI jawaab sax ah ma soo celin."
+      });
+    }
+
+    // -----------------------------
+    // SUCCESS RESPONSE
+    // -----------------------------
+
+    return res.json({
+      success: true,
+
+      reply:
+        reply.trim()
+    });
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "CHAT SERVER ERROR:",
+      error
+    );
+
+    // Timeout
+    if (
+      error.name === "AbortError"
+    ) {
+
+      return res.status(504).json({
+        success: false,
+
+        error:
+          "Codsiga AI-ga waqtigiisu wuu dhammaaday. Fadlan mar kale isku day."
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+
+      error:
+        error.message ||
+        "Server-ka waxaa ka dhacay qalad."
+    });
+
+  }
+});
 
 
 // ========================================
