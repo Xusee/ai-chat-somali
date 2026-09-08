@@ -437,9 +437,9 @@ async function searchDatabase(
 
                     [
 
-                        %${searchWord}%,
+                        `%${searchWord}%`,
 
-                        %${searchWord}%
+                        `%${searchWord}%`
 
                     ]
 
@@ -979,10 +979,10 @@ ${JSON.stringify(
                                 "application/json",
 
                             "Authorization":
-                                Bearer ${OPENROUTER_API_KEY},
+                                `Bearer ${OPENROUTER_API_KEY}`,
 
                             "HTTP-Referer":
-                                http://localhost:${PORT},
+                                `http://localhost:${PORT}`,
 
                             "X-Title":
                                 "AI Chat Somali"
@@ -1260,11 +1260,11 @@ app.listen(
         );
 
         console.log(
-            🚀 Server: http://localhost:${PORT}
+            `🚀 Server: http://localhost:${PORT}`
         );
 
         console.log(
-            🤖 Model: ${OPENROUTER_MODEL}
+            `🤖 Model: ${OPENROUTER_MODEL}`
         );
 
         console.log(
@@ -1285,5 +1285,4 @@ app.listen(
         console.log("");
 
     }
-
 );
