@@ -955,57 +955,29 @@ ${JSON.stringify(
             // 🤖 OPENROUTER REQUEST
             // --------------------------------
 
-            const response =
-                await fetch(
+const response = await fetch(
+  "https://openrouter.ai/api/v1/chat/completions",
+  {
+    method: "POST",
 
-                    "https://openrouter.ai/api/v1/chat/completions",
+    headers: {
+      "Content-Type": "application/json",
+    Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+    },
 
-                    {
+    signal: controller.signal,
 
-                        method:
-                            "POST",
+    body: JSON.stringify({
+      model: process.env.AI_MODEL,
 
-                        headers: {
+      messages: messages,
 
-                            "Content-Type":
-                                "application/json",
+      max_tokens: 500,
 
-                            "Authorization":
-                                `Bearer ${OPENROUTER_API_KEY}`,
-
-                            "HTTP-Referer":
-                                `http://localhost:${PORT}`,
-
-                            "X-Title":
-                                "AI Chat Somali"
-
-                        },
-
-                        body:
-
-                            JSON.stringify({
-
-                                model:
-                                    OPENROUTER_MODEL,
-
-                                messages:
-                                    messages,
-
-                                temperature:
-                                    0.7,
-
-                                max_tokens:
-                                    1000
-
-                            }),
-
-                        signal:
-                            controller.signal
-
-                    }
-
-                );
-
+      temperature: 0.7,
+    }),
+  }
+);
 
             clearTimeout(
                 timeoutId
