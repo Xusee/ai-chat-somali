@@ -416,39 +416,30 @@ async function searchDatabase(
             searchWord.length > 1
         ) {
 
-            const rows =
-                await dbAll(
-
-                    `
-                    SELECT
-                        id,
-                        name,
-                        email,
-                        created_at
-
-                    FROM users
-
-                    WHERE name LIKE ?
-
-                    OR email LIKE ?
-
-                    LIMIT 10
-                    `,
-
-[
-    %${searchWord}%,
-    %${searchWord}%
-]
-
-                );
-
-
-            databaseInfo.searchResults =
-                rows;
-
+   const rows = await new Promise((resolve, reject) => {
+    db.all(
+        `
+        SELECT name, email
+        FROM users
+        WHERE name LIKE ?
+        OR email LIKE ?
+        LIMIT 10
+        `,
+        [
+            %${searchWord}%,
+            %${searchWord}%
+        ],
+        (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
         }
+    );
+});
 
-    }
+databaseInfo.searchResults = rows;
 
 
     // ------------------------------------
