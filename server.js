@@ -371,7 +371,7 @@ async function askAI(
           "system",
 
         content: `
-Waxaad tahay AI Chat Somali, caawiye caqli badan.
+Waxaad tahay NASIIB BUSINESS CENTER, caawiye caqli badan.
 
 Xeerarka muhiimka ah:
 
@@ -441,7 +441,7 @@ Xeerarka muhiimka ah:
             "http://localhost:3000",
 
           "X-Title":
-            "AI Chat Somali"
+            "NASIIB BUSINESS CENTER"
 
         },
 
@@ -843,7 +843,7 @@ app.get(
         "healthy",
 
       message:
-        "AI Chat Somali server-ka wuu shaqaynayaa.",
+        "NASIIB BUSINESS CENTER server-ka wuu shaqaynayaa.",
 
       model:
         OPENROUTER_MODEL,
@@ -891,7 +891,7 @@ app.listen(
 
     console.log("");
     console.log("=================================");
-    console.log("🤖 AI CHAT SOMALI");
+    console.log("🤖 NASIIB BUSINESS CENTER");
     console.log("=================================");
     console.log(
       `🌐 Port: ${PORT}`
