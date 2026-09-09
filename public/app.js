@@ -450,47 +450,29 @@ document.addEventListener("DOMContentLoaded", () => {
             // SEND TO SERVER
             // ================================
 
-            const response =
-                await fetch("/chat", {
+const response = await fetch("/chat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    message: userMessage
+  })
+});
 
-                    method: "POST",
+const data = await response.json();
 
-                    headers: {
+if (!response.ok) {
+  throw new Error(data.error || "Server-ka ayaa qalad sameeyay");
+}
 
-                        "Content-Type":
-                            "application/json"
+const aiReply = data.reply || data.response || data.message;
 
-                    },
+if (!aiReply) {
+  throw new Error("AI jawaab madhan ayuu soo celiyay");
+}
 
-                    body: JSON.stringify({
-
-                        message: message,
-
-                        image: imageToSend
-
-                    })
-
-                });
-
-
-            // Remove loading
-            loadingDiv.remove();
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                throw new Error(
-
-                    data.error ||
-                    "Server-ka ayaa khalad bixiyey."
-
-                );
-
-            }
+addMessage(aiReply, "assistant");
 
 
             // AI RESPONSE
