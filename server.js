@@ -19,7 +19,7 @@ const OPENROUTER_API_KEY =
 
 const OPENROUTER_MODEL =
   process.env.OPENROUTER_MODEL ||
-  "google/gemma-3-12b-it:free";
+  "openrouter/free";
 
 const MAX_IMAGE_SIZE =
   5 * 1024 * 1024; // 5MB
