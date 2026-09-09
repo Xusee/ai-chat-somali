@@ -1205,7 +1205,7 @@ async function checkServerHealth() {
         ) {
 
             serverStatus.textContent =
-                "🟢 Server-ka waa shaqaynayaa";
+                "🟢 Server-ka waxa ku fadhiya c/lahi xuseen";
 
         } else {
 
