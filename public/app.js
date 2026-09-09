@@ -784,7 +784,7 @@ function showTyping() {
     wrapper.innerHTML =
         `
         <div class="message-content">
-            🤖 AI Chat Somali ayaa qoraya...
+            🤖waanu kaaga jawaabaynaa ...
         </div>
         `;
 
