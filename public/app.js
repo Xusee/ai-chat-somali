@@ -2,61 +2,32 @@
    AI CHAT SOMALI - APP.JS
 ========================================= */
 
-
 const API_URL = "/chat";
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 
 /* =========================================
    GET HTML ELEMENTS
 ========================================= */
 
-const messageInput = document.getElementById("messageInput");
-const sendButton = document.getElementById("sendButton");
+const messageInput =
+  document.getElementById("messageInput");
 
-async function sendMessage() {
-  const message = messageInput.value.trim();
+const sendButton =
+  document.getElementById("sendButton");
 
-  if (!message) return;
+const imageInput =
+  document.getElementById("imageInput");
 
-  sendButton.disabled = true;
+const imagePreview =
+  document.getElementById("imagePreview");
 
-  try {
-    const response = await fetch("/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: message
-      })
-    });
+const chatContainer =
+  document.getElementById("chatContainer");
 
-    const data = await response.json();
+const clearChatsButton =
+  document.getElementById("clearChatsButton");
 
-    if (!response.ok) {
-      throw new Error(data.error || "Server error");
-    }
-
-    console.log("AI:", data);
-
-    messageInput.value = "";
-
-  } catch (error) {
-    console.error(error);
-    alert("Dirista fariinta way fashilantay: " + error.message);
-  } finally {
-    sendButton.disabled = false;
-  }
-}
-
-sendButton.addEventListener("click", sendMessage);
-
-messageInput.addEventListener("keydown", function (event) {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    sendMessage();
-  }
-});
 
 /* =========================================
    VARIABLES
@@ -65,9 +36,6 @@ messageInput.addEventListener("keydown", function (event) {
 let selectedImage = null;
 
 let isSending = false;
-
-const MAX_IMAGE_SIZE =
-  5 * 1024 * 1024;
 
 
 /* =========================================
@@ -78,71 +46,49 @@ if (imageInput) {
 
   imageInput.addEventListener(
     "change",
-
     async function (event) {
 
-      const file =
-        event.target.files[0];
-
+      const file = event.target.files[0];
 
       if (!file) {
-
         return;
-
       }
 
 
-      /* CHECK IMAGE */
+      /* CHECK IMAGE TYPE */
 
-      if (
-        !file.type.startsWith(
-          "image/"
-        )
-      ) {
+      if (!file.type.startsWith("image/")) {
 
         showError(
           "Fadlan dooro sawir sax ah."
         );
 
-        imageInput.value =
-          "";
+        imageInput.value = "";
 
         return;
-
       }
 
 
-      /* CHECK SIZE */
+      /* CHECK IMAGE SIZE */
 
-      if (
-        file.size >
-        MAX_IMAGE_SIZE
-      ) {
+      if (file.size > MAX_IMAGE_SIZE) {
 
         showError(
           "Sawirka aad ayuu u weyn yahay. Ugu badnaan waa 5MB."
         );
 
-        imageInput.value =
-          "";
+        imageInput.value = "";
 
         return;
-
       }
 
 
       try {
 
         selectedImage =
-          await convertImageToBase64(
-            file
-          );
+          await convertImageToBase64(file);
 
-
-        showImagePreview(
-          selectedImage
-        );
-
+        showImagePreview(selectedImage);
 
       } catch (error) {
 
@@ -151,15 +97,12 @@ if (imageInput) {
           error
         );
 
-
         showError(
           "Sawirka lama akhrin karin."
         );
-
       }
 
     }
-
   );
 
 }
@@ -169,16 +112,10 @@ if (imageInput) {
    CONVERT IMAGE TO BASE64
 ========================================= */
 
-function convertImageToBase64(
-  file
-) {
+function convertImageToBase64(file) {
 
   return new Promise(
-
-    (
-      resolve,
-      reject
-    ) => {
+    (resolve, reject) => {
 
       const reader =
         new FileReader();
@@ -187,9 +124,7 @@ function convertImageToBase64(
       reader.onload =
         function () {
 
-          resolve(
-            reader.result
-          );
+          resolve(reader.result);
 
         };
 
@@ -199,19 +134,16 @@ function convertImageToBase64(
 
           reject(
             new Error(
-              "Image conversion failed"
+              "Sawirka lama beddeli karin."
             )
           );
 
         };
 
 
-      reader.readAsDataURL(
-        file
-      );
+      reader.readAsDataURL(file);
 
     }
-
   );
 
 }
@@ -221,19 +153,14 @@ function convertImageToBase64(
    SHOW IMAGE PREVIEW
 ========================================= */
 
-function showImagePreview(
-  image
-) {
+function showImagePreview(image) {
 
   if (!imagePreview) {
-
     return;
-
   }
 
 
-  imagePreview.innerHTML =
-    `
+  imagePreview.innerHTML = `
     <div class="image-preview-box">
 
       <img
@@ -251,7 +178,7 @@ function showImagePreview(
       </button>
 
     </div>
-    `;
+  `;
 
 
   const removeButton =
@@ -263,11 +190,8 @@ function showImagePreview(
   if (removeButton) {
 
     removeButton.addEventListener(
-
       "click",
-
       removeSelectedImage
-
     );
 
   }
@@ -281,22 +205,19 @@ function showImagePreview(
 
 function removeSelectedImage() {
 
-  selectedImage =
-    null;
+  selectedImage = null;
 
 
   if (imageInput) {
 
-    imageInput.value =
-      "";
+    imageInput.value = "";
 
   }
 
 
   if (imagePreview) {
 
-    imagePreview.innerHTML =
-      "";
+    imagePreview.innerHTML = "";
 
   }
 
@@ -309,10 +230,10 @@ function removeSelectedImage() {
 
 async function sendMessage() {
 
+  /* PREVENT DOUBLE SEND */
+
   if (isSending) {
-
     return;
-
   }
 
 
@@ -322,32 +243,25 @@ async function sendMessage() {
       : "";
 
 
-  /* EMPTY */
+  /* EMPTY MESSAGE */
 
-  if (
-    !message &&
-    !selectedImage
-  ) {
+  if (!message && !selectedImage) {
 
     showError(
       "Fadlan qor su'aal ama soo geli sawir."
     );
 
     return;
-
   }
 
 
-  isSending =
-    true;
+  isSending = true;
 
 
-  updateSendButton(
-    true
-  );
+  updateSendButton(true);
 
 
-  /* SAVE IMAGE */
+  /* SAVE IMAGE BEFORE CLEARING */
 
   const currentImage =
     selectedImage;
@@ -361,12 +275,11 @@ async function sendMessage() {
   );
 
 
-  /* CLEAR INPUT */
+  /* CLEAR MESSAGE */
 
   if (messageInput) {
 
-    messageInput.value =
-      "";
+    messageInput.value = "";
 
   }
 
@@ -380,67 +293,47 @@ async function sendMessage() {
     showTyping();
 
 
+  let timeout;
+
+
   try {
 
     const controller =
       new AbortController();
 
 
-    const timeout =
-      setTimeout(
+    /* 30 SECOND TIMEOUT */
 
-        () => {
+    timeout = setTimeout(
+      () => controller.abort(),
+      30000
+    );
 
-          controller.abort();
-
-        },
-
-        30000
-
-      );
-
-
-    /* FETCH */
 
     const response =
       await fetch(
-
         API_URL,
-
         {
-
-          method:
-            "POST",
+          method: "POST",
 
           headers: {
-
             "Content-Type":
               "application/json"
-
           },
 
           body:
             JSON.stringify({
-
-              message:
-                message,
-
-              image:
-                currentImage
-
+              message: message,
+              image: currentImage
             }),
 
           signal:
             controller.signal
-
         }
-
       );
 
 
-    clearTimeout(
-      timeout
-    );
+    clearTimeout(timeout);
 
 
     let data;
@@ -451,18 +344,16 @@ async function sendMessage() {
       data =
         await response.json();
 
-    } catch (error) {
+    } catch {
 
       throw new Error(
-        "Server-ka jawaab sax ah ma soo celin."
+        "Server-ka jawaab JSON sax ah ma soo celin."
       );
 
     }
 
 
-    removeTyping(
-      typingId
-    );
+    removeTyping(typingId);
 
 
     /* SERVER ERROR */
@@ -470,39 +361,29 @@ async function sendMessage() {
     if (!response.ok) {
 
       throw new Error(
-
         data?.error ||
-
         "Server-ka ayaa khalad soo celiyay."
-
       );
 
     }
 
 
-    /* GET AI ANSWER */
+    /* GET ANSWER */
 
     const answer =
       data?.answer;
 
 
-    /* EMPTY AI FALLBACK */
+    /* EMPTY AI RESPONSE */
 
     if (
-
       !answer ||
-
-      typeof answer !==
-      "string" ||
-
+      typeof answer !== "string" ||
       answer.trim().length === 0
-
     ) {
 
       addAIMessage(
-
-        "Waan ka xumahay, AI-gu jawaab madhan ayuu soo celiyay. Fadlan isku day mar kale."
-
+        "Waan ka xumahay, AI-gu jawaab madhan ayuu soo celiyay. Fadlan mar kale isku day."
       );
 
     } else {
@@ -516,9 +397,10 @@ async function sendMessage() {
 
   } catch (error) {
 
-    removeTyping(
-      typingId
-    );
+    clearTimeout(timeout);
+
+
+    removeTyping(typingId);
 
 
     console.error(
@@ -528,28 +410,21 @@ async function sendMessage() {
 
 
     if (
-      error.name ===
-      "AbortError"
+      error.name === "AbortError"
     ) {
 
       addErrorMessage(
-
         "⏳ AI-gu kama jawaabin 30 ilbiriqsi gudahood. Fadlan isku day mar kale."
-
       );
 
     } else {
 
       addErrorMessage(
-
         "❌ " +
-
         (
           error.message ||
-
           "Wax khalad ah ayaa dhacay."
         )
-
       );
 
     }
@@ -557,13 +432,9 @@ async function sendMessage() {
 
   } finally {
 
-    isSending =
-      false;
+    isSending = false;
 
-
-    updateSendButton(
-      false
-    );
+    updateSendButton(false);
 
   }
 
@@ -580,59 +451,53 @@ function addUserMessage(
 ) {
 
   if (!chatContainer) {
-
     return;
-
   }
 
 
   const wrapper =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
 
   wrapper.className =
     "message user-message";
 
 
-  let html =
-    "";
+  let html = "";
 
+
+  /* IMAGE */
 
   if (image) {
 
-    html +=
-      `
+    html += `
       <img
         src="${image}"
         class="chat-image"
         alt="Sawirka isticmaalaha"
       >
-      `;
+    `;
 
   }
 
+
+  /* MESSAGE */
 
   if (message) {
 
-    html +=
-      `
+    html += `
       <div class="message-text">
         ${escapeHTML(message)}
       </div>
-      `;
+    `;
 
   }
 
 
-  wrapper.innerHTML =
-    html;
+  wrapper.innerHTML = html;
 
 
-  chatContainer.appendChild(
-    wrapper
-  );
+  chatContainer.appendChild(wrapper);
 
 
   scrollToBottom();
@@ -644,29 +509,29 @@ function addUserMessage(
    AI MESSAGE
 ========================================= */
 
-function addAIMessage(
-  message
-) {
+function addAIMessage(message) {
 
   if (!chatContainer) {
 
-    return;
+    console.log(
+      "AI:",
+      message
+    );
 
+    return;
   }
 
 
   const wrapper =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
 
   wrapper.className =
     "message ai-message";
 
 
-  wrapper.innerHTML =
-    `
+  wrapper.innerHTML = `
+
     <div class="ai-header">
       🤖 AI Chat Somali
     </div>
@@ -674,12 +539,11 @@ function addAIMessage(
     <div class="message-text">
       ${formatText(message)}
     </div>
-    `;
+
+  `;
 
 
-  chatContainer.appendChild(
-    wrapper
-  );
+  chatContainer.appendChild(wrapper);
 
 
   scrollToBottom();
@@ -691,23 +555,18 @@ function addAIMessage(
    ERROR MESSAGE
 ========================================= */
 
-function addErrorMessage(
-  message
-) {
+function addErrorMessage(message) {
 
   if (!chatContainer) {
 
     alert(message);
 
     return;
-
   }
 
 
   const wrapper =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
 
   wrapper.className =
@@ -718,9 +577,7 @@ function addErrorMessage(
     message;
 
 
-  chatContainer.appendChild(
-    wrapper
-  );
+  chatContainer.appendChild(wrapper);
 
 
   scrollToBottom();
@@ -732,9 +589,7 @@ function addErrorMessage(
    SHOW ERROR
 ========================================= */
 
-function showError(
-  message
-) {
+function showError(message) {
 
   addErrorMessage(
     "❌ " + message
@@ -750,50 +605,41 @@ function showError(
 function showTyping() {
 
   if (!chatContainer) {
-
     return null;
-
   }
 
 
   const id =
-    "typing-" +
-    Date.now();
+    "typing-" + Date.now();
 
 
   const typing =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
 
-  typing.id =
-    id;
+  typing.id = id;
 
 
   typing.className =
     "message ai-message typing-message";
 
 
-  typing.innerHTML =
-    `
-    <div>
+  typing.innerHTML = `
+
+    <div class="ai-header">
       🤖 AI Chat Somali
     </div>
 
     <div class="typing-dots">
-
       <span>●</span>
       <span>●</span>
       <span>●</span>
-
     </div>
-    `;
+
+  `;
 
 
-  chatContainer.appendChild(
-    typing
-  );
+  chatContainer.appendChild(typing);
 
 
   scrollToBottom();
@@ -808,21 +654,15 @@ function showTyping() {
    REMOVE TYPING
 ========================================= */
 
-function removeTyping(
-  id
-) {
+function removeTyping(id) {
 
   if (!id) {
-
     return;
-
   }
 
 
   const typing =
-    document.getElementById(
-      id
-    );
+    document.getElementById(id);
 
 
   if (typing) {
@@ -838,14 +678,10 @@ function removeTyping(
    SEND BUTTON STATE
 ========================================= */
 
-function updateSendButton(
-  loading
-) {
+function updateSendButton(loading) {
 
   if (!sendButton) {
-
     return;
-
   }
 
 
@@ -855,49 +691,15 @@ function updateSendButton(
 
   if (loading) {
 
-    sendButton.textContent =
+    sendButton.innerHTML =
       "⏳ Sug...";
 
   } else {
 
-    sendButton.textContent =
+    sendButton.innerHTML =
       "➤ Dir";
 
   }
-
-}
-
-
-/* =========================================
-   ENTER TO SEND
-========================================= */
-
-if (messageInput) {
-
-  messageInput.addEventListener(
-
-    "keydown",
-
-    function (event) {
-
-      if (
-
-        event.key ===
-        "Enter" &&
-
-        !event.shiftKey
-
-      ) {
-
-        event.preventDefault();
-
-        sendMessage();
-
-      }
-
-    }
-
-  );
 
 }
 
@@ -909,11 +711,35 @@ if (messageInput) {
 if (sendButton) {
 
   sendButton.addEventListener(
-
     "click",
-
     sendMessage
+  );
 
+}
+
+
+/* =========================================
+   ENTER TO SEND
+========================================= */
+
+if (messageInput) {
+
+  messageInput.addEventListener(
+    "keydown",
+    function (event) {
+
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
+
+        event.preventDefault();
+
+        sendMessage();
+
+      }
+
+    }
   );
 
 }
@@ -928,9 +754,7 @@ async function loadChats() {
   try {
 
     const response =
-      await fetch(
-        "/api/chats"
-      );
+      await fetch("/api/chats");
 
 
     const data =
@@ -938,15 +762,9 @@ async function loadChats() {
 
 
     if (
-
       !response.ok ||
-
       !data.success ||
-
-      !Array.isArray(
-        data.chats
-      )
-
+      !Array.isArray(data.chats)
     ) {
 
       return;
@@ -954,37 +772,27 @@ async function loadChats() {
     }
 
 
-    /* REVERSE BECAUSE SERVER RETURNS NEWEST FIRST */
-
     const chats =
-      [...data.chats]
-        .reverse();
+      [...data.chats].reverse();
 
 
-    chats.forEach(
+    chats.forEach(chat => {
 
-      chat => {
+      addUserMessage(
+        chat.message || "",
+        chat.image || null
+      );
 
-        addUserMessage(
 
-          chat.message,
+      if (chat.answer) {
 
-          chat.image
-
+        addAIMessage(
+          chat.answer
         );
-
-
-        if (chat.answer) {
-
-          addAIMessage(
-            chat.answer
-          );
-
-        }
 
       }
 
-    );
+    });
 
 
   } catch (error) {
@@ -1006,25 +814,17 @@ async function loadChats() {
 if (clearChatsButton) {
 
   clearChatsButton.addEventListener(
-
     "click",
-
     async function () {
 
       try {
 
         const response =
           await fetch(
-
             "/api/chats",
-
             {
-
-              method:
-                "DELETE"
-
+              method: "DELETE"
             }
-
           );
 
 
@@ -1035,11 +835,8 @@ if (clearChatsButton) {
         if (!response.ok) {
 
           throw new Error(
-
             data?.error ||
-
             "Chat history lama tirtiri karin."
-
           );
 
         }
@@ -1054,26 +851,19 @@ if (clearChatsButton) {
 
 
         addAIMessage(
-
           "Chat history waa la tirtiray. Sideen kuu caawin karaa?"
-
         );
 
 
       } catch (error) {
 
         addErrorMessage(
-
-          "❌ " +
-
-          error.message
-
+          "❌ " + error.message
         );
 
       }
 
     }
-
   );
 
 }
@@ -1083,19 +873,13 @@ if (clearChatsButton) {
    FORMAT TEXT
 ========================================= */
 
-function formatText(
-  text
-) {
+function formatText(text) {
 
-  return escapeHTML(
-    text
-  ).replace(
-
-    /\n/g,
-
-    "<br>"
-
-  );
+  return escapeHTML(text)
+    .replace(
+      /\n/g,
+      "<br>"
+    );
 
 }
 
@@ -1104,18 +888,14 @@ function formatText(
    ESCAPE HTML
 ========================================= */
 
-function escapeHTML(
-  text
-) {
+function escapeHTML(text) {
 
   const div =
-    document.createElement(
-      "div"
-    );
+    document.createElement("div");
 
 
   div.textContent =
-    text;
+    String(text || "");
 
 
   return div.innerHTML;
@@ -1130,20 +910,16 @@ function escapeHTML(
 function scrollToBottom() {
 
   if (!chatContainer) {
-
     return;
-
   }
 
 
   chatContainer.scrollTo({
-
     top:
       chatContainer.scrollHeight,
 
     behavior:
       "smooth"
-
   });
 
 }
@@ -1154,13 +930,10 @@ function scrollToBottom() {
 ========================================= */
 
 document.addEventListener(
-
   "DOMContentLoaded",
-
   function () {
 
     loadChats();
 
   }
-
 );
