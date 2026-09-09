@@ -10,36 +10,53 @@ const API_URL = "/chat";
    GET HTML ELEMENTS
 ========================================= */
 
-const messageInput =
-  document.getElementById(
-    "messageInput"
-  );
+const messageInput = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
 
-const sendButton =
-  document.getElementById(
-    "sendButton"
-  );
+async function sendMessage() {
+  const message = messageInput.value.trim();
 
-const imageInput =
-  document.getElementById(
-    "imageInput"
-  );
+  if (!message) return;
 
-const chatContainer =
-  document.getElementById(
-    "chatContainer"
-  );
+  sendButton.disabled = true;
 
-const imagePreview =
-  document.getElementById(
-    "imagePreview"
-  );
+  try {
+    const response = await fetch("/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: message
+      })
+    });
 
-const clearChatsButton =
-  document.getElementById(
-    "clearChats"
-  );
+    const data = await response.json();
 
+    if (!response.ok) {
+      throw new Error(data.error || "Server error");
+    }
+
+    console.log("AI:", data);
+
+    messageInput.value = "";
+
+  } catch (error) {
+    console.error(error);
+    alert("Dirista fariinta way fashilantay: " + error.message);
+  } finally {
+    sendButton.disabled = false;
+  }
+}
+
+sendButton.addEventListener("click", sendMessage);
+
+messageInput.addEventListener("keydown", function (event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
+});
 
 /* =========================================
    VARIABLES
