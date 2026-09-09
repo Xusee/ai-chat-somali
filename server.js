@@ -3,357 +3,400 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const path = require("path");
 const fs = require("fs");
-const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
 
 const app = express();
 
-// ================================
-// CONFIG
-// ================================
+/* =====================================================
+   CONFIG
+===================================================== */
 
 const PORT = process.env.PORT || 3000;
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-// Waa inaad .env ku qortaa model taageera sawirrada.
-// Tusaale:
-// AI_MODEL=google/gemini-2.5-flash
+const OPENROUTER_URL =
+  "https://openrouter.ai/api/v1/chat/completions";
+
 const AI_MODEL =
-  process.env.AI_MODEL ||
-  "google/gemini-2.5-flash";
+  process.env.AI_MODEL || "google/gemini-2.5-flash";
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const REQUEST_TIMEOUT = 30000; // 30 seconds
+const TIMEOUT_MS = 30000;
+
+// 10MB
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
 
-// ================================
-// MIDDLEWARE
-// ================================
+/* =====================================================
+   MIDDLEWARE
+===================================================== */
 
 app.use(cors());
 
 app.use(express.json({
-  limit: "10mb"
+  limit: "15mb"
 }));
 
 app.use(express.urlencoded({
   extended: true,
-  limit: "10mb"
+  limit: "15mb"
 }));
-
-
-// ================================
-// STATIC FILES
-// ================================
 
 app.use(express.static(path.join(__dirname, "public")));
 
 
-// ================================
-// DATABASE
-// ================================
+/* =====================================================
+   MULTER IMAGE UPLOAD
+===================================================== */
 
-const dbPath = path.join(__dirname, "database.sqlite");
-
-const db = new sqlite3.Database(dbPath, (error) => {
-  if (error) {
-    console.error("DATABASE ERROR:", error.message);
-  } else {
-    console.log("✅ Database connected");
-  }
-});
-
-
-db.run(`
-  CREATE TABLE IF NOT EXISTS chats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    question TEXT,
-
-    answer TEXT,
-
-    image_name TEXT,
-
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-
-
-// ================================
-// UPLOAD FOLDER
-// ================================
-
-const uploadsFolder = path.join(__dirname, "uploads");
-
-if (!fs.existsSync(uploadsFolder)) {
-  fs.mkdirSync(uploadsFolder);
-}
-
-
-// ================================
-// MULTER STORAGE
-// ================================
-
-const storage = multer.diskStorage({
-
-  destination: function (req, file, cb) {
-    cb(null, uploadsFolder);
-  },
-
-  filename: function (req, file, cb) {
-
-    const extension = path.extname(file.originalname);
-
-    const fileName =
-      Date.now() +
-      "-" +
-      Math.round(Math.random() * 1000000) +
-      extension;
-
-    cb(null, fileName);
-  }
-
-});
-
-
-// ================================
-// IMAGE FILTER
-// ================================
-
-function imageFilter(req, file, cb) {
-
-  const allowedTypes = [
-
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-    "image/gif"
-
-  ];
-
-  if (allowedTypes.includes(file.mimetype)) {
-
-    cb(null, true);
-
-  } else {
-
-    cb(
-      new Error(
-        "Nooca faylkan lama oggola. Fadlan soo geli JPG, PNG, WEBP ama GIF."
-      ),
-      false
-    );
-
-  }
-
-}
-
-
-// ================================
-// MULTER
-// ================================
+const storage = multer.memoryStorage();
 
 const upload = multer({
-
-  storage: storage,
+  storage,
 
   limits: {
     fileSize: MAX_IMAGE_SIZE
   },
 
-  fileFilter: imageFilter
+  fileFilter: (req, file, cb) => {
 
+    if (!file.mimetype.startsWith("image/")) {
+
+      return cb(
+        new Error(
+          "Faylkan sawir ma aha. Fadlan geli JPG, PNG, WEBP ama GIF."
+        )
+      );
+    }
+
+    cb(null, true);
+  }
 });
 
 
-// ================================
-// SYSTEM PROMPT
-// ================================
+/* =====================================================
+   CHAT STORAGE
+===================================================== */
 
-const SYSTEM_PROMPT = `
-Waxaad tahay AI caawiye caqli badan oo si fiican ugu jawaaba Af-Soomaali.
+const DATA_DIR = path.join(__dirname, "data");
 
-Xeerarka muhiimka ah:
-
-1. Su'aal kasta si toos ah oo sax ah uga jawaab.
-2. Haddii isticmaaluhu sawir soo diro, si taxaddar leh u falanqee sawirka.
-3. Haddii sawir iyo su'aal la isku daro, labadaba faham.
-4. Ha iska indho tirin su'aasha isticmaalaha.
-5. Haddii qoraal ku jiro sawirka, isku day inaad akhrido oo sharaxdo.
-6. Haddii isticmaaluhu yiraahdo "waa maxay kan?" sawirka ka jawaab.
-7. Jawaabta ku bixi Af-Soomaali haddii aysan luqad kale codsan.
-8. Ha bixin jawaab madhan.
-9. Haddii wax aan caddayn ku jiraan sawirka, si daacad ah u sheeg waxa aad arki karto.
-10. Jawaabta ka dhig mid faa'iido leh, cad, oo sax ah.
-`;
+const CHAT_FILE = path.join(
+  DATA_DIR,
+  "chats.json"
+);
 
 
-// ================================
-// CONVERT IMAGE TO BASE64
-// ================================
+function ensureDataFolder() {
 
-function imageToBase64(filePath, mimeType) {
+  if (!fs.existsSync(DATA_DIR)) {
 
-  const imageBuffer = fs.readFileSync(filePath);
+    fs.mkdirSync(DATA_DIR, {
+      recursive: true
+    });
 
-  const base64 = imageBuffer.toString("base64");
+  }
 
-  return `data:${mimeType};base64,${base64}`;
+  if (!fs.existsSync(CHAT_FILE)) {
+
+    fs.writeFileSync(
+      CHAT_FILE,
+      JSON.stringify([], null, 2)
+    );
+
+  }
 
 }
 
 
-// ================================
-// EXTRACT AI TEXT
-// ================================
-
-function extractAIText(data) {
+function getChats() {
 
   try {
 
-    const choices = data?.choices;
+    ensureDataFolder();
 
-    if (!Array.isArray(choices)) {
-      return "";
-    }
+    const data = fs.readFileSync(
+      CHAT_FILE,
+      "utf8"
+    );
 
-    const message = choices[0]?.message;
-
-    if (!message) {
-      return "";
-    }
-
-    const content = message.content;
-
-    // Normal text
-    if (typeof content === "string") {
-      return content.trim();
-    }
-
-    // Array response
-    if (Array.isArray(content)) {
-
-      return content
-        .map((item) => {
-
-          if (typeof item === "string") {
-            return item;
-          }
-
-          if (item?.text) {
-            return item.text;
-          }
-
-          if (item?.content) {
-            return item.content;
-          }
-
-          return "";
-
-        })
-        .join("\n")
-        .trim();
-
-    }
-
-    return "";
+    return JSON.parse(data || "[]");
 
   } catch (error) {
 
     console.error(
-      "EXTRACT AI TEXT ERROR:",
+      "Chat read error:",
       error.message
     );
 
-    return "";
+    return [];
 
   }
 
 }
 
 
-// ================================
-// ASK OPENROUTER
-// ================================
+function saveChats(chats) {
 
-async function askAI(question, imageFile) {
+  try {
+
+    ensureDataFolder();
+
+    fs.writeFileSync(
+      CHAT_FILE,
+      JSON.stringify(chats, null, 2)
+    );
+
+    return true;
+
+  } catch (error) {
+
+    console.error(
+      "Chat save error:",
+      error.message
+    );
+
+    return false;
+
+  }
+
+}
+
+
+function addChat(
+  userMessage,
+  aiMessage,
+  hasImage = false
+) {
+
+  const chats = getChats();
+
+  const chat = {
+
+    id:
+      Date.now().toString() +
+      "-" +
+      Math.random()
+        .toString(36)
+        .substring(2, 8),
+
+    user: userMessage,
+
+    assistant: aiMessage,
+
+    hasImage,
+
+    createdAt:
+      new Date().toISOString()
+
+  };
+
+
+  chats.unshift(chat);
+
+  // Kaydi ugu badnaan 100 chat
+  const latestChats =
+    chats.slice(0, 100);
+
+  saveChats(latestChats);
+
+  return chat;
+
+}
+
+
+/* =====================================================
+   IMAGE VALIDATION
+===================================================== */
+
+function isValidBase64Image(value) {
+
+  if (!value) {
+    return false;
+  }
+
+  if (
+    typeof value !== "string"
+  ) {
+    return false;
+  }
+
+  return value.startsWith(
+    "data:image/"
+  );
+
+}
+
+
+function getBase64ImageSize(dataUrl) {
+
+  try {
+
+    const base64 =
+      dataUrl.split(",")[1];
+
+    if (!base64) {
+      return 0;
+    }
+
+    return Buffer
+      .from(base64, "base64")
+      .length;
+
+  } catch {
+
+    return 0;
+
+  }
+
+}
+
+
+function getImageMimeType(
+  dataUrl
+) {
+
+  try {
+
+    const match =
+      dataUrl.match(
+        /^data:(image\/[a-zA-Z0-9.+-]+);base64,/
+      );
+
+    return match
+      ? match[1]
+      : "image/jpeg";
+
+  } catch {
+
+    return "image/jpeg";
+
+  }
+
+}
+
+
+/* =====================================================
+   FILE IMAGE -> BASE64
+===================================================== */
+
+function uploadedFileToDataUrl(file) {
+
+  if (!file) {
+    return null;
+  }
+
+  const base64 =
+    file.buffer.toString("base64");
+
+  return `data:${file.mimetype};base64,${base64}`;
+
+}
+
+
+/* =====================================================
+   FETCH WITH 30 SECOND TIMEOUT
+===================================================== */
+
+async function fetchWithTimeout(
+  url,
+  options,
+  timeout = TIMEOUT_MS
+) {
+
+  const controller =
+    new AbortController();
+
+  const timer =
+    setTimeout(
+      () => controller.abort(),
+      timeout
+    );
+
+  try {
+
+    const response =
+      await fetch(
+        url,
+        {
+          ...options,
+          signal:
+            controller.signal
+        }
+      );
+
+    return response;
+
+  } finally {
+
+    clearTimeout(timer);
+
+  }
+
+}
+
+
+/* =====================================================
+   AI REQUEST
+===================================================== */
+
+async function askAI(
+  message,
+  imageDataUrl = null
+) {
 
   if (!OPENROUTER_API_KEY) {
 
     throw new Error(
-      "OPENROUTER_API_KEY lagama helin .env file-ka."
+      "OPENROUTER_API_KEY lama helin. Fadlan ku dar Environment Variables."
     );
 
   }
 
 
-  // =================================
-  // USER TEXT
-  // =================================
+  const systemPrompt = `
+Waxaad tahay AI caawiye caqli badan oo loogu talagalay AI Chat Somali.
 
-  let userQuestion =
-    typeof question === "string"
-      ? question.trim()
-      : "";
+Xeerarkaaga:
 
-
-  // Haddii sawir keliya jiro
-  if (!userQuestion && imageFile) {
-
-    userQuestion =
-      "Fadlan si faahfaahsan ugu sharax sawirkan Af-Soomaali.";
-
-  }
+1. Su'aal kasta si sax ah oo waxtar leh uga jawaab.
+2. Jawaabaha ugu muhiimsan ku bixi Af-Soomaali.
+3. Haddii su'aashu u baahan tahay sharaxaad, si cad u sharax.
+4. Haddii sawir keliya laguu soo diro, si faahfaahsan ugu sharax sawirka Af-Soomaali.
+5. Haddii sawir iyo su'aal wada socdaan, sawirka iyo su'aasha labadaba falanqee.
+6. Ha iska dhigin inaad wax aragtay haddii sawirka aan laguu soo dirin.
+7. Haddii su'aashu aanay caddayn, isku day inaad fahanto macnaha ugu macquulsan.
+8. Jawaabta ha noqon mid madhan.
+9. Jawaabta ka dhig mid dabiici ah, sax ah oo si fudud loo fahmi karo.
+`;
 
 
-  // Haddii aan su'aal iyo sawir jirin
-  if (!userQuestion && !imageFile) {
-
-    throw new Error(
-      "Fadlan geli su'aal ama soo geli sawir."
-    );
-
-  }
+  let userContent;
 
 
-  // =================================
-  // TEXT ONLY
-  // =================================
+  /* ==============================
+     IMAGE + TEXT
+  ============================== */
 
-  let userContent = userQuestion;
-
-
-  // =================================
-  // IMAGE + TEXT
-  // =================================
-
-  if (imageFile) {
-
-    const base64Image = imageToBase64(
-      imageFile.path,
-      imageFile.mimetype
-    );
-
+  if (imageDataUrl) {
 
     userContent = [
 
       {
         type: "text",
-        text: userQuestion
+
+        text:
+          message && message.trim()
+            ? message
+            : "Fadlan sawirkan si faahfaahsan ugu sharax Af-Soomaali."
       },
 
       {
         type: "image_url",
 
         image_url: {
-
-          url: base64Image
-
+          url: imageDataUrl
         }
-
       }
 
     ];
@@ -361,55 +404,22 @@ async function askAI(question, imageFile) {
   }
 
 
-  // =================================
-  // REQUEST BODY
-  // =================================
+  /* ==============================
+     TEXT ONLY
+  ============================== */
 
-  const requestBody = {
+  else {
 
-    model: AI_MODEL,
+    userContent =
+      message;
 
-    messages: [
-
-      {
-        role: "system",
-        content: SYSTEM_PROMPT
-      },
-
-      {
-        role: "user",
-        content: userContent
-      }
-
-    ],
-
-    temperature: 0.4,
-
-    max_tokens: 1200,
-
-    stream: false
-
-  };
+  }
 
 
-  // =================================
-  // 30 SECOND TIMEOUT
-  // =================================
+  const response =
+    await fetchWithTimeout(
 
-  const controller = new AbortController();
-
-  const timeout = setTimeout(() => {
-
-    controller.abort();
-
-  }, REQUEST_TIMEOUT);
-
-
-  try {
-
-    const response = await fetch(
-
-      "https://openrouter.ai/api/v1/chat/completions",
+      OPENROUTER_URL,
 
       {
 
@@ -433,280 +443,416 @@ async function askAI(question, imageFile) {
         },
 
         body:
-          JSON.stringify(requestBody),
+          JSON.stringify({
 
-        signal:
-          controller.signal
+            model:
+              AI_MODEL,
 
-      }
+            messages: [
+
+              {
+                role: "system",
+
+                content:
+                  systemPrompt
+              },
+
+              {
+                role: "user",
+
+                content:
+                  userContent
+              }
+
+            ],
+
+            temperature: 0.4,
+
+            max_tokens: 1500
+
+          })
+
+      },
+
+      TIMEOUT_MS
 
     );
 
 
-    clearTimeout(timeout);
+  let data;
 
 
-    // =================================
-    // GET RESPONSE
-    // =================================
+  try {
 
-    const data = await response.json();
+    data =
+      await response.json();
 
+  } catch {
 
-    // =================================
-    // API ERROR
-    // =================================
-
-    if (!response.ok) {
-
-      console.error(
-        "OPENROUTER ERROR:",
-        JSON.stringify(data, null, 2)
-      );
-
-
-      throw new Error(
-
-        data?.error?.message ||
-
-        `AI Error (${response.status})`
-
-      );
-
-    }
-
-
-    // =================================
-    // EXTRACT RESPONSE
-    // =================================
-
-    const reply =
-      extractAIText(data);
-
-
-    // =================================
-    // EMPTY RESPONSE
-    // =================================
-
-    if (!reply || reply.trim() === "") {
-
-      console.error(
-        "AI EMPTY RESPONSE:",
-        JSON.stringify(data, null, 2)
-      );
-
-
-      return {
-        success: false,
-
-        reply:
-          "Waan ka xumahay, AI-gu jawaab sax ah ma soo celin. Fadlan isku day mar kale.",
-
-        raw: data
-      };
-
-    }
-
-
-    return {
-
-      success: true,
-
-      reply: reply.trim(),
-
-      raw: data
-
-    };
-
-
-  } catch (error) {
-
-
-    clearTimeout(timeout);
-
-
-    // TIMEOUT
-    if (error.name === "AbortError") {
-
-      throw new Error(
-
-        "Codsigu wuxuu ka dheeraaday 30 ilbiriqsi. Fadlan mar kale isku day."
-
-      );
-
-    }
-
-
-    throw error;
+    throw new Error(
+      "AI server-ka jawaab sax ah ma soo celin."
+    );
 
   }
+
+
+  /* ==============================
+     OPENROUTER ERROR
+  ============================== */
+
+  if (!response.ok) {
+
+    console.error(
+      "AI API Error:",
+      JSON.stringify(data)
+    );
+
+    const errorMessage =
+      data?.error?.message ||
+      data?.message ||
+      "AI server-ka qalad ayaa ka dhacay.";
+
+    throw new Error(
+      errorMessage
+    );
+
+  }
+
+
+  /* ==============================
+     EXTRACT RESPONSE
+  ============================== */
+
+  let answer =
+    data?.choices?.[0]?.message?.content;
+
+
+  if (
+    Array.isArray(answer)
+  ) {
+
+    answer =
+      answer
+        .map(item =>
+          typeof item === "string"
+            ? item
+            : item?.text || ""
+        )
+        .join("\n");
+
+  }
+
+
+  if (
+    !answer ||
+    typeof answer !== "string" ||
+    answer.trim().length === 0
+  ) {
+
+    answer =
+      imageDataUrl
+        ? "Waxaan helay sawirkaaga, laakiin AI-gu jawaab buuxda ma soo celin. Fadlan isku day mar kale ama soo geli sawirka mar kale."
+        : "Waan helay su'aashaada, laakiin AI-gu jawaab ma soo celin. Fadlan isku day mar kale.";
+
+  }
+
+
+  return answer.trim();
 
 }
 
 
-// ================================
-// POST /chat
-// ================================
+/* =====================================================
+   POST /chat
+===================================================== */
+
+/*
+
+Waxay aqbashaa:
+
+JSON:
+
+{
+  "message": "Salaan",
+  "image": "data:image/jpeg;base64,..."
+}
+
+
+AMA multipart/form-data:
+
+message = Salaan
+image = file
+
+*/
 
 app.post(
-
   "/chat",
 
   upload.single("image"),
 
   async (req, res) => {
 
-    let uploadedFile = null;
-
     try {
 
-      const question =
-        req.body?.message ||
-        req.body?.question ||
-        req.body?.text ||
+      let message =
+        req.body.message ||
+        req.body.question ||
+        req.body.prompt ||
         "";
 
-      const imageFile =
-        req.file || null;
+
+      let imageDataUrl =
+        req.body.image ||
+        req.body.imageUrl ||
+        null;
 
 
-      uploadedFile = imageFile;
+      /* ==============================
+         FILE IMAGE
+      ============================== */
+
+      if (req.file) {
+
+        if (
+          req.file.size >
+          MAX_IMAGE_SIZE
+        ) {
+
+          return res
+            .status(413)
+            .json({
+
+              success: false,
+
+              error:
+                "Sawirku aad ayuu u weyn yahay. Cabbirka ugu badan waa 10MB."
+
+            });
+
+        }
 
 
-      // =============================
-      // VALIDATION
-      // =============================
-
-      if (
-        !question.trim() &&
-        !imageFile
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error:
-            "Fadlan geli su'aal ama soo geli sawir."
-
-        });
+        imageDataUrl =
+          uploadedFileToDataUrl(
+            req.file
+          );
 
       }
 
 
-      console.log("================================");
-      console.log("📩 NEW CHAT REQUEST");
-      console.log("QUESTION:", question);
-      console.log(
-        "IMAGE:",
-        imageFile
-          ? imageFile.originalname
-          : "No image"
-      );
-      console.log("================================");
+      /* ==============================
+         BASE64 IMAGE VALIDATION
+      ============================== */
 
+      if (imageDataUrl) {
 
-      // =============================
-      // ASK AI
-      // =============================
+        if (
+          !isValidBase64Image(
+            imageDataUrl
+          )
+        ) {
 
-      const result =
-        await askAI(
-          question,
-          imageFile
-        );
+          return res
+            .status(400)
+            .json({
 
+              success: false,
 
-      // =============================
-      // SAVE CHAT
-      // =============================
+              error:
+                "Sawirka la soo diray ma aha image sax ah."
 
-      db.run(
-
-        `
-        INSERT INTO chats
-        (
-          question,
-          answer,
-          image_name
-        )
-
-        VALUES (?, ?, ?)
-        `,
-
-        [
-
-          question || "Sawir",
-
-          result.reply,
-
-          imageFile
-            ? imageFile.filename
-            : null
-
-        ],
-
-        function (dbError) {
-
-          if (dbError) {
-
-            console.error(
-              "DATABASE SAVE ERROR:",
-              dbError.message
-            );
-
-          }
+            });
 
         }
 
+
+        const imageSize =
+          getBase64ImageSize(
+            imageDataUrl
+          );
+
+
+        if (
+          imageSize >
+          MAX_IMAGE_SIZE
+        ) {
+
+          return res
+            .status(413)
+            .json({
+
+              success: false,
+
+              error:
+                "Sawirku aad ayuu u weyn yahay. Cabbirka ugu badan waa 10MB."
+
+            });
+
+        }
+
+      }
+
+
+      /* ==============================
+         EMPTY REQUEST
+      ============================== */
+
+      if (
+        !message.trim() &&
+        !imageDataUrl
+      ) {
+
+        return res
+          .status(400)
+          .json({
+
+            success: false,
+
+            error:
+              "Fadlan qor su'aal ama geli sawir."
+
+          });
+
+      }
+
+
+      /* ==============================
+         IMAGE ONLY DEFAULT MESSAGE
+      ============================== */
+
+      if (
+        !message.trim() &&
+        imageDataUrl
+      ) {
+
+        message =
+          "Fadlan sawirkan si faahfaahsan ugu sharax Af-Soomaali.";
+
+      }
+
+
+      console.log(
+        "Chat request:",
+        {
+          messageLength:
+            message.length,
+
+          hasImage:
+            !!imageDataUrl
+        }
       );
 
 
-      // =============================
-      // SUCCESS RESPONSE
-      // =============================
+      /* ==============================
+         ASK AI
+      ============================== */
+
+      const answer =
+        await askAI(
+          message,
+          imageDataUrl
+        );
+
+
+      /* ==============================
+         SAVE CHAT
+      ============================== */
+
+      const savedChat =
+        addChat(
+
+          message,
+
+          answer,
+
+          !!imageDataUrl
+
+        );
+
 
       return res.json({
 
-        success:
-          result.success,
+        success: true,
 
-        reply:
-          result.reply,
+        message,
 
-        message:
-          result.reply,
+        response:
+          answer,
 
-        hasImage:
-          !!imageFile
+        answer,
+
+        chat:
+          savedChat
 
       });
 
+    }
 
-    } catch (error) {
+
+    /* ==============================
+       TIMEOUT
+    ============================== */
+
+    catch (error) {
 
       console.error(
         "CHAT ERROR:",
-        error.message
+        error
       );
 
 
-      // =============================
-      // ERROR RESPONSE
-      // =============================
+      if (
+        error.name === "AbortError"
+      ) {
 
-      return res.status(500).json({
+        return res
+          .status(504)
+          .json({
 
-        success: false,
+            success: false,
 
-        error:
-          error.message ||
-          "Cilad ayaa dhacday.",
+            error:
+              "AI-gu wuxuu ka jawaabi waayay 30 ilbiriqsi gudahood. Fadlan mar kale isku day."
 
-        reply:
-          "Waan ka xumahay, cilad ayaa dhacday. Fadlan mar kale isku day."
+          });
 
-      });
+      }
+
+
+      /* ==============================
+         MULTER SIZE ERROR
+      ============================== */
+
+      if (
+        error.code ===
+        "LIMIT_FILE_SIZE"
+      ) {
+
+        return res
+          .status(413)
+          .json({
+
+            success: false,
+
+            error:
+              "Sawirku aad ayuu u weyn yahay. Cabbirka ugu badan waa 10MB."
+
+          });
+
+      }
+
+
+      return res
+        .status(500)
+        .json({
+
+          success: false,
+
+          error:
+            error.message ||
+            "Qalad lama filaan ah ayaa dhacay."
+
+        });
 
     }
 
@@ -715,134 +861,108 @@ app.post(
 );
 
 
-// ================================
-// GET /api/chats
-// ================================
+/* =====================================================
+   GET /api/chats
+===================================================== */
 
 app.get(
-
   "/api/chats",
 
   (req, res) => {
 
-    db.all(
+    try {
 
-      `
-      SELECT
-        id,
-        question,
-        answer,
-        image_name,
-        created_at
+      const chats =
+        getChats();
 
-      FROM chats
+      res.json({
 
-      ORDER BY id DESC
-      `,
+        success: true,
 
-      [],
+        count:
+          chats.length,
 
-      (error, rows) => {
+        chats
 
-        if (error) {
+      });
 
-          console.error(
-            "GET CHATS ERROR:",
-            error.message
-          );
+    } catch (error) {
 
+      res
+        .status(500)
+        .json({
 
-          return res.status(500).json({
+          success: false,
 
-            success: false,
-
-            error:
-              "Chat history lama soo qaadi karo."
-
-          });
-
-        }
-
-
-        return res.json({
-
-          success: true,
-
-          chats: rows || []
+          error:
+            "Chat history lama heli karo."
 
         });
 
-      }
-
-    );
+    }
 
   }
 
 );
 
 
-// ================================
-// DELETE /api/chats
-// ================================
+/* =====================================================
+   DELETE /api/chats
+===================================================== */
 
 app.delete(
-
   "/api/chats",
 
   (req, res) => {
 
-    db.run(
+    try {
 
-      "DELETE FROM chats",
+      const success =
+        saveChats([]);
 
-      [],
+      if (!success) {
 
-      function (error) {
-
-        if (error) {
-
-          console.error(
-            "DELETE CHATS ERROR:",
-            error.message
-          );
-
-
-          return res.status(500).json({
-
-            success: false,
-
-            error:
-              "Chat history lama tirtiri karo."
-
-          });
-
-        }
-
-
-        return res.json({
-
-          success: true,
-
-          message:
-            "Dhammaan chat history waa la tirtiray."
-
-        });
+        throw new Error(
+          "Database save error"
+        );
 
       }
 
-    );
+
+      res.json({
+
+        success: true,
+
+        message:
+          "Dhammaan chat history waa la tirtiray."
+
+      });
+
+    } catch (error) {
+
+      res
+        .status(500)
+        .json({
+
+          success: false,
+
+          error:
+            "Chat history lama tirtiri karin."
+
+        });
+
+    }
 
   }
 
 );
 
 
-// ================================
-// GET /api/health
-// ================================
+/* =====================================================
+   GET /api/health
+===================================================== */
 
 app.get(
-
   "/api/health",
 
   (req, res) => {
@@ -851,19 +971,20 @@ app.get(
 
       success: true,
 
-      status: "healthy",
+      status:
+        "healthy",
 
       message:
-        "AI Chat Somali server waa shaqaynayaa.",
+        "AI Chat Somali server-ka si fiican ayuu u shaqaynayaa.",
+
+      timestamp:
+        new Date().toISOString(),
 
       aiConfigured:
         !!OPENROUTER_API_KEY,
 
       model:
-        AI_MODEL,
-
-      time:
-        new Date().toISOString()
+        AI_MODEL
 
     });
 
@@ -872,43 +993,42 @@ app.get(
 );
 
 
-// ================================
-// ROOT
-// ================================
+/* =====================================================
+   ROOT
+===================================================== */
 
 app.get(
-
   "/",
 
   (req, res) => {
 
-    res.sendFile(
+    const indexPath =
       path.join(
         __dirname,
         "public",
         "index.html"
+      );
+
+
+    if (
+      fs.existsSync(
+        indexPath
       )
-    );
+    ) {
 
-  }
+      return res.sendFile(
+        indexPath
+      );
 
-);
+    }
 
 
-// ================================
-// 404
-// ================================
+    res.json({
 
-app.use(
+      success: true,
 
-  (req, res) => {
-
-    res.status(404).json({
-
-      success: false,
-
-      error:
-        "Endpoint-kan lama helin."
+      message:
+        "AI Chat Somali API waa shaqaynayaa."
 
     });
 
@@ -917,94 +1037,127 @@ app.use(
 );
 
 
-// ================================
-// MULTER ERROR HANDLER
-// ================================
+/* =====================================================
+   404
+===================================================== */
 
 app.use(
+  (req, res) => {
 
-  (error, req, res, next) => {
-
-    if (
-      error instanceof multer.MulterError
-    ) {
-
-      if (
-        error.code === "LIMIT_FILE_SIZE"
-      ) {
-
-        return res.status(400).json({
-
-          success: false,
-
-          error:
-            "Sawirku aad ayuu u weyn yahay. Ugu badnaan 5MB."
-
-        });
-
-      }
-
-
-      return res.status(400).json({
+    res
+      .status(404)
+      .json({
 
         success: false,
 
         error:
-          error.message
+          "Endpoint-kan lama helin."
 
       });
+
+  }
+
+);
+
+
+/* =====================================================
+   GLOBAL ERROR
+===================================================== */
+
+app.use(
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
+
+    console.error(
+      "GLOBAL ERROR:",
+      error
+    );
+
+
+    if (
+      error.code ===
+      "LIMIT_FILE_SIZE"
+    ) {
+
+      return res
+        .status(413)
+        .json({
+
+          success: false,
+
+          error:
+            "Sawirku wuxuu ka weyn yahay 10MB."
+
+        });
 
     }
 
 
-    if (error) {
-
-      console.error(
-        "SERVER ERROR:",
-        error.message
-      );
-
-
-      return res.status(500).json({
+    res
+      .status(500)
+      .json({
 
         success: false,
 
         error:
           error.message ||
-          "Server error."
+          "Server error ayaa dhacay."
 
       });
-
-    }
-
-
-    next();
 
   }
 
 );
 
 
-// ================================
-// START SERVER
-// ================================
+/* =====================================================
+   START SERVER
+===================================================== */
 
 app.listen(
-
   PORT,
-
   "0.0.0.0",
 
   () => {
 
     console.log("");
-    console.log("==============================");
-    console.log("🚀 AI CHAT SOMALI RUNNING");
-    console.log(`🌐 Port: ${PORT}`);
-    console.log(`🤖 Model: ${AI_MODEL}`);
-    console.log("❤️ Health: /api/health");
-    console.log("==============================");
-    console.log("");
+    console.log(
+      "===================================="
+    );
+
+    console.log(
+      "🤖 AI Chat Somali Server Started"
+    );
+
+    console.log(
+      `🌐 Port: ${PORT}`
+    );
+
+    console.log(
+      `💬 AI Model: ${AI_MODEL}`
+    );
+
+    console.log(
+      `🔑 API Key: ${
+        OPENROUTER_API_KEY
+          ? "READY"
+          : "MISSING"
+      }`
+    );
+
+    console.log(
+      `⏳ Timeout: ${
+        TIMEOUT_MS / 1000
+      } seconds`
+    );
+
+    console.log(
+      "===================================="
+    );
 
   }
 
