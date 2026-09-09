@@ -3,7 +3,8 @@
 ========================================= */
 
 const API_URL = "/chat";
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 
 /* =========================================
@@ -11,22 +12,40 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 ========================================= */
 
 const messageInput =
-  document.getElementById("messageInput");
+    document.getElementById("messageInput");
 
 const sendButton =
-  document.getElementById("sendButton");
+    document.getElementById("sendBtn");
 
 const imageInput =
-  document.getElementById("imageInput");
+    document.getElementById("imageInput");
+
+const imageBtn =
+    document.getElementById("imageBtn");
 
 const imagePreview =
-  document.getElementById("imagePreview");
+    document.getElementById("imagePreview");
+
+const imagePreviewContainer =
+    document.getElementById("imagePreviewContainer");
 
 const chatContainer =
-  document.getElementById("chatContainer");
+    document.getElementById("chatMessages");
 
 const clearChatsButton =
-  document.getElementById("clearChatsButton");
+    document.getElementById("deleteHistoryBtn");
+
+const newChatButton =
+    document.getElementById("newChatBtn");
+
+const chatHistory =
+    document.getElementById("chatHistory");
+
+const welcomeMessage =
+    document.getElementById("welcomeMessage");
+
+const serverStatus =
+    document.getElementById("serverStatus");
 
 
 /* =========================================
@@ -39,71 +58,105 @@ let isSending = false;
 
 
 /* =========================================
+   IMAGE BUTTON
+========================================= */
+
+if (imageBtn && imageInput) {
+
+    imageBtn.addEventListener(
+        "click",
+        function () {
+
+            imageInput.click();
+
+        }
+    );
+
+}
+
+
+/* =========================================
    IMAGE UPLOAD
 ========================================= */
 
 if (imageInput) {
 
-  imageInput.addEventListener(
-    "change",
-    async function (event) {
+    imageInput.addEventListener(
+        "change",
 
-      const file = event.target.files[0];
+        async function (event) {
 
-      if (!file) {
-        return;
-      }
+            const file =
+                event.target.files[0];
 
 
-      /* CHECK IMAGE TYPE */
+            if (!file) {
 
-      if (!file.type.startsWith("image/")) {
+                return;
 
-        showError(
-          "Fadlan dooro sawir sax ah."
-        );
-
-        imageInput.value = "";
-
-        return;
-      }
+            }
 
 
-      /* CHECK IMAGE SIZE */
+            /* CHECK FILE TYPE */
 
-      if (file.size > MAX_IMAGE_SIZE) {
+            if (!file.type.startsWith("image/")) {
 
-        showError(
-          "Sawirka aad ayuu u weyn yahay. Ugu badnaan waa 5MB."
-        );
+                showError(
+                    "Fadlan dooro sawir sax ah."
+                );
 
-        imageInput.value = "";
+                imageInput.value = "";
 
-        return;
-      }
+                return;
+
+            }
 
 
-      try {
+            /* CHECK FILE SIZE */
 
-        selectedImage =
-          await convertImageToBase64(file);
+            if (file.size > MAX_IMAGE_SIZE) {
 
-        showImagePreview(selectedImage);
+                showError(
+                    "Sawirka aad ayuu u weyn yahay. Ugu badnaan waa 5MB."
+                );
 
-      } catch (error) {
+                imageInput.value = "";
 
-        console.error(
-          "Image Error:",
-          error
-        );
+                return;
 
-        showError(
-          "Sawirka lama akhrin karin."
-        );
-      }
+            }
 
-    }
-  );
+
+            try {
+
+                selectedImage =
+                    await convertImageToBase64(
+                        file
+                    );
+
+
+                showImagePreview(
+                    selectedImage
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Image Error:",
+                    error
+                );
+
+
+                showError(
+                    "Sawirka lama akhrin karin."
+                );
+
+            }
+
+        }
+
+    );
 
 }
 
@@ -114,37 +167,42 @@ if (imageInput) {
 
 function convertImageToBase64(file) {
 
-  return new Promise(
-    (resolve, reject) => {
+    return new Promise(
+        function (resolve, reject) {
 
-      const reader =
-        new FileReader();
-
-
-      reader.onload =
-        function () {
-
-          resolve(reader.result);
-
-        };
+            const reader =
+                new FileReader();
 
 
-      reader.onerror =
-        function () {
+            reader.onload =
+                function () {
 
-          reject(
-            new Error(
-              "Sawirka lama beddeli karin."
-            )
-          );
+                    resolve(
+                        reader.result
+                    );
 
-        };
+                };
 
 
-      reader.readAsDataURL(file);
+            reader.onerror =
+                function () {
 
-    }
-  );
+                    reject(
+                        new Error(
+                            "Sawirka lama akhrin karin."
+                        )
+                    );
+
+                };
+
+
+            reader.readAsDataURL(
+                file
+            );
+
+        }
+
+    );
 
 }
 
@@ -155,71 +213,56 @@ function convertImageToBase64(file) {
 
 function showImagePreview(image) {
 
-  if (!imagePreview) {
-    return;
-  }
+    if (!imagePreview ||
+        !imagePreviewContainer) {
+
+        return;
+
+    }
 
 
-  imagePreview.innerHTML = `
-    <div class="image-preview-box">
-
-      <img
-        src="${image}"
-        alt="Sawirka la doortay"
-        class="preview-image"
-      >
-
-      <button
-        type="button"
-        id="removeImageButton"
-        class="remove-image-button"
-      >
-        ✕
-      </button>
-
-    </div>
-  `;
+    imagePreview.src =
+        image;
 
 
-  const removeButton =
-    document.getElementById(
-      "removeImageButton"
-    );
-
-
-  if (removeButton) {
-
-    removeButton.addEventListener(
-      "click",
-      removeSelectedImage
-    );
-
-  }
+    imagePreviewContainer.style.display =
+        "block";
 
 }
 
 
 /* =========================================
-   REMOVE IMAGE
+   REMOVE SELECTED IMAGE
 ========================================= */
 
 function removeSelectedImage() {
 
-  selectedImage = null;
+    selectedImage =
+        null;
 
 
-  if (imageInput) {
+    if (imageInput) {
 
-    imageInput.value = "";
+        imageInput.value =
+            "";
 
-  }
+    }
 
 
-  if (imagePreview) {
+    if (imagePreview) {
 
-    imagePreview.innerHTML = "";
+        imagePreview.src =
+            "";
 
-  }
+    }
+
+
+    if (imagePreviewContainer) {
+
+        imagePreviewContainer.style.display =
+            "none";
+
+    }
 
 }
 
@@ -230,357 +273,465 @@ function removeSelectedImage() {
 
 async function sendMessage() {
 
-  /* PREVENT DOUBLE SEND */
+    if (isSending) {
 
-  if (isSending) {
-    return;
-  }
+        return;
 
-
-  const message =
-    messageInput
-      ? messageInput.value.trim()
-      : "";
+    }
 
 
-  /* EMPTY MESSAGE */
-
-  if (!message && !selectedImage) {
-
-    showError(
-      "Fadlan qor su'aal ama soo geli sawir."
-    );
-
-    return;
-  }
+    const message =
+        messageInput
+            ? messageInput.value.trim()
+            : "";
 
 
-  isSending = true;
+    /* EMPTY CHECK */
+
+    if (!message &&
+        !selectedImage) {
+
+        showError(
+            "Fadlan qor su'aal ama dooro sawir."
+        );
+
+        return;
+
+    }
 
 
-  updateSendButton(true);
+    isSending =
+        true;
 
 
-  /* SAVE IMAGE BEFORE CLEARING */
-
-  const currentImage =
-    selectedImage;
-
-
-  /* SHOW USER MESSAGE */
-
-  addUserMessage(
-    message,
-    currentImage
-  );
-
-
-  /* CLEAR MESSAGE */
-
-  if (messageInput) {
-
-    messageInput.value = "";
-
-  }
-
-
-  removeSelectedImage();
-
-
-  /* SHOW TYPING */
-
-  const typingId =
-    showTyping();
-
-
-  let timeout;
-
-
-  try {
-
-    const controller =
-      new AbortController();
-
-
-    /* 30 SECOND TIMEOUT */
-
-    timeout = setTimeout(
-      () => controller.abort(),
-      30000
+    updateSendButton(
+        true
     );
 
 
-    const response =
-      await fetch(
-        API_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body:
-            JSON.stringify({
-              message: message,
-              image: currentImage
-            }),
-
-          signal:
-            controller.signal
-        }
-      );
+    const currentImage =
+        selectedImage;
 
 
-    clearTimeout(timeout);
+    /* HIDE WELCOME */
+
+    if (welcomeMessage) {
+
+        welcomeMessage.style.display =
+            "none";
+
+    }
 
 
-    let data;
+    /* SHOW USER MESSAGE */
+
+    addUserMessage(
+        message,
+        currentImage
+    );
+
+
+    /* CLEAR INPUT */
+
+    if (messageInput) {
+
+        messageInput.value =
+            "";
+
+    }
+
+
+    removeSelectedImage();
+
+
+    /* SHOW TYPING */
+
+    const typingId =
+        showTyping();
+
+
+    let timeout;
 
 
     try {
 
-      data =
-        await response.json();
+        const controller =
+            new AbortController();
 
-    } catch {
 
-      throw new Error(
-        "Server-ka jawaab JSON sax ah ma soo celin."
-      );
+        timeout =
+            setTimeout(
+                function () {
+
+                    controller.abort();
+
+                },
+
+                30000
+            );
+
+
+        /* SEND REQUEST */
+
+        const response =
+            await fetch(
+                API_URL,
+
+                {
+                    method:
+                        "POST",
+
+                    headers:
+                        {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                    body:
+                        JSON.stringify(
+                            {
+                                message:
+                                    message,
+
+                                image:
+                                    currentImage
+                            }
+                        ),
+
+                    signal:
+                        controller.signal
+                }
+            );
+
+
+        clearTimeout(
+            timeout
+        );
+
+
+        let data;
+
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch {
+
+            throw new Error(
+                "Server-ku jawaab JSON sax ah ma soo celin."
+            );
+
+        }
+
+
+        removeTyping(
+            typingId
+        );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Server-ka ayaa khalad soo celiyay."
+            );
+
+        }
+
+
+        const answer =
+            data.answer;
+
+
+        /* EMPTY AI RESPONSE */
+
+        if (!answer ||
+            typeof answer !== "string" ||
+            answer.trim().length === 0) {
+
+            addAIMessage(
+                "Waan ka xumahay, AI-gu jawaab madhan ayuu soo celiyay. Fadlan isku day mar kale."
+            );
+
+        } else {
+
+            addAIMessage(
+                answer.trim()
+            );
+
+        }
+
+
+        /* UPDATE HISTORY */
+
+        loadChats();
+
+
+    } catch (error) {
+
+        removeTyping(
+            typingId
+        );
+
+
+        console.error(
+            "Chat Error:",
+            error
+        );
+
+
+        if (
+            error.name ===
+            "AbortError"
+        ) {
+
+            addErrorMessage(
+                "⏳ AI-gu kama jawaabin 30 ilbiriqsi gudahood. Fadlan isku day mar kale."
+            );
+
+        } else {
+
+            addErrorMessage(
+                "❌ " +
+                (
+                    error.message ||
+                    "Wax khalad ah ayaa dhacay."
+                )
+            );
+
+        }
+
+    } finally {
+
+        clearTimeout(
+            timeout
+        );
+
+
+        isSending =
+            false;
+
+
+        updateSendButton(
+            false
+        );
 
     }
-
-
-    removeTyping(typingId);
-
-
-    /* SERVER ERROR */
-
-    if (!response.ok) {
-
-      throw new Error(
-        data?.error ||
-        "Server-ka ayaa khalad soo celiyay."
-      );
-
-    }
-
-
-    /* GET ANSWER */
-
-    const answer =
-      data?.answer;
-
-
-    /* EMPTY AI RESPONSE */
-
-    if (
-      !answer ||
-      typeof answer !== "string" ||
-      answer.trim().length === 0
-    ) {
-
-      addAIMessage(
-        "Waan ka xumahay, AI-gu jawaab madhan ayuu soo celiyay. Fadlan mar kale isku day."
-      );
-
-    } else {
-
-      addAIMessage(
-        answer.trim()
-      );
-
-    }
-
-
-  } catch (error) {
-
-    clearTimeout(timeout);
-
-
-    removeTyping(typingId);
-
-
-    console.error(
-      "Chat Error:",
-      error
-    );
-
-
-    if (
-      error.name === "AbortError"
-    ) {
-
-      addErrorMessage(
-        "⏳ AI-gu kama jawaabin 30 ilbiriqsi gudahood. Fadlan isku day mar kale."
-      );
-
-    } else {
-
-      addErrorMessage(
-        "❌ " +
-        (
-          error.message ||
-          "Wax khalad ah ayaa dhacay."
-        )
-      );
-
-    }
-
-
-  } finally {
-
-    isSending = false;
-
-    updateSendButton(false);
-
-  }
 
 }
 
 
 /* =========================================
-   USER MESSAGE
+   ADD USER MESSAGE
 ========================================= */
 
 function addUserMessage(
-  message,
-  image
+    message,
+    image
 ) {
 
-  if (!chatContainer) {
-    return;
-  }
+    if (!chatContainer) {
+
+        return;
+
+    }
 
 
-  const wrapper =
-    document.createElement("div");
+    const wrapper =
+        document.createElement(
+            "div"
+        );
 
 
-  wrapper.className =
-    "message user-message";
+    wrapper.className =
+        "message user";
 
 
-  let html = "";
+    const content =
+        document.createElement(
+            "div"
+        );
 
 
-  /* IMAGE */
-
-  if (image) {
-
-    html += `
-      <img
-        src="${image}"
-        class="chat-image"
-        alt="Sawirka isticmaalaha"
-      >
-    `;
-
-  }
+    content.className =
+        "message-content";
 
 
-  /* MESSAGE */
+    /* IMAGE */
 
-  if (message) {
+    if (image) {
 
-    html += `
-      <div class="message-text">
-        ${escapeHTML(message)}
-      </div>
-    `;
-
-  }
+        const img =
+            document.createElement(
+                "img"
+            );
 
 
-  wrapper.innerHTML = html;
+        img.src =
+            image;
 
 
-  chatContainer.appendChild(wrapper);
+        img.className =
+            "chat-image";
 
 
-  scrollToBottom();
+        img.alt =
+            "Sawirka isticmaalaha";
+
+
+        content.appendChild(
+            img
+        );
+
+    }
+
+
+    /* TEXT */
+
+    if (message) {
+
+        const text =
+            document.createElement(
+                "div"
+            );
+
+
+        text.style.marginTop =
+            image
+                ? "10px"
+                : "0";
+
+
+        text.textContent =
+            message;
+
+
+        content.appendChild(
+            text
+        );
+
+    }
+
+
+    wrapper.appendChild(
+        content
+    );
+
+
+    chatContainer.appendChild(
+        wrapper
+    );
+
+
+    scrollToBottom();
 
 }
 
 
 /* =========================================
-   AI MESSAGE
+   ADD AI MESSAGE
 ========================================= */
 
 function addAIMessage(message) {
 
-  if (!chatContainer) {
+    if (!chatContainer) {
 
-    console.log(
-      "AI:",
-      message
+        return;
+
+    }
+
+
+    const wrapper =
+        document.createElement(
+            "div"
+        );
+
+
+    wrapper.className =
+        "message assistant";
+
+
+    const content =
+        document.createElement(
+            "div"
+        );
+
+
+    content.className =
+        "message-content";
+
+
+    content.textContent =
+        message;
+
+
+    wrapper.appendChild(
+        content
     );
 
-    return;
-  }
+
+    chatContainer.appendChild(
+        wrapper
+    );
 
 
-  const wrapper =
-    document.createElement("div");
-
-
-  wrapper.className =
-    "message ai-message";
-
-
-  wrapper.innerHTML = `
-
-    <div class="ai-header">
-      🤖 AI Chat Somali
-    </div>
-
-    <div class="message-text">
-      ${formatText(message)}
-    </div>
-
-  `;
-
-
-  chatContainer.appendChild(wrapper);
-
-
-  scrollToBottom();
+    scrollToBottom();
 
 }
 
 
 /* =========================================
-   ERROR MESSAGE
+   ADD ERROR MESSAGE
 ========================================= */
 
 function addErrorMessage(message) {
 
-  if (!chatContainer) {
+    if (!chatContainer) {
 
-    alert(message);
+        alert(message);
 
-    return;
-  }
+        return;
 
-
-  const wrapper =
-    document.createElement("div");
+    }
 
 
-  wrapper.className =
-    "message error-message";
+    const wrapper =
+        document.createElement(
+            "div"
+        );
 
 
-  wrapper.textContent =
-    message;
+    wrapper.className =
+        "message assistant";
 
 
-  chatContainer.appendChild(wrapper);
+    const content =
+        document.createElement(
+            "div"
+        );
 
 
-  scrollToBottom();
+    content.className =
+        "message-content";
+
+
+    content.textContent =
+        message;
+
+
+    wrapper.appendChild(
+        content
+    );
+
+
+    chatContainer.appendChild(
+        wrapper
+    );
+
+
+    scrollToBottom();
 
 }
 
@@ -591,9 +742,9 @@ function addErrorMessage(message) {
 
 function showError(message) {
 
-  addErrorMessage(
-    "❌ " + message
-  );
+    addErrorMessage(
+        "❌ " + message
+    );
 
 }
 
@@ -604,48 +755,49 @@ function showError(message) {
 
 function showTyping() {
 
-  if (!chatContainer) {
-    return null;
-  }
+    if (!chatContainer) {
+
+        return null;
+
+    }
 
 
-  const id =
-    "typing-" + Date.now();
+    const id =
+        "typing-" +
+        Date.now();
 
 
-  const typing =
-    document.createElement("div");
+    const wrapper =
+        document.createElement(
+            "div"
+        );
 
 
-  typing.id = id;
+    wrapper.id =
+        id;
 
 
-  typing.className =
-    "message ai-message typing-message";
+    wrapper.className =
+        "message assistant loading";
 
 
-  typing.innerHTML = `
-
-    <div class="ai-header">
-      🤖 AI Chat Somali
-    </div>
-
-    <div class="typing-dots">
-      <span>●</span>
-      <span>●</span>
-      <span>●</span>
-    </div>
-
-  `;
+    wrapper.innerHTML =
+        `
+        <div class="message-content">
+            🤖 AI Chat Somali ayaa qoraya...
+        </div>
+        `;
 
 
-  chatContainer.appendChild(typing);
+    chatContainer.appendChild(
+        wrapper
+    );
 
 
-  scrollToBottom();
+    scrollToBottom();
 
 
-  return id;
+    return id;
 
 }
 
@@ -656,64 +808,63 @@ function showTyping() {
 
 function removeTyping(id) {
 
-  if (!id) {
-    return;
-  }
+    if (!id) {
+
+        return;
+
+    }
 
 
-  const typing =
-    document.getElementById(id);
+    const typing =
+        document.getElementById(
+            id
+        );
 
 
-  if (typing) {
+    if (typing) {
 
-    typing.remove();
+        typing.remove();
 
-  }
+    }
 
 }
 
 
 /* =========================================
-   SEND BUTTON STATE
+   UPDATE SEND BUTTON
 ========================================= */
 
 function updateSendButton(loading) {
 
-  if (!sendButton) {
-    return;
-  }
+    if (!sendButton) {
+
+        return;
+
+    }
 
 
-  sendButton.disabled =
-    loading;
+    sendButton.disabled =
+        loading;
 
 
-  if (loading) {
-
-    sendButton.innerHTML =
-      "⏳ Sug...";
-
-  } else {
-
-    sendButton.innerHTML =
-      "➤ Dir";
-
-  }
+    sendButton.textContent =
+        loading
+            ? "⏳"
+            : "➤";
 
 }
 
 
 /* =========================================
-   SEND BUTTON CLICK
+   SEND BUTTON
 ========================================= */
 
 if (sendButton) {
 
-  sendButton.addEventListener(
-    "click",
-    sendMessage
-  );
+    sendButton.addEventListener(
+        "click",
+        sendMessage
+    );
 
 }
 
@@ -724,23 +875,54 @@ if (sendButton) {
 
 if (messageInput) {
 
-  messageInput.addEventListener(
-    "keydown",
-    function (event) {
+    messageInput.addEventListener(
 
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey
-      ) {
+        "keydown",
 
-        event.preventDefault();
+        function (event) {
 
-        sendMessage();
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
 
-      }
+                event.preventDefault();
 
-    }
-  );
+                sendMessage();
+
+            }
+
+        }
+
+    );
+
+}
+
+
+/* =========================================
+   AUTO RESIZE TEXTAREA
+========================================= */
+
+if (messageInput) {
+
+    messageInput.addEventListener(
+        "input",
+
+        function () {
+
+            this.style.height =
+                "auto";
+
+
+            this.style.height =
+                Math.min(
+                    this.scrollHeight,
+                    180
+                ) + "px";
+
+        }
+
+    );
 
 }
 
@@ -751,58 +933,144 @@ if (messageInput) {
 
 async function loadChats() {
 
-  try {
+    try {
 
-    const response =
-      await fetch("/api/chats");
-
-
-    const data =
-      await response.json();
+        const response =
+            await fetch(
+                "/api/chats"
+            );
 
 
-    if (
-      !response.ok ||
-      !data.success ||
-      !Array.isArray(data.chats)
-    ) {
+        const data =
+            await response.json();
 
-      return;
+
+        if (
+            !response.ok ||
+            !data.success ||
+            !Array.isArray(
+                data.chats
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        updateHistorySidebar(
+            data.chats
+        );
+
+
+    } catch (error) {
+
+        console.warn(
+            "History Error:",
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================
+   UPDATE HISTORY SIDEBAR
+========================================= */
+
+function updateHistorySidebar(chats) {
+
+    if (!chatHistory) {
+
+        return;
 
     }
 
 
-    const chats =
-      [...data.chats].reverse();
+    chatHistory.innerHTML =
+        "";
 
 
-    chats.forEach(chat => {
+    chats
+        .slice(0, 30)
+        .forEach(
+            function (chat) {
 
-      addUserMessage(
-        chat.message || "",
-        chat.image || null
-      );
+                const item =
+                    document.createElement(
+                        "div"
+                    );
 
 
-      if (chat.answer) {
+                item.className =
+                    "history-item";
 
-        addAIMessage(
-          chat.answer
+
+                item.textContent =
+                    chat.message ||
+                    "📷 Sawir";
+
+
+                chatHistory.appendChild(
+                    item
+                );
+
+            }
         );
 
-      }
-
-    });
+}
 
 
-  } catch (error) {
+/* =========================================
+   NEW CHAT
+========================================= */
 
-    console.warn(
-      "History error:",
-      error.message
+if (newChatButton) {
+
+    newChatButton.addEventListener(
+
+        "click",
+
+        function () {
+
+            if (chatContainer) {
+
+                chatContainer.innerHTML =
+                    "";
+
+            }
+
+
+            if (welcomeMessage) {
+
+                chatContainer.appendChild(
+                    welcomeMessage
+                );
+
+
+                welcomeMessage.style.display =
+                    "block";
+
+            }
+
+
+            if (messageInput) {
+
+                messageInput.value =
+                    "";
+
+
+                messageInput.focus();
+
+            }
+
+
+            removeSelectedImage();
+
+        }
+
     );
-
-  }
 
 }
 
@@ -813,114 +1081,173 @@ async function loadChats() {
 
 if (clearChatsButton) {
 
-  clearChatsButton.addEventListener(
-    "click",
-    async function () {
+    clearChatsButton.addEventListener(
 
-      try {
+        "click",
 
-        const response =
-          await fetch(
-            "/api/chats",
-            {
-              method: "DELETE"
+        async function () {
+
+            const confirmed =
+                confirm(
+                    "Ma hubtaa inaad tirtirayso dhammaan chat-yada?"
+                );
+
+
+            if (!confirmed) {
+
+                return;
+
             }
-          );
 
 
-        const data =
-          await response.json();
+            try {
+
+                const response =
+                    await fetch(
+
+                        "/api/chats",
+
+                        {
+                            method:
+                                "DELETE"
+                        }
+
+                    );
 
 
-        if (!response.ok) {
+                const data =
+                    await response.json();
 
-          throw new Error(
-            data?.error ||
-            "Chat history lama tirtiri karin."
-          );
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.error ||
+                        "Chat history lama tirtiri karin."
+                    );
+
+                }
+
+
+                if (chatHistory) {
+
+                    chatHistory.innerHTML =
+                        "";
+
+                }
+
+
+                if (chatContainer) {
+
+                    chatContainer.innerHTML =
+                        "";
+
+                }
+
+
+                if (welcomeMessage) {
+
+                    chatContainer.appendChild(
+                        welcomeMessage
+                    );
+
+
+                    welcomeMessage.style.display =
+                        "block";
+
+                }
+
+
+            } catch (error) {
+
+                addErrorMessage(
+                    "❌ " +
+                    error.message
+                );
+
+            }
 
         }
 
-
-        if (chatContainer) {
-
-          chatContainer.innerHTML =
-            "";
-
-        }
-
-
-        addAIMessage(
-          "Chat history waa la tirtiray. Sideen kuu caawin karaa?"
-        );
-
-
-      } catch (error) {
-
-        addErrorMessage(
-          "❌ " + error.message
-        );
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================================
-   FORMAT TEXT
-========================================= */
-
-function formatText(text) {
-
-  return escapeHTML(text)
-    .replace(
-      /\n/g,
-      "<br>"
     );
 
 }
 
 
 /* =========================================
-   ESCAPE HTML
+   SERVER HEALTH
 ========================================= */
 
-function escapeHTML(text) {
+async function checkServerHealth() {
 
-  const div =
-    document.createElement("div");
+    if (!serverStatus) {
+
+        return;
+
+    }
 
 
-  div.textContent =
-    String(text || "");
+    try {
+
+        const response =
+            await fetch(
+                "/api/health"
+            );
 
 
-  return div.innerHTML;
+        const data =
+            await response.json();
+
+
+        if (
+            response.ok &&
+            data.success !== false
+        ) {
+
+            serverStatus.textContent =
+                "🟢 Server-ka waa shaqaynayaa";
+
+        } else {
+
+            serverStatus.textContent =
+                "🔴 Server-ka cilad ayaa jirta";
+
+        }
+
+    } catch {
+
+        serverStatus.textContent =
+            "🔴 Server-ka lama heli karo";
+
+    }
 
 }
 
 
 /* =========================================
-   SCROLL TO BOTTOM
+   SCROLL
 ========================================= */
 
 function scrollToBottom() {
 
-  if (!chatContainer) {
-    return;
-  }
+    if (!chatContainer) {
+
+        return;
+
+    }
 
 
-  chatContainer.scrollTo({
-    top:
-      chatContainer.scrollHeight,
+    chatContainer.scrollTo(
 
-    behavior:
-      "smooth"
-  });
+        {
+            top:
+                chatContainer.scrollHeight,
+
+            behavior:
+                "smooth"
+        }
+
+    );
 
 }
 
@@ -930,10 +1257,15 @@ function scrollToBottom() {
 ========================================= */
 
 document.addEventListener(
-  "DOMContentLoaded",
-  function () {
 
-    loadChats();
+    "DOMContentLoaded",
 
-  }
+    function () {
+
+        checkServerHealth();
+
+        loadChats();
+
+    }
+
 );
