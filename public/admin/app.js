@@ -1,919 +1,915 @@
-"use strict";
+/* =========================================
+   ADMIN AUTH
+========================================= */
 
-/* =========================================================
-   AI CHAT SOMALI - ADMIN APP
-   File: public/admin/app.js
-   ========================================================= */
-
-/* =========================================================
-   API
-   ========================================================= */
-
-const API = window.location.origin;
-
-const TOKEN_KEY = "ai_token";
-const USER_KEY = "ai_user";
-
-/* =========================================================
-   STATE
-   ========================================================= */
-
-let currentUser = null;
-
-/* =========================================================
-   DOM READY
-   ========================================================= */
-
-document.addEventListener("DOMContentLoaded", () => {
-  currentUser = getSavedUser();
-
-  bindLoginForm();
-  bindAdminButtons();
-
-  if (isDashboardPage()) {
-    initDashboard();
-  }
-});
-
-/* =========================================================
-   LOCAL STORAGE
-   ========================================================= */
-
-function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-function getSavedUser() {
-  try {
-    const user = localStorage.getItem(USER_KEY);
-
-    if (!user) return null;
-
-    return JSON.parse(user);
-  } catch (error) {
-    console.error("User parse error:", error);
-    return null;
-  }
-}
-
-function saveLogin(data) {
-  if (data.token) {
-    localStorage.setItem(TOKEN_KEY, data.token);
-  }
-
-  if (data.user) {
-    localStorage.setItem(
-      USER_KEY,
-      JSON.stringify(data.user)
+const adminToken =
+    localStorage.getItem(
+        "adminToken"
     );
-  }
-}
 
-function logout() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
 
-  window.location.href = "/admin/";
-}
+/* =========================================
+   ADMIN LOGIN
+========================================= */
 
-/* =========================================================
-   API REQUEST
-   ========================================================= */
-
-async function apiRequest(endpoint, options = {}) {
-  const token = getToken();
-
-  const headers = {
-    ...(options.headers || {})
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  if (
-    options.body &&
-    !(options.body instanceof FormData)
-  ) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  const response = await fetch(
-    `${API}${endpoint}`,
-    {
-      ...options,
-      headers
-    }
-  );
-
-  let data = null;
-
-  try {
-    data = await response.json();
-  } catch (error) {
-    data = {
-      message: await response.text()
-    };
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data.message ||
-      data.error ||
-      `Server error: ${response.status}`
+const loginForm =
+    document.getElementById(
+        "loginForm"
     );
-  }
 
-  return data;
-}
 
-/* =========================================================
-   LOGIN
-   ========================================================= */
+if (loginForm) {
 
-function bindLoginForm() {
-  const form =
-    document.querySelector("#adminLoginForm") ||
-    document.querySelector("#loginForm") ||
-    document.querySelector("form");
+    loginForm.addEventListener(
+        "submit",
+        async function (event) {
 
-  if (!form) return;
+            event.preventDefault();
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
 
-    const emailInput =
-      form.querySelector('input[type="email"]') ||
-      form.querySelector("#email") ||
-      document.querySelector("#email");
+            const email =
+                document
+                .getElementById(
+                    "email"
+                )
+                .value
+                .trim();
 
-    const passwordInput =
-      form.querySelector('input[type="password"]') ||
-      form.querySelector("#password") ||
-      document.querySelector("#password");
 
-    const email = emailInput
-      ? emailInput.value.trim()
-      : "";
+            const password =
+                document
+                .getElementById(
+                    "password"
+                )
+                .value;
 
-    const password = passwordInput
-      ? passwordInput.value
-      : "";
 
-    if (!email || !password) {
-      showMessage(
-        "Email ama password waa khaldan yahay.",
-        "error"
-      );
-      return;
-    }
+            if (!email || !password) {
 
-    const submitButton =
-      form.querySelector('button[type="submit"]');
+                alert(
+                    "Fadlan geli Email iyo Password."
+                );
 
-    const originalText =
-      submitButton
-        ? submitButton.innerHTML
-        : "";
+                return;
+            }
 
-    try {
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = "Sug...";
-      }
 
-      const data = await apiRequest(
-        "/api/login",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            email,
-            password
-          })
+            try {
+
+                const response =
+                    await fetch(
+                        "/api/login",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    email,
+                                    password
+                                })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    alert(
+                        data.error ||
+                        "Login ayaa fashilmay."
+                    );
+
+                    return;
+                }
+
+
+                /* Hubi inuu yahay Admin */
+
+                if (
+                    !data.user ||
+                    data.user.role !==
+                    "admin"
+                ) {
+
+                    alert(
+                        "Account-kan Admin ma aha."
+                    );
+
+                    return;
+                }
+
+
+                /* Kaydi Token */
+
+                localStorage.setItem(
+                    "adminToken",
+                    data.token
+                );
+
+
+                localStorage.setItem(
+                    "adminUser",
+                    JSON.stringify(
+                        data.user
+                    )
+                );
+
+
+                alert(
+                    "Admin login successful."
+                );
+
+
+                /* Tag Dashboard */
+
+                window.location.href =
+                    "/admin/dashboard.html";
+
+            } catch (error) {
+
+                console.error(
+                    "ADMIN LOGIN ERROR:",
+                    error
+                );
+
+
+                alert(
+                    "Server error. Fadlan isku day mar kale."
+                );
+            }
         }
-      );
-
-      if (!data.token) {
-        throw new Error(
-          "Token lama helin. Server-ka /api/login hubi."
-        );
-      }
-
-      saveLogin(data);
-
-      showMessage(
-        "Login-ku wuu guulaystay.",
-        "success"
-      );
-
-      setTimeout(() => {
-        window.location.href = "/admin/";
-      }, 500);
-
-    } catch (error) {
-      console.error("Admin login error:", error);
-
-      showMessage(
-        error.message ||
-        "Login wuu fashilmay.",
-        "error"
-      );
-
-    } finally {
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.innerHTML = originalText;
-      }
-    }
-  });
+    );
 }
 
-/* =========================================================
-   CHECK PAGE
-   ========================================================= */
 
-function isDashboardPage() {
-  return (
-    document.querySelector("#dashboard") ||
-    document.querySelector("#users") ||
-    document.querySelector("#usersSection") ||
-    document.querySelector("#chatHistory") ||
-    document.querySelector("#knowledge") ||
-    document.querySelector(
-      '[data-page="dashboard"]'
-    )
-  );
-}
+/* =========================================
+   VERIFY ADMIN
+========================================= */
 
-/* =========================================================
-   ADMIN DASHBOARD
-   ========================================================= */
-
-async function initDashboard() {
-  const token = getToken();
-
-  if (!token) {
-    showMessage(
-      "Fadlan marka hore Admin ahaan u gal.",
-      "error"
-    );
-
-    return;
-  }
-
-  await loadDashboard();
-}
-
-/* =========================================================
-   BUTTONS
-   ========================================================= */
-
-function bindAdminButtons() {
-
-  /* USERS */
-
-  const usersButton =
-    document.querySelector("#usersBtn") ||
-    findButtonByText("Users");
-
-  if (usersButton) {
-    usersButton.addEventListener("click", () => {
-      loadUsers();
-    });
-  }
-
-
-  /* CHAT HISTORY */
-
-  const chatsButton =
-    document.querySelector("#chatsBtn") ||
-    document.querySelector("#historyBtn") ||
-    findButtonByText("Chat History");
-
-  if (chatsButton) {
-    chatsButton.addEventListener("click", () => {
-      loadChats();
-    });
-  }
-
-
-  /* KNOWLEDGE */
-
-  const knowledgeButton =
-    document.querySelector("#knowledgeBtn") ||
-    findButtonByText("Knowledge");
-
-  if (knowledgeButton) {
-    knowledgeButton.addEventListener(
-      "click",
-      () => {
-        loadKnowledge();
-      }
-    );
-  }
-
-
-  /* DELETE ALL CHATS */
-
-  const deleteButton =
-    document.querySelector("#deleteAllChatsBtn") ||
-    findButtonByText("Delete All Chats");
-
-  if (deleteButton) {
-    deleteButton.addEventListener(
-      "click",
-      async () => {
-        await deleteAllChats();
-      }
-    );
-  }
-
-
-  /* LOGOUT */
-
-  const logoutButton =
-    document.querySelector("#logoutBtn") ||
-    findButtonByText("Logout") ||
-    findButtonByText("Ka bax");
-
-  if (logoutButton) {
-    logoutButton.addEventListener(
-      "click",
-      logout
-    );
-  }
-}
-
-/* =========================================================
-   LOAD DASHBOARD
-   ========================================================= */
-
-async function loadDashboard() {
-  try {
-
-    showMessage(
-      "Admin Dashboard loading...",
-      "info"
-    );
-
-    await Promise.all([
-      loadUsers(),
-      loadChats(),
-      loadKnowledge()
-    ]);
-
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-/* =========================================================
-   USERS
-   ========================================================= */
-
-async function loadUsers() {
-  try {
-
-    const data = await apiRequest(
-      "/api/admin/users"
-    );
-
-    const users =
-      Array.isArray(data)
-        ? data
-        : (
-            data.users ||
-            data.data ||
-            []
-          );
-
-    renderUsers(users);
-
-  } catch (error) {
-
-    console.error(
-      "Users error:",
-      error
-    );
-
-    showEndpointError(
-      "/api/admin/users",
-      error
-    );
-  }
-}
-
-function renderUsers(users) {
-
-  const container =
-    document.querySelector("#users") ||
-    document.querySelector("#usersList") ||
-    document.querySelector("#usersSection");
-
-  if (!container) return;
-
-  if (!Array.isArray(users) || users.length === 0) {
-    container.innerHTML = `
-      <h2>👥 Users</h2>
-      <p>Weli users lama helin.</p>
-    `;
-
-    return;
-  }
-
-  let html = `
-    <h2>👥 Users</h2>
-
-    <div class="admin-table-wrapper">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Magaca</th>
-            <th>Email</th>
-            <th>Role</th>
-          </tr>
-        </thead>
-
-        <tbody>
-  `;
-
-  users.forEach((user) => {
-
-    html += `
-      <tr>
-        <td>${escapeHtml(user.id || "-")}</td>
-
-        <td>
-          ${escapeHtml(
-            user.name ||
-            user.username ||
-            "-"
-          )}
-        </td>
-
-        <td>
-          ${escapeHtml(
-            user.email || "-"
-          )}
-        </td>
-
-        <td>
-          ${escapeHtml(
-            user.role || "user"
-          )}
-        </td>
-      </tr>
-    `;
-  });
-
-  html += `
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  container.innerHTML = html;
-}
-
-/* =========================================================
-   CHAT HISTORY
-   ========================================================= */
-
-async function loadChats() {
-  try {
-
-    const data = await apiRequest(
-      "/api/admin/chats"
-    );
-
-    const chats =
-      Array.isArray(data)
-        ? data
-        : (
-            data.chats ||
-            data.data ||
-            []
-          );
-
-    renderChats(chats);
-
-  } catch (error) {
-
-    /*
-      Haddii server-ka uusan lahayn
-      /api/admin/chats, isku day endpoint-ka
-      caadiga ah.
-    */
+async function verifyAdmin() {
 
     try {
 
-      const data = await apiRequest(
-        "/api/chats"
-      );
-
-      const chats =
-        Array.isArray(data)
-          ? data
-          : (
-              data.chats ||
-              data.data ||
-              []
+        const response =
+            await fetch(
+                "/api/admin/me",
+                {
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    }
+                }
             );
 
-      renderChats(chats);
 
-    } catch (secondError) {
+        if (!response.ok) {
 
-      console.error(
-        "Chats error:",
-        secondError
-      );
+            localStorage.removeItem(
+                "adminToken"
+            );
 
-      showEndpointError(
-        "/api/admin/chats",
-        secondError
-      );
-    }
-  }
-}
+            localStorage.removeItem(
+                "adminUser"
+            );
 
-function renderChats(chats) {
 
-  const container =
-    document.querySelector("#chatHistory") ||
-    document.querySelector("#chats") ||
-    document.querySelector("#chatsList");
+            window.location.href =
+                "/admin/";
 
-  if (!container) return;
-
-  if (!Array.isArray(chats) || chats.length === 0) {
-
-    container.innerHTML = `
-      <h2>💬 Chat History</h2>
-      <p>Wax chat history ah lama helin.</p>
-    `;
-
-    return;
-  }
-
-  let html = `
-    <h2>💬 Chat History</h2>
-    <div class="chat-history-list">
-  `;
-
-  chats.forEach((chat) => {
-
-    const message =
-      chat.message ||
-      chat.content ||
-      chat.question ||
-      "-";
-
-    const answer =
-      chat.answer ||
-      chat.response ||
-      chat.reply ||
-      "";
-
-    html += `
-      <div class="admin-chat-card">
-
-        <strong>
-          👤 ${escapeHtml(
-            chat.email ||
-            chat.user_email ||
-            "User"
-          )}
-        </strong>
-
-        <p>
-          <b>Su'aal:</b>
-          ${escapeHtml(message)}
-        </p>
-
-        ${
-          answer
-            ? `
-              <p>
-                <b>Jawaab:</b>
-                ${escapeHtml(answer)}
-              </p>
-            `
-            : ""
+            return false;
         }
 
-      </div>
-    `;
-  });
 
-  html += `
-    </div>
-  `;
+        return true;
 
-  container.innerHTML = html;
+    } catch (error) {
+
+        console.error(
+            "Admin verification error:",
+            error
+        );
+
+        return false;
+    }
 }
 
-/* =========================================================
-   KNOWLEDGE
-   ========================================================= */
 
-async function loadKnowledge() {
+/* =========================================
+   LOAD USERS
+========================================= */
 
-  try {
+async function loadUsers() {
 
-    const data = await apiRequest(
-      "/api/admin/knowledge"
-    );
+    const container =
+        document.getElementById(
+            "users"
+        );
 
-    const knowledge =
-      Array.isArray(data)
-        ? data
-        : (
-            data.knowledge ||
-            data.data ||
-            []
-          );
 
-    renderKnowledge(knowledge);
+    if (!container) return;
 
-  } catch (error) {
 
-    console.error(
-      "Knowledge error:",
-      error
-    );
+    container.innerHTML =
+        "Users loading...";
 
-    showEndpointError(
-      "/api/admin/knowledge",
-      error
-    );
-  }
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/users",
+                {
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Users lama helin."
+            );
+        }
+
+
+        if (
+            !data.users ||
+            data.users.length === 0
+        ) {
+
+            container.innerHTML =
+                "Users lama helin.";
+
+            return;
+        }
+
+
+        container.innerHTML =
+            data.users
+            .map(
+                user =>
+                `
+                <div class="user-card">
+
+                    <h3>
+                        ${user.name}
+                    </h3>
+
+                    <p>
+                        <b>Email:</b>
+                        ${user.email}
+                    </p>
+
+                    <p>
+                        <b>Role:</b>
+                        ${user.role}
+                    </p>
+
+                    <p>
+                        <b>Chats:</b>
+                        ${user.chat_count}
+                    </p>
+
+                    ${
+                        user.role !== "admin"
+                        ?
+                        `
+                        <button
+                            onclick="deleteUser(${user.id})"
+                        >
+                            Delete User
+                        </button>
+                        `
+                        :
+                        `
+                        <p>
+                            👑 Admin
+                        </p>
+                        `
+                    }
+
+                    <hr>
+
+                </div>
+                `
+            )
+            .join("");
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        container.innerHTML =
+            "Users lama soo qaadi karin.";
+    }
 }
 
-function renderKnowledge(items) {
 
-  const container =
-    document.querySelector("#knowledge") ||
-    document.querySelector("#knowledgeList") ||
-    document.querySelector("#knowledgeSection");
+/* =========================================
+   LOAD CHATS
+========================================= */
 
-  if (!container) return;
+async function loadChats() {
 
-  if (
-    !Array.isArray(items) ||
-    items.length === 0
-  ) {
+    const container =
+        document.getElementById(
+            "chats"
+        );
 
-    container.innerHTML = `
-      <h2>🧠 Knowledge</h2>
-      <p>Knowledge data lama helin.</p>
-    `;
 
-    return;
-  }
+    if (!container) return;
 
-  let html = `
-    <h2>🧠 Knowledge</h2>
 
-    <div class="knowledge-list">
-  `;
+    container.innerHTML =
+        "Chats loading...";
 
-  items.forEach((item) => {
 
-    html += `
-      <div class="knowledge-card">
+    try {
 
-        <h3>
-          ${escapeHtml(
-            item.title ||
-            item.name ||
-            "Knowledge"
-          )}
-        </h3>
+        const response =
+            await fetch(
+                "/api/admin/chats",
+                {
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    }
+                }
+            );
 
-        <p>
-          ${escapeHtml(
-            item.content ||
-            item.text ||
-            item.description ||
-            ""
-          )}
-        </p>
 
-      </div>
-    `;
-  });
+        const data =
+            await response.json();
 
-  html += `
-    </div>
-  `;
 
-  container.innerHTML = html;
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Chats lama helin."
+            );
+        }
+
+
+        if (
+            !data.chats ||
+            data.chats.length === 0
+        ) {
+
+            container.innerHTML =
+                "Chats lama helin.";
+
+            return;
+        }
+
+
+        container.innerHTML =
+            data.chats
+            .map(
+                chat =>
+                `
+                <div class="chat-card">
+
+                    <h3>
+                        👤 ${chat.name}
+                    </h3>
+
+                    <p>
+                        ${chat.email}
+                    </p>
+
+                    <p>
+                        <b>Su'aal:</b>
+                        ${chat.message}
+                    </p>
+
+                    <p>
+                        <b>AI:</b>
+                        ${chat.response}
+                    </p>
+
+                    ${
+                        chat.image
+                        ?
+                        `
+                        <img
+                            src="${chat.image}"
+                            style="
+                                max-width:200px;
+                                border-radius:10px;
+                            "
+                        >
+                        `
+                        :
+                        ""
+                    }
+
+                    <hr>
+
+                </div>
+                `
+            )
+            .join("");
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        container.innerHTML =
+            "Chats lama soo qaadi karin.";
+    }
 }
 
-/* =========================================================
+
+/* =========================================
    DELETE ALL CHATS
-   ========================================================= */
+========================================= */
 
 async function deleteAllChats() {
 
-  const confirmed = confirm(
-    "Ma hubtaa inaad tirtirayso dhammaan chats-ka?"
-  );
+    const confirmDelete =
+        confirm(
+            "Ma hubtaa inaad tirtirayso dhammaan chats?"
+        );
 
-  if (!confirmed) return;
 
-  try {
+    if (!confirmDelete) return;
 
-    await apiRequest(
-      "/api/admin/chats",
-      {
-        method: "DELETE"
-      }
-    );
-
-    showMessage(
-      "Dhammaan chats-ka waa la tirtiray.",
-      "success"
-    );
-
-    await loadChats();
-
-  } catch (error) {
-
-    /*
-      Fallback endpoint
-    */
 
     try {
 
-      await apiRequest(
-        "/api/chats",
-        {
-          method: "DELETE"
+        const response =
+            await fetch(
+                "/api/admin/chats",
+                {
+                    method:
+                        "DELETE",
+
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.error ||
+                "Chats lama tirtiri karin."
+            );
+
+            return;
         }
-      );
 
-      showMessage(
-        "Dhammaan chats-ka waa la tirtiray.",
-        "success"
-      );
 
-      await loadChats();
+        alert(
+            "Dhammaan chats waa la tirtiray."
+        );
 
-    } catch (secondError) {
 
-      showMessage(
-        secondError.message ||
-        "Chats lama tirtiri karin.",
-        "error"
-      );
+        loadChats();
+
+        loadUsers();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Server error."
+        );
     }
-  }
 }
 
-/* =========================================================
-   ERROR DISPLAY
-   ========================================================= */
 
-function showEndpointError(
-  endpoint,
-  error
+/* =========================================
+   DELETE USER
+========================================= */
+
+async function deleteUser(
+    userId
 ) {
 
-  const message =
-    error.message ||
-    "Unknown error";
+    const confirmDelete =
+        confirm(
+            "Ma hubtaa inaad tirtirayso User-kan?"
+        );
 
-  showMessage(
-    `Endpoint error: ${endpoint} — ${message}`,
-    "error"
-  );
+
+    if (!confirmDelete) return;
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/users/" +
+                userId,
+                {
+                    method:
+                        "DELETE",
+
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.error ||
+                "User lama tirtiri karin."
+            );
+
+            return;
+        }
+
+
+        alert(
+            "User waa la tirtiray."
+        );
+
+
+        loadUsers();
+
+        loadChats();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Server error."
+        );
+    }
 }
 
-function showMessage(
-  message,
-  type = "info"
+
+/* =========================================
+   LOAD KNOWLEDGE
+========================================= */
+
+async function loadKnowledge() {
+
+    const container =
+        document.getElementById(
+            "knowledge"
+        );
+
+
+    if (!container) return;
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/knowledge",
+                {
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error
+            );
+        }
+
+
+        if (
+            !data.knowledge ||
+            data.knowledge.length === 0
+        ) {
+
+            container.innerHTML =
+                "Knowledge lama gelin.";
+
+            return;
+        }
+
+
+        container.innerHTML =
+            data.knowledge
+            .map(
+                item =>
+                `
+                <div class="knowledge-card">
+
+                    <h3>
+                        ${item.title}
+                    </h3>
+
+                    <p>
+                        ${item.content}
+                    </p>
+
+                    <button
+                        onclick="
+                            deleteKnowledge(
+                                ${item.id}
+                            )
+                        "
+                    >
+                        Delete
+                    </button>
+
+                    <hr>
+
+                </div>
+                `
+            )
+            .join("");
+
+    } catch (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            "Knowledge lama soo qaadi karin.";
+    }
+}
+
+
+/* =========================================
+   ADD KNOWLEDGE
+========================================= */
+
+async function addKnowledge() {
+
+    const title =
+        document
+        .getElementById(
+            "knowledgeTitle"
+        )
+        .value
+        .trim();
+
+
+    const content =
+        document
+        .getElementById(
+            "knowledgeContent"
+        )
+        .value
+        .trim();
+
+
+    if (!title || !content) {
+
+        alert(
+            "Fadlan geli Title iyo Content."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/knowledge",
+                {
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json",
+
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    },
+
+                    body:
+                        JSON.stringify({
+                            title,
+                            content
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            alert(
+                data.error ||
+                "Knowledge lama kaydin."
+            );
+
+            return;
+        }
+
+
+        alert(
+            "Knowledge waa la kaydiyay."
+        );
+
+
+        document
+            .getElementById(
+                "knowledgeTitle"
+            )
+            .value =
+            "";
+
+
+        document
+            .getElementById(
+                "knowledgeContent"
+            )
+            .value =
+            "";
+
+
+        loadKnowledge();
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        alert(
+            "Server error."
+        );
+    }
+}
+
+
+/* =========================================
+   DELETE KNOWLEDGE
+========================================= */
+
+async function deleteKnowledge(
+    id
 ) {
 
-  let box =
-    document.querySelector("#adminMessage");
+    const confirmDelete =
+        confirm(
+            "Ma hubtaa inaad tirtirayso Knowledge-kan?"
+        );
 
-  if (!box) {
 
-    box = document.createElement("div");
+    if (!confirmDelete) return;
 
-    box.id = "adminMessage";
 
-    box.style.position = "fixed";
-    box.style.top = "20px";
-    box.style.right = "20px";
-    box.style.zIndex = "9999";
-    box.style.padding = "15px 20px";
-    box.style.borderRadius = "10px";
-    box.style.maxWidth = "400px";
-    box.style.boxShadow =
-      "0 5px 20px rgba(0,0,0,0.2)";
+    try {
 
-    document.body.appendChild(box);
-  }
+        const response =
+            await fetch(
+                "/api/admin/knowledge/" +
+                id,
+                {
+                    method:
+                        "DELETE",
 
-  box.textContent = message;
+                    headers: {
+                        Authorization:
+                            "Bearer " +
+                            adminToken
+                    }
+                }
+            );
 
-  if (type === "success") {
-    box.style.background = "#d1fae5";
-    box.style.color = "#065f46";
-  }
 
-  if (type === "error") {
-    box.style.background = "#fee2e2";
-    box.style.color = "#991b1b";
-  }
+        const data =
+            await response.json();
 
-  if (type === "info") {
-    box.style.background = "#dbeafe";
-    box.style.color = "#1e3a8a";
-  }
 
-  box.style.display = "block";
+        if (!response.ok) {
 
-  clearTimeout(
-    showMessage.timeout
-  );
+            alert(
+                data.error ||
+                "Knowledge lama tirtiri karin."
+            );
 
-  showMessage.timeout =
-    setTimeout(() => {
+            return;
+        }
 
-      box.style.display = "none";
 
-    }, 5000);
+        alert(
+            "Knowledge waa la tirtiray."
+        );
+
+
+        loadKnowledge();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Server error."
+        );
+    }
 }
 
-/* =========================================================
-   FIND BUTTON BY TEXT
-   ========================================================= */
 
-function findButtonByText(text) {
+/* =========================================
+   LOGOUT
+========================================= */
 
-  const elements =
-    document.querySelectorAll(
-      "button, a"
+function logout() {
+
+    localStorage.removeItem(
+        "adminToken"
     );
 
-  for (const element of elements) {
 
-    const value =
-      element.textContent
-        .trim()
-        .toLowerCase();
+    localStorage.removeItem(
+        "adminUser"
+    );
 
-    if (
-      value.includes(
-        text.toLowerCase()
-      )
-    ) {
-      return element;
+
+    window.location.href =
+        "/admin/";
+}
+
+
+/* =========================================
+   DASHBOARD START
+========================================= */
+
+if (
+    window.location.pathname.includes(
+        "dashboard.html"
+    )
+) {
+
+    if (!adminToken) {
+
+        window.location.href =
+            "/admin/";
+
+    } else {
+
+        verifyAdmin()
+        .then(
+            valid => {
+
+                if (valid) {
+
+                    loadUsers();
+
+                    loadChats();
+
+                    loadKnowledge();
+                }
+            }
+        );
     }
-  }
-
-  return null;
 }
-
-/* =========================================================
-   ESCAPE HTML
-   ========================================================= */
-
-function escapeHtml(value) {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return "";
-  }
-
-  const div =
-    document.createElement("div");
-
-  div.textContent =
-    String(value);
-
-  return div.innerHTML;
-}
-
-/* =========================================================
-   GLOBAL FUNCTIONS
-   ========================================================= */
-
-window.adminAPI = {
-  loadUsers,
-  loadChats,
-  loadKnowledge,
-  deleteAllChats,
-  logout
-};
-
-console.log(
-  "cabdilahi xuseen app.js loaded successfully"
-);
