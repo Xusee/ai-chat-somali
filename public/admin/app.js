@@ -52,104 +52,109 @@ if (loginForm) {
             }
 
 
-            try {
+try {
 
-                const response =
-                    await fetch(
-                        "/api/login",
-                        {
-                            method:
-                                "POST",
+    const response =
+        await fetch(
+            "/api/login",
+            {
+                method:
+                    "POST",
 
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
 
-                            body:
-                                JSON.stringify({
-                                    email,
-                                    password
-                                })
-                        }
-                    );
-
-
-                const data =
-                    await response.json();
-
-
-                if (
-                    !response.ok
-                ) {
-
-                    alert(
-                        data.error ||
-                        "Login ayaa fashilmay."
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    !data.user
-                ) {
-
-                    alert(
-                        "User information lama helin."
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    data.user.role !==
-                    "admin"
-                ) {
-
-                    alert(
-                        "Account-kan Admin ma aha."
-                    );
-
-                    return;
-                }
-
-
-                localStorage.setItem(
-                    "adminToken",
-                    data.token
-                );
-
-
-                localStorage.setItem(
-                    "adminUser",
-                    JSON.stringify(
-                        data.user
-                    )
-                );
-
-
-                window.location.href =
-                    "/admin/dashboard.html";
-
-
-            } catch (error) {
-
-                console.error(
-                    "ADMIN LOGIN ERROR:",
-                    error
-                );
-
-
-                alert(
-                    "Server error. Fadlan mar kale isku day."
-                );
+                body:
+                    JSON.stringify({
+                        email,
+                        password
+                    })
             }
-        }
+        );
+
+
+    const data =
+        await getResponseData(
+            response
+        );
+
+
+    if (!response.ok) {
+
+        console.error(
+            "LOGIN SERVER RESPONSE:",
+            response.status,
+            data
+        );
+
+        alert(
+            data.error || `Login error: ${response.status}`
+        );
+
+        return;
+    }
+
+
+    if (!data.user) {
+
+        alert(
+            "User information lama helin."
+        );
+
+        return;
+    }
+
+
+    if (
+        data.user.role !==
+        "admin"
+    ) {
+
+        alert(
+            "Account-kan Admin ma aha."
+        );
+
+        return;
+    }
+
+
+    localStorage.setItem(
+        "adminToken",
+        data.token
+    );
+
+
+    localStorage.setItem(
+        "adminUser",
+        JSON.stringify(
+            data.user
+        )
+    );
+
+
+    window.location.href =
+        "/admin/dashboard.html";
+
+
+} catch (error) {
+
+    console.error(
+        "ADMIN LOGIN ERROR:",
+        error
+    );
+
+
+    alert(
+        "Server error: " +
+        error.message
     );
 }
+
+
+    }
+);
 
 
 /* =====================================================
@@ -1279,7 +1284,7 @@ if (
     window.location.pathname.includes(
         "dashboard.html"
     )
-) {
+) 
 
     initializeDashboard();
 }
