@@ -1,75 +1,260 @@
-const adminToken = localStorage.getItem("adminToken");
+/* =====================================================
+   ADMIN APP.JS
+===================================================== */
 
 
-/* =========================================
-   CHECK ADMIN TOKEN
-========================================= */
+/* =====================================================
+   LOGIN
+===================================================== */
 
-function authHeaders() {
+const loginForm =
+    document.getElementById(
+        "loginForm"
+    );
+
+
+if (loginForm) {
+
+    loginForm.addEventListener(
+        "submit",
+        async function (event) {
+
+            event.preventDefault();
+
+
+            const email =
+                document
+                .getElementById(
+                    "email"
+                )
+                .value
+                .trim();
+
+
+            const password =
+                document
+                .getElementById(
+                    "password"
+                )
+                .value;
+
+
+            if (
+                !email ||
+                !password
+            ) {
+
+                alert(
+                    "Fadlan geli email iyo password."
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/api/login",
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    email,
+                                    password
+                                })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (
+                    !response.ok
+                ) {
+
+                    alert(
+                        data.error ||
+                        "Login ayaa fashilmay."
+                    );
+
+                    return;
+                }
+
+
+                if (
+                    !data.user
+                ) {
+
+                    alert(
+                        "User information lama helin."
+                    );
+
+                    return;
+                }
+
+
+                if (
+                    data.user.role !==
+                    "admin"
+                ) {
+
+                    alert(
+                        "Account-kan Admin ma aha."
+                    );
+
+                    return;
+                }
+
+
+                localStorage.setItem(
+                    "adminToken",
+                    data.token
+                );
+
+
+                localStorage.setItem(
+                    "adminUser",
+                    JSON.stringify(
+                        data.user
+                    )
+                );
+
+
+                window.location.href =
+                    "/admin/dashboard.html";
+
+
+            } catch (error) {
+
+                console.error(
+                    "ADMIN LOGIN ERROR:",
+                    error
+                );
+
+
+                alert(
+                    "Server error. Fadlan mar kale isku day."
+                );
+            }
+        }
+    );
+}
+
+
+/* =====================================================
+   ADMIN TOKEN
+===================================================== */
+
+const adminToken =
+    localStorage.getItem(
+        "adminToken"
+    );
+
+
+/* =====================================================
+   AUTH HEADERS
+===================================================== */
+
+function getAuthHeaders() {
 
     return {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + adminToken
+
+        Authorization:
+            "Bearer " +
+            adminToken
     };
 }
 
 
-/* =========================================
-   HANDLE API RESPONSE
-========================================= */
+/* =====================================================
+   VERIFY ADMIN
+===================================================== */
 
-async function handleResponse(response) {
-
-    let data;
+async function verifyAdmin() {
 
     try {
 
-        data = await response.json();
+        const response =
+            await fetch(
+                "/api/admin/me",
+                {
+                    headers:
+                        getAuthHeaders()
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Admin access lama oggolaan."
+            );
+        }
+
+
+        if (
+            !data.user ||
+            data.user.role !==
+            "admin"
+        ) {
+
+            throw new Error(
+                "Admin ma tihid."
+            );
+        }
+
+
+        return true;
+
 
     } catch (error) {
 
-        throw new Error(
-            "Server-ku jawaab sax ah ma soo celin."
+        console.error(
+            "ADMIN VERIFY ERROR:",
+            error
         );
-    }
 
 
-    if (!response.ok) {
-
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
-
-            localStorage.removeItem(
-                "adminToken"
-            );
-
-            localStorage.removeItem(
-                "adminUser"
-            );
-
-            alert(
-                "Admin session-kaagu wuu dhacay. Fadlan mar kale gal."
-            );
-
-            window.location.href =
-                "/admin/";
-        }
-
-        throw new Error(
-            data.error ||
-            "Server error."
+        localStorage.removeItem(
+            "adminToken"
         );
-    }
 
-    return data;
+
+        localStorage.removeItem(
+            "adminUser"
+        );
+
+
+        window.location.href =
+            "/admin/";
+
+
+        return false;
+    }
 }
 
 
-/* =========================================
+/* =====================================================
    LOAD USERS
-========================================= */
+===================================================== */
 
 async function loadUsers() {
 
@@ -78,10 +263,22 @@ async function loadUsers() {
             "users"
         );
 
-    if (!container) return;
+
+    if (!container) {
+
+        return;
+    }
+
 
     container.innerHTML =
-        "<p>Users loading...</p>";
+        `
+        <tr>
+            <td colspan="6">
+                Loading...
+            </td>
+        </tr>
+        `;
+
 
     try {
 
@@ -89,18 +286,25 @@ async function loadUsers() {
             await fetch(
                 "/api/admin/users",
                 {
-                    headers: {
-                        Authorization:
-                            "Bearer " +
-                            adminToken
-                    }
+                    headers:
+                        getAuthHeaders()
                 }
             );
 
+
         const data =
-            await handleResponse(
-                response
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Users lama helin."
             );
+        }
 
 
         if (
@@ -109,7 +313,13 @@ async function loadUsers() {
         ) {
 
             container.innerHTML =
-                "<p>Wax User ah lama helin.</p>";
+                `
+                <tr>
+                    <td colspan="6">
+                        Wax user ah lama helin.
+                    </td>
+                </tr>
+                `;
 
             return;
         }
@@ -120,37 +330,71 @@ async function loadUsers() {
             .map(
                 user =>
                 `
-                <div class="user-card">
+                <tr>
 
-                    <h3>
-                        ${user.name}
-                    </h3>
+                    <td>
+                        ${user.id}
+                    </td>
 
-                    <p>
-                        <b>Email:</b>
-                        ${user.email}
-                    </p>
 
-                    <p>
-                        <b>Role:</b>
+                    <td>
+                        ${escapeHTML(
+                            user.name
+                        )}
+                    </td>
+
+
+                    <td>
+                        ${escapeHTML(
+                            user.email
+                        )}
+                    </td>
+
+
+                    <td>
                         ${user.role}
-                    </p>
+                    </td>
 
-                    <p>
-                        <b>Chats:</b>
+
+                    <td>
                         ${user.chat_count}
-                    </p>
+                    </td>
 
-                    <button
-                        onclick="deleteUser(${user.id})"
-                    >
-                        Delete User
-                    </button>
 
-                </div>
+                    <td>
+
+                        ${
+                            user.role !== "admin"
+                            ?
+                            `
+                            <button
+                                onclick="deleteUserChats(${user.id})"
+                            >
+                                🗑️ Chats
+                            </button>
+
+
+                            <button
+                                onclick="deleteUser(${user.id})"
+                            >
+                                ❌ User
+                            </button>
+                            `
+                            :
+                            `
+                            <span>
+                                👑 Admin
+                            </span>
+                            `
+                        }
+
+                    </td>
+
+                </tr>
                 `
             )
             .join("");
+
 
     } catch (error) {
 
@@ -159,20 +403,22 @@ async function loadUsers() {
             error
         );
 
+
         container.innerHTML =
             `
-            <p>
-                Users lama soo qaadi karin:
-                ${error.message}
-            </p>
+            <tr>
+                <td colspan="6">
+                    Users lama soo qaadi karin.
+                </td>
+            </tr>
             `;
     }
 }
 
 
-/* =========================================
+/* =====================================================
    LOAD CHATS
-========================================= */
+===================================================== */
 
 async function loadChats() {
 
@@ -181,10 +427,16 @@ async function loadChats() {
             "chats"
         );
 
-    if (!container) return;
+
+    if (!container) {
+
+        return;
+    }
+
 
     container.innerHTML =
-        "<p>Chats loading...</p>";
+        "Loading...";
+
 
     try {
 
@@ -192,18 +444,25 @@ async function loadChats() {
             await fetch(
                 "/api/admin/chats",
                 {
-                    headers: {
-                        Authorization:
-                            "Bearer " +
-                            adminToken
-                    }
+                    headers:
+                        getAuthHeaders()
                 }
             );
 
+
         const data =
-            await handleResponse(
-                response
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Chats lama helin."
             );
+        }
 
 
         if (
@@ -212,7 +471,11 @@ async function loadChats() {
         ) {
 
             container.innerHTML =
-                "<p>Chats lama helin.</p>";
+                `
+                <p>
+                    Chat history waa madhan yahay.
+                </p>
+                `;
 
             return;
         }
@@ -225,24 +488,79 @@ async function loadChats() {
                 `
                 <div class="chat-card">
 
-                    <h3>
-                        ${chat.name}
-                    </h3>
+                    <div class="chat-user">
 
-                    <p>
-                        <b>Email:</b>
-                        ${chat.email}
-                    </p>
+                        👤
+                        <b>
+                            ${escapeHTML(
+                                chat.name
+                            )}
+                        </b>
 
-                    <p>
-                        <b>Su'aal:</b>
-                        ${chat.message}
-                    </p>
+                        <br>
 
-                    <p>
-                        <b>AI Jawaab:</b>
-                        ${chat.response}
-                    </p>
+                        <small>
+                            ${escapeHTML(
+                                chat.email
+                            )}
+                        </small>
+
+                    </div>
+
+
+                    <div class="chat-message">
+
+                        <b>
+                            Su'aal:
+                        </b>
+
+                        <p>
+                            ${escapeHTML(
+                                chat.message
+                            )}
+                        </p>
+
+                    </div>
+
+
+                    <div class="chat-response">
+
+                        <b>
+                            AI:
+                        </b>
+
+                        <p>
+                            ${escapeHTML(
+                                chat.response
+                            )}
+                        </p>
+
+                    </div>
+
+
+                    ${
+                        chat.image
+                        ?
+                        `
+                        <img
+                            src="${chat.image}"
+                            class="chat-image"
+                            alt="User image"
+                        >
+                        `
+                        :
+                        ""
+                    }
+
+
+                    <small>
+
+                        ${formatDate(
+                            chat.created_at
+                        )}
+
+                    </small>
+
 
                     <hr>
 
@@ -251,6 +569,7 @@ async function loadChats() {
             )
             .join("");
 
+
     } catch (error) {
 
         console.error(
@@ -258,20 +577,247 @@ async function loadChats() {
             error
         );
 
+
         container.innerHTML =
             `
             <p>
-                Chats lama soo qaadi karin:
-                ${error.message}
+                Chats lama soo qaadi karin.
             </p>
             `;
     }
 }
 
 
-/* =========================================
+/* =====================================================
+   DELETE ALL CHATS
+===================================================== */
+
+async function deleteAllChats() {
+
+    const confirmed =
+        confirm(
+            "Ma hubtaa inaad tirtirayso dhammaan chats?"
+        );
+
+
+    if (!confirmed) {
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/chats",
+                {
+                    method:
+                        "DELETE",
+
+                    headers:
+                        getAuthHeaders()
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            alert(
+                data.error ||
+                "Chats lama tirtiri karin."
+            );
+
+            return;
+        }
+
+
+        alert(
+            "Dhammaan chats waa la tirtiray."
+        );
+
+
+        loadChats();
+
+        loadUsers();
+
+
+    } catch (error) {
+
+        console.error(
+            "DELETE ALL CHATS ERROR:",
+            error
+        );
+
+
+        alert(
+            "Server error."
+        );
+    }
+}
+
+
+/* =====================================================
+   DELETE USER CHATS
+===================================================== */
+
+async function deleteUserChats(
+    userId
+) {
+
+    const confirmed =
+        confirm(
+            "Ma tirtiraysaa chats-ka user-kan?"
+        );
+
+
+    if (!confirmed) {
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/admin/users/${userId}/chats`,
+                {
+                    method:
+                        "DELETE",
+
+                    headers:
+                        getAuthHeaders()
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            alert(
+                data.error ||
+                "Chats lama tirtiri karin."
+            );
+
+            return;
+        }
+
+
+        alert(
+            "User chats waa la tirtiray."
+        );
+
+
+        loadUsers();
+
+        loadChats();
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        alert(
+            "Server error."
+        );
+    }
+}
+
+
+/* =====================================================
+   DELETE USER
+===================================================== */
+
+async function deleteUser(
+    userId
+) {
+
+    const confirmed =
+        confirm(
+            "Ma hubtaa inaad tirtirayso user-kan?"
+        );
+
+
+    if (!confirmed) {
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/admin/users/${userId}`,
+                {
+                    method:
+                        "DELETE",
+
+                    headers:
+                        getAuthHeaders()
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            alert(
+                data.error ||
+                "User lama tirtiri karin."
+            );
+
+            return;
+        }
+
+
+        alert(
+            "User waa la tirtiray."
+        );
+
+
+        loadUsers();
+
+        loadChats();
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        alert(
+            "Server error."
+        );
+    }
+}
+
+
+/* =====================================================
    LOAD KNOWLEDGE
-========================================= */
+===================================================== */
 
 async function loadKnowledge() {
 
@@ -280,7 +826,16 @@ async function loadKnowledge() {
             "knowledgeList"
         );
 
-    if (!container) return;
+
+    if (!container) {
+
+        return;
+    }
+
+
+    container.innerHTML =
+        "Loading...";
+
 
     try {
 
@@ -288,18 +843,25 @@ async function loadKnowledge() {
             await fetch(
                 "/api/admin/knowledge",
                 {
-                    headers: {
-                        Authorization:
-                            "Bearer " +
-                            adminToken
-                    }
+                    headers:
+                        getAuthHeaders()
                 }
             );
 
+
         const data =
-            await handleResponse(
-                response
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Knowledge lama helin."
             );
+        }
 
 
         if (
@@ -308,7 +870,11 @@ async function loadKnowledge() {
         ) {
 
             container.innerHTML =
-                "<p>Knowledge lama gelin.</p>";
+                `
+                <p>
+                    Knowledge wali lama gelin.
+                </p>
+                `;
 
             return;
         }
@@ -322,43 +888,59 @@ async function loadKnowledge() {
                 <div class="knowledge-card">
 
                     <h3>
-                        ${item.title}
+
+                        ${escapeHTML(
+                            item.title
+                        )}
+
                     </h3>
 
+
                     <p>
-                        ${item.content}
+
+                        ${escapeHTML(
+                            item.content
+                        )}
+
                     </p>
+
 
                     <button
                         onclick="deleteKnowledge(${item.id})"
                     >
-                        Delete
+
+                        🗑️ Delete
+
                     </button>
+
+
+                    <hr>
 
                 </div>
                 `
             )
             .join("");
 
+
     } catch (error) {
 
         console.error(
-            "KNOWLEDGE ERROR:",
+            "LOAD KNOWLEDGE ERROR:",
             error
         );
 
-        if (container) {
 
-            container.innerHTML =
-                "Knowledge lama soo qaadi karin.";
-        }
+        container.innerHTML =
+            `
+            Knowledge lama soo qaadi karin.
+            `;
     }
 }
 
 
-/* =========================================
+/* =====================================================
    ADD KNOWLEDGE
-========================================= */
+===================================================== */
 
 async function addKnowledge() {
 
@@ -367,17 +949,36 @@ async function addKnowledge() {
             "knowledgeTitle"
         );
 
+
     const contentInput =
         document.getElementById(
             "knowledgeContent"
         );
 
 
+    if (
+        !titleInput ||
+        !contentInput
+    ) {
+
+        alert(
+            "Knowledge inputs lama helin."
+        );
+
+        return;
+    }
+
+
     const title =
-        titleInput.value.trim();
+        titleInput
+        .value
+        .trim();
+
 
     const content =
-        contentInput.value.trim();
+        contentInput
+        .value
+        .trim();
 
 
     if (
@@ -386,7 +987,7 @@ async function addKnowledge() {
     ) {
 
         alert(
-            "Fadlan geli Cinwaan iyo Content."
+            "Fadlan geli Cinwaan iyo Knowledge."
         );
 
         return;
@@ -402,8 +1003,13 @@ async function addKnowledge() {
                     method:
                         "POST",
 
-                    headers:
-                        authHeaders(),
+                    headers: {
+
+                        "Content-Type":
+                            "application/json",
+
+                        ...getAuthHeaders()
+                    },
 
                     body:
                         JSON.stringify({
@@ -413,9 +1019,22 @@ async function addKnowledge() {
                 }
             );
 
-        await handleResponse(
-            response
-        );
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            alert(
+                data.error ||
+                "Knowledge lama kaydin."
+            );
+
+            return;
+        }
 
 
         alert(
@@ -426,11 +1045,13 @@ async function addKnowledge() {
         titleInput.value =
             "";
 
+
         contentInput.value =
             "";
 
 
         loadKnowledge();
+
 
     } catch (error) {
 
@@ -439,24 +1060,29 @@ async function addKnowledge() {
             error
         );
 
+
         alert(
-            error.message
+            "Server error."
         );
     }
 }
 
 
-/* =========================================
+/* =====================================================
    DELETE KNOWLEDGE
-========================================= */
+===================================================== */
 
-async function deleteKnowledge(id) {
+async function deleteKnowledge(
+    id
+) {
 
-    if (
-        !confirm(
+    const confirmed =
+        confirm(
             "Ma hubtaa inaad tirtirayso Knowledge-kan?"
-        )
-    ) {
+        );
+
+
+    if (!confirmed) {
 
         return;
     }
@@ -466,168 +1092,188 @@ async function deleteKnowledge(id) {
 
         const response =
             await fetch(
-                "/api/admin/knowledge/" + id,
+                `/api/admin/knowledge/${id}`,
                 {
                     method:
                         "DELETE",
 
-                    headers: {
-                        Authorization:
-                            "Bearer " +
-                            adminToken
-                    }
+                    headers:
+                        getAuthHeaders()
                 }
             );
 
-        await handleResponse(
-            response
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            alert(
+                data.error ||
+                "Knowledge lama tirtiri karin."
+            );
+
+            return;
+        }
+
+
+        alert(
+            "Knowledge waa la tirtiray."
         );
+
 
         loadKnowledge();
 
+
     } catch (error) {
 
+        console.error(
+            error
+        );
+
+
         alert(
-            error.message
+            "Server error."
         );
     }
 }
 
 
-/* =========================================
-   DELETE ALL CHATS
-========================================= */
-
-async function deleteAllChats() {
-
-    if (
-        !confirm(
-            "Ma hubtaa inaad tirtirayso dhammaan Chats-ka?"
-        )
-    ) {
-
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/admin/chats",
-                {
-                    method:
-                        "DELETE",
-
-                    headers: {
-                        Authorization:
-                            "Bearer " +
-                            adminToken
-                    }
-                }
-            );
-
-        const data =
-            await handleResponse(
-                response
-            );
-
-
-        alert(
-            data.message
-        );
-
-        loadChats();
-
-        loadUsers();
-
-    } catch (error) {
-
-        alert(
-            error.message
-        );
-    }
-}
-
-
-/* =========================================
-   DELETE USER
-========================================= */
-
-async function deleteUser(id) {
-
-    if (
-        !confirm(
-            "Ma hubtaa inaad tirtirayso User-kan?"
-        )
-    ) {
-
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/admin/users/" + id,
-                {
-                    method:
-                        "DELETE",
-
-                    headers: {
-                        Authorization:
-                            "Bearer " +
-                            adminToken
-                    }
-                }
-            );
-
-        const data =
-            await handleResponse(
-                response
-            );
-
-
-        alert(
-            data.message
-        );
-
-        loadUsers();
-
-        loadChats();
-
-    } catch (error) {
-
-        alert(
-            error.message
-        );
-    }
-}
-
-
-/* =========================================
+/* =====================================================
    LOGOUT
-========================================= */
+===================================================== */
 
 function logout() {
+
+    const confirmed =
+        confirm(
+            "Ma hubtaa inaad Admin-ka ka baxayso?"
+        );
+
+
+    if (!confirmed) {
+
+        return;
+    }
+
 
     localStorage.removeItem(
         "adminToken"
     );
 
+
     localStorage.removeItem(
         "adminUser"
     );
+
 
     window.location.href =
         "/admin/";
 }
 
 
-/* =========================================
-   DASHBOARD START
-========================================= */
+/* =====================================================
+   FORMAT DATE
+===================================================== */
+
+function formatDate(
+    date
+) {
+
+    if (!date) {
+
+        return "";
+    }
+
+
+    try {
+
+        return new Date(
+            date
+        )
+        .toLocaleString(
+            "so-SO"
+        );
+
+    } catch (error) {
+
+        return date;
+    }
+}
+
+
+/* =====================================================
+   SECURITY - ESCAPE HTML
+===================================================== */
+
+function escapeHTML(
+    text
+) {
+
+    if (
+        text === null ||
+        text === undefined
+    ) {
+
+        return "";
+    }
+
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.textContent =
+        String(text);
+
+
+    return div.innerHTML;
+}
+
+
+/* =====================================================
+   DASHBOARD INITIALIZATION
+===================================================== */
+
+async function initializeDashboard() {
+
+    if (!adminToken) {
+
+        window.location.href =
+            "/admin/";
+
+        return;
+    }
+
+
+    const isAdmin =
+        await verifyAdmin();
+
+
+    if (!isAdmin) {
+
+        return;
+    }
+
+
+    await loadUsers();
+
+
+    await loadChats();
+
+
+    await loadKnowledge();
+}
+
+
+/* =====================================================
+   AUTO RUN
+===================================================== */
 
 if (
     window.location.pathname.includes(
@@ -635,17 +1281,5 @@ if (
     )
 ) {
 
-    if (!adminToken) {
-
-        window.location.href =
-            "/admin/";
-
-    } else {
-
-        loadUsers();
-
-        loadChats();
-
-        loadKnowledge();
-    }
+    initializeDashboard();
 }
