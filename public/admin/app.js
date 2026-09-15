@@ -1,42 +1,190 @@
 /* =====================================================
+   NASIIB BUSINESS CENTER
    ADMIN APP.JS
+   Compatible with server.js
 ===================================================== */
+
+
+/* =====================================================
+   CONFIG
+===================================================== */
+
+const API_BASE = "";
+
+const LOGIN_URL = "/api/login";
+const ADMIN_ME_URL = "/api/admin/me";
+const USERS_URL = "/api/admin/users";
+const CHATS_URL = "/api/admin/chats";
+const KNOWLEDGE_URL = "/api/admin/knowledge";
+
+
+/* =====================================================
+   HELPER - GET RESPONSE DATA
+===================================================== */
+
+async function getResponseData(response) {
+
+    const text = await response.text();
+
+    if (!text) {
+        return {};
+    }
+
+    try {
+
+        return JSON.parse(text);
+
+    } catch (error) {
+
+        console.error(
+            "JSON PARSE ERROR:",
+            error
+        );
+
+        return {
+            error: text
+        };
+    }
+}
+
+
+/* =====================================================
+   GET ADMIN TOKEN
+===================================================== */
+
+function getAdminToken() {
+
+    return localStorage.getItem(
+        "adminToken"
+    );
+}
+
+
+/* =====================================================
+   AUTH HEADERS
+===================================================== */
+
+function getAuthHeaders() {
+
+    const token =
+        getAdminToken();
+
+    return {
+
+        "Authorization":
+            `Bearer ${token}`,
+
+        "Accept":
+            "application/json"
+
+    };
+}
+
+
+/* =====================================================
+   API REQUEST HELPER
+===================================================== */
+
+async function apiRequest(
+    url,
+    options = {}
+) {
+
+    const headers = {
+
+        ...getAuthHeaders(),
+
+        ...(options.headers || {})
+
+    };
+
+
+    const response =
+        await fetch(
+            url,
+            {
+                ...options,
+                headers
+            }
+        );
+
+
+    const data =
+        await getResponseData(
+            response
+        );
+
+
+    if (
+        response.status === 401 ||
+        response.status === 403
+    ) {
+
+        localStorage.removeItem(
+            "adminToken"
+        );
+
+        localStorage.removeItem(
+            "adminUser"
+        );
+
+    }
+
+
+    return {
+        response,
+        data
+    };
+}
 
 
 /* =====================================================
    LOGIN
 ===================================================== */
 
-const loginForm =
-    document.getElementById(
-        "loginForm"
-    );
+function setupLogin() {
+
+    const loginForm =
+        document.getElementById(
+            "loginForm"
+        );
 
 
-if (loginForm) {
+    if (!loginForm) {
+
+        return;
+    }
+
 
     loginForm.addEventListener(
         "submit",
-        async function (event) {
+        async function(event) {
 
             event.preventDefault();
 
 
-            const email =
-                document
-                .getElementById(
+            const emailInput =
+                document.getElementById(
                     "email"
-                )
-                .value
-                .trim();
+                );
+
+
+            const passwordInput =
+                document.getElementById(
+                    "password"
+                );
+
+
+            const email =
+                emailInput
+                    ? emailInput.value.trim()
+                    : "";
 
 
             const password =
-                document
-                .getElementById(
-                    "password"
-                )
-                .value;
+                passwordInput
+                    ? passwordInput.value
+                    : "";
 
 
             if (
@@ -52,133 +200,165 @@ if (loginForm) {
             }
 
 
-try {
+            const submitButton =
+                loginForm.querySelector(
+                    'button[type="submit"]'
+                );
 
-    const response =
-        await fetch(
-            "/api/login",
-            {
-                method:
-                    "POST",
 
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
+            const oldButtonText =
+                submitButton
+                    ? submitButton.textContent
+                    : "";
 
-                body:
-                    JSON.stringify({
-                        email,
-                        password
-                    })
+
+            if (submitButton) {
+
+                submitButton.disabled =
+                    true;
+
+                submitButton.textContent =
+                    "⏳ Login...";
             }
-        );
 
 
-    const data =
-        await getResponseData(
-            response
-        );
+            try {
+
+                const response =
+                    await fetch(
+                        LOGIN_URL,
+                        {
+                            method:
+                                "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+
+                                "Accept":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    email,
+                                    password
+                                })
+                        }
+                    );
 
 
-    if (!response.ok) {
-
-        console.error(
-            "LOGIN SERVER RESPONSE:",
-            response.status,
-            data
-        );
-
-        alert(
-            data.error || `Login error: ${response.status}`
-        );
-
-        return;
-    }
+                const data =
+                    await getResponseData(
+                        response
+                    );
 
 
-    if (!data.user) {
-
-        alert(
-            "User information lama helin."
-        );
-
-        return;
-    }
+                console.log(
+                    "LOGIN RESPONSE:",
+                    response.status,
+                    data
+                );
 
 
-    if (
-        data.user.role !==
-        "admin"
-    ) {
+                if (!response.ok) {
 
-        alert(
-            "Account-kan Admin ma aha."
-        );
+                    alert(
+                        data.error || `Login error: ${response.status}`
+                    );
 
-        return;
-    }
+                    return;
+                }
 
 
-    localStorage.setItem(
-        "adminToken",
-        data.token
+                if (!data.token) {
+
+                    alert(
+                        "Token-ka Admin lama helin."
+                    );
+
+                    return;
+                }
+
+
+                if (!data.user) {
+
+                    alert(
+                        "Macluumaadka Admin lama helin."
+                    );
+
+                    return;
+                }
+
+
+                if (
+                    data.user.role !==
+                    "admin"
+                ) {
+
+                    alert(
+                        "Account-kan Admin ma aha."
+                    );
+
+                    return;
+                }
+
+
+                /* SAVE TOKEN */
+
+                localStorage.setItem(
+                    "adminToken",
+                    data.token
+                );
+
+
+                localStorage.setItem(
+                    "adminUser",
+                    JSON.stringify(
+                        data.user
+                    )
+                );
+
+
+                /* GO DASHBOARD */
+
+                window.location.href =
+                    "/admin/dashboard.html";
+
+
+            } catch (error) {
+
+                console.error(
+                    "ADMIN LOGIN ERROR:",
+                    error
+                );
+
+
+                alert(
+                    "Server error: " +
+                    (
+                        error.message ||
+                        "Server-ka lama heli karo."
+                    )
+                );
+
+
+            } finally {
+
+                if (submitButton) {
+
+                    submitButton.disabled =
+                        false;
+
+                    submitButton.textContent =
+                        oldButtonText ||
+                        "Login";
+                }
+
+            }
+
+        }
     );
-
-
-    localStorage.setItem(
-        "adminUser",
-        JSON.stringify(
-            data.user
-        )
-    );
-
-
-    window.location.href =
-        "/admin/dashboard.html";
-
-
-} catch (error) {
-
-    console.error(
-        "ADMIN LOGIN ERROR:",
-        error
-    );
-
-
-    alert(
-        "Server error: " +
-        error.message
-    );
-}
-
-
-    }
-);
-
-
-/* =====================================================
-   ADMIN TOKEN
-===================================================== */
-
-const adminToken =
-    localStorage.getItem(
-        "adminToken"
-    );
-
-
-/* =====================================================
-   AUTH HEADERS
-===================================================== */
-
-function getAuthHeaders() {
-
-    return {
-
-        Authorization:
-            "Bearer " +
-            adminToken
-    };
 }
 
 
@@ -188,30 +368,41 @@ function getAuthHeaders() {
 
 async function verifyAdmin() {
 
+    const token =
+        getAdminToken();
+
+
+    if (!token) {
+
+        return false;
+    }
+
+
     try {
 
-        const response =
-            await fetch(
-                "/api/admin/me",
-                {
-                    headers:
-                        getAuthHeaders()
-                }
+        const result =
+            await apiRequest(
+                ADMIN_ME_URL
             );
+
+
+        const response =
+            result.response;
 
 
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
-            throw new Error(
-                data.error ||
-                "Admin access lama oggolaan."
+            console.error(
+                "ADMIN VERIFY FAILED:",
+                response.status,
+                data
             );
+
+            return false;
         }
 
 
@@ -221,10 +412,22 @@ async function verifyAdmin() {
             "admin"
         ) {
 
-            throw new Error(
-                "Admin ma tihid."
+            console.error(
+                "User-ku Admin ma aha."
             );
+
+            return false;
         }
+
+
+        /* UPDATE SAVED USER */
+
+        localStorage.setItem(
+            "adminUser",
+            JSON.stringify(
+                data.user
+            )
+        );
 
 
         return true;
@@ -237,23 +440,28 @@ async function verifyAdmin() {
             error
         );
 
-
-        localStorage.removeItem(
-            "adminToken"
-        );
-
-
-        localStorage.removeItem(
-            "adminUser"
-        );
-
-
-        window.location.href =
-            "/admin/";
-
-
         return false;
     }
+}
+
+
+/* =====================================================
+   REDIRECT TO LOGIN
+===================================================== */
+
+function redirectToLogin() {
+
+    localStorage.removeItem(
+        "adminToken"
+    );
+
+    localStorage.removeItem(
+        "adminUser"
+    );
+
+
+    window.location.href =
+        "/admin/";
 }
 
 
@@ -279,7 +487,7 @@ async function loadUsers() {
         `
         <tr>
             <td colspan="6">
-                Loading...
+                ⏳ Users ayaa la soo gelinayaa...
             </td>
         </tr>
         `;
@@ -287,41 +495,48 @@ async function loadUsers() {
 
     try {
 
-        const response =
-            await fetch(
-                "/api/admin/users",
-                {
-                    headers:
-                        getAuthHeaders()
-                }
+        const result =
+            await apiRequest(
+                USERS_URL
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             throw new Error(
                 data.error ||
-                "Users lama helin."
+                `Users error: ${response.status}`
             );
         }
 
 
+        const users =
+            Array.isArray(
+                data.users
+            )
+            ?
+            data.users
+            :
+            [];
+
+
         if (
-            !data.users ||
-            data.users.length === 0
+            users.length === 0
         ) {
 
             container.innerHTML =
                 `
                 <tr>
                     <td colspan="6">
-                        Wax user ah lama helin.
+                        👤 Wax user ah lama helin.
                     </td>
                 </tr>
                 `;
@@ -331,72 +546,93 @@ async function loadUsers() {
 
 
         container.innerHTML =
-            data.users
+            users
             .map(
-                user =>
-                `
-                <tr>
+                user => {
 
-                    <td>
-                        ${user.id}
-                    </td>
-
-
-                    <td>
-                        ${escapeHTML(
-                            user.name
-                        )}
-                    </td>
+                    const userId =
+                        Number(
+                            user.id
+                        );
 
 
-                    <td>
-                        ${escapeHTML(
-                            user.email
-                        )}
-                    </td>
+                    const role =
+                        String(
+                            user.role ||
+                            "user"
+                        );
 
 
-                    <td>
-                        ${user.role}
-                    </td>
+                    return `
+                    <tr>
 
+                        <td>
+                            ${userId}
+                        </td>
 
-                    <td>
-                        ${user.chat_count}
-                    </td>
+                        <td>
+                            ${escapeHTML(
+                                user.name
+                            )}
+                        </td>
 
+                        <td>
+                            ${escapeHTML(
+                                user.email
+                            )}
+                        </td>
 
-                    <td>
+                        <td>
+                            ${
+                                role === "admin"
+                                ?
+                                "👑 Admin"
+                                :
+                                "👤 User"
+                            }
+                        </td>
 
-                        ${
-                            user.role !== "admin"
-                            ?
-                            `
-                            <button
-                                onclick="deleteUserChats(${user.id})"
-                            >
-                                🗑️ Chats
-                            </button>
+                        <td>
+                            ${
+                                Number(
+                                    user.chat_count
+                                ) || 0
+                            }
+                        </td>
 
+                        <td>
 
-                            <button
-                                onclick="deleteUser(${user.id})"
-                            >
-                                ❌ User
-                            </button>
-                            `
-                            :
-                            `
-                            <span>
-                                👑 Admin
-                            </span>
-                            `
-                        }
+                            ${
+                                role !== "admin"
+                                ?
+                                `
+                                <button
+                                    type="button"
+                                    onclick="deleteUserChats(${userId})"
+                                >
+                                    🗑️ Chats
+                                </button>
 
-                    </td>
+                                <button
+                                    type="button"
+                                    onclick="deleteUser(${userId})"
+                                >
+                                    ❌ User
+                                </button>
+                                `
+                                :
+                                `
+                                <span>
+                                    🔐 Protected
+                                </span>
+                                `
+                            }
 
-                </tr>
-                `
+                        </td>
+
+                    </tr>
+                    `;
+                }
             )
             .join("");
 
@@ -413,7 +649,13 @@ async function loadUsers() {
             `
             <tr>
                 <td colspan="6">
-                    Users lama soo qaadi karin.
+                    ❌ Users lama soo qaadi karin.
+                    <br>
+                    <small>
+                        ${escapeHTML(
+                            error.message
+                        )}
+                    </small>
                 </td>
             </tr>
             `;
@@ -440,45 +682,56 @@ async function loadChats() {
 
 
     container.innerHTML =
-        "Loading...";
+        `
+        <p>
+            ⏳ Chat history ayaa la soo gelinayaa...
+        </p>
+        `;
 
 
     try {
 
-        const response =
-            await fetch(
-                "/api/admin/chats",
-                {
-                    headers:
-                        getAuthHeaders()
-                }
+        const result =
+            await apiRequest(
+                CHATS_URL
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             throw new Error(
                 data.error ||
-                "Chats lama helin."
+                `Chats error: ${response.status}`
             );
         }
 
 
+        const chats =
+            Array.isArray(
+                data.chats
+            )
+            ?
+            data.chats
+            :
+            [];
+
+
         if (
-            !data.chats ||
-            data.chats.length === 0
+            chats.length === 0
         ) {
 
             container.innerHTML =
                 `
                 <p>
-                    Chat history waa madhan yahay.
+                    💬 Chat history waa madhan yahay.
                 </p>
                 `;
 
@@ -487,90 +740,104 @@ async function loadChats() {
 
 
         container.innerHTML =
-            data.chats
+            chats
             .map(
-                chat =>
-                `
-                <div class="chat-card">
+                chat => {
 
-                    <div class="chat-user">
-
-                        👤
-                        <b>
-                            ${escapeHTML(
-                                chat.name
-                            )}
-                        </b>
-
-                        <br>
-
-                        <small>
-                            ${escapeHTML(
-                                chat.email
-                            )}
-                        </small>
-
-                    </div>
-
-
-                    <div class="chat-message">
-
-                        <b>
-                            Su'aal:
-                        </b>
-
-                        <p>
-                            ${escapeHTML(
-                                chat.message
-                            )}
-                        </p>
-
-                    </div>
-
-
-                    <div class="chat-response">
-
-                        <b>
-                            AI:
-                        </b>
-
-                        <p>
-                            ${escapeHTML(
-                                chat.response
-                            )}
-                        </p>
-
-                    </div>
-
-
-                    ${
+                    const image =
                         chat.image
                         ?
                         `
-                        <img
-                            src="${chat.image}"
-                            class="chat-image"
-                            alt="User image"
-                        >
+                        <div class="chat-image-wrapper">
+
+                            <img
+                                src="${escapeAttribute(
+                                    chat.image
+                                )}"
+                                class="chat-image"
+                                alt="User image"
+                                loading="lazy"
+                            >
+
+                        </div>
                         `
                         :
-                        ""
-                    }
+                        "";
 
 
-                    <small>
+                    return `
+                    <div class="chat-card">
 
-                        ${formatDate(
-                            chat.created_at
-                        )}
+                        <div class="chat-user">
 
-                    </small>
+                            👤
+                            <b>
+                                ${escapeHTML(
+                                    chat.name ||
+                                    "Anonymous"
+                                )}
+                            </b>
+
+                            <br>
+
+                            <small>
+                                ${escapeHTML(
+                                    chat.email ||
+                                    "anonymous"
+                                )}
+                            </small>
+
+                        </div>
 
 
-                    <hr>
+                        <div class="chat-message">
 
-                </div>
-                `
+                            <b>
+                                Su'aal:
+                            </b>
+
+                            <p>
+                                ${escapeHTML(
+                                    chat.message ||
+                                    ""
+                                )}
+                            </p>
+
+                        </div>
+
+
+                        ${image}
+
+
+                        <div class="chat-response">
+
+                            <b>
+                                🤖 AI:
+                            </b>
+
+                            <p>
+                                ${escapeHTML(
+                                    chat.response ||
+                                    ""
+                                )}
+                            </p>
+
+                        </div>
+
+
+                        <small>
+                            📅
+                            ${formatDate(
+                                chat.created_at
+                            )}
+                        </small>
+
+
+                        <hr>
+
+                    </div>
+                    `;
+                }
             )
             .join("");
 
@@ -586,7 +853,13 @@ async function loadChats() {
         container.innerHTML =
             `
             <p>
-                Chats lama soo qaadi karin.
+                ❌ Chats lama soo qaadi karin.
+                <br>
+                <small>
+                    ${escapeHTML(
+                        error.message
+                    )}
+                </small>
             </p>
             `;
     }
@@ -601,7 +874,7 @@ async function deleteAllChats() {
 
     const confirmed =
         confirm(
-            "Ma hubtaa inaad tirtirayso dhammaan chats?"
+            "⚠️ Ma hubtaa inaad tirtirayso DHAMMAAN chat-yada?"
         );
 
 
@@ -613,26 +886,25 @@ async function deleteAllChats() {
 
     try {
 
-        const response =
-            await fetch(
-                "/api/admin/chats",
+        const result =
+            await apiRequest(
+                CHATS_URL,
                 {
                     method:
-                        "DELETE",
-
-                    headers:
-                        getAuthHeaders()
+                        "DELETE"
                 }
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             alert(
                 data.error ||
@@ -644,13 +916,14 @@ async function deleteAllChats() {
 
 
         alert(
+            data.message ||
             "Dhammaan chats waa la tirtiray."
         );
 
 
-        loadChats();
+        await loadChats();
 
-        loadUsers();
+        await loadUsers();
 
 
     } catch (error) {
@@ -662,7 +935,8 @@ async function deleteAllChats() {
 
 
         alert(
-            "Server error."
+            "Server error: " +
+            error.message
         );
     }
 }
@@ -676,9 +950,23 @@ async function deleteUserChats(
     userId
 ) {
 
+    const id =
+        Number(userId);
+
+
+    if (!Number.isInteger(id)) {
+
+        alert(
+            "User ID sax ah lama helin."
+        );
+
+        return;
+    }
+
+
     const confirmed =
         confirm(
-            "Ma tirtiraysaa chats-ka user-kan?"
+            "Ma hubtaa inaad tirtirayso dhammaan chats-ka user-kan?"
         );
 
 
@@ -690,30 +978,29 @@ async function deleteUserChats(
 
     try {
 
-        const response =
-            await fetch(
-                `/api/admin/users/${userId}/chats`,
+        const result =
+            await apiRequest(
+                `/api/admin/users/${id}/chats`,
                 {
                     method:
-                        "DELETE",
-
-                    headers:
-                        getAuthHeaders()
+                        "DELETE"
                 }
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             alert(
                 data.error ||
-                "Chats lama tirtiri karin."
+                "User chats lama tirtiri karin."
             );
 
             return;
@@ -721,24 +1008,27 @@ async function deleteUserChats(
 
 
         alert(
+            data.message ||
             "User chats waa la tirtiray."
         );
 
 
-        loadUsers();
+        await loadUsers();
 
-        loadChats();
+        await loadChats();
 
 
     } catch (error) {
 
         console.error(
+            "DELETE USER CHATS ERROR:",
             error
         );
 
 
         alert(
-            "Server error."
+            "Server error: " +
+            error.message
         );
     }
 }
@@ -752,9 +1042,23 @@ async function deleteUser(
     userId
 ) {
 
+    const id =
+        Number(userId);
+
+
+    if (!Number.isInteger(id)) {
+
+        alert(
+            "User ID sax ah lama helin."
+        );
+
+        return;
+    }
+
+
     const confirmed =
         confirm(
-            "Ma hubtaa inaad tirtirayso user-kan?"
+            "⚠️ Ma hubtaa inaad tirtirayso user-kan iyo xogtiisa?"
         );
 
 
@@ -766,26 +1070,25 @@ async function deleteUser(
 
     try {
 
-        const response =
-            await fetch(
-                `/api/admin/users/${userId}`,
+        const result =
+            await apiRequest(
+                `/api/admin/users/${id}`,
                 {
                     method:
-                        "DELETE",
-
-                    headers:
-                        getAuthHeaders()
+                        "DELETE"
                 }
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             alert(
                 data.error ||
@@ -797,24 +1100,27 @@ async function deleteUser(
 
 
         alert(
+            data.message ||
             "User waa la tirtiray."
         );
 
 
-        loadUsers();
+        await loadUsers();
 
-        loadChats();
+        await loadChats();
 
 
     } catch (error) {
 
         console.error(
+            "DELETE USER ERROR:",
             error
         );
 
 
         alert(
-            "Server error."
+            "Server error: " +
+            error.message
         );
     }
 }
@@ -839,45 +1145,56 @@ async function loadKnowledge() {
 
 
     container.innerHTML =
-        "Loading...";
+        `
+        <p>
+            ⏳ Knowledge ayaa la soo gelinayaa...
+        </p>
+        `;
 
 
     try {
 
-        const response =
-            await fetch(
-                "/api/admin/knowledge",
-                {
-                    headers:
-                        getAuthHeaders()
-                }
+        const result =
+            await apiRequest(
+                KNOWLEDGE_URL
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             throw new Error(
                 data.error ||
-                "Knowledge lama helin."
+                `Knowledge error: ${response.status}`
             );
         }
 
 
+        const knowledge =
+            Array.isArray(
+                data.knowledge
+            )
+            ?
+            data.knowledge
+            :
+            [];
+
+
         if (
-            !data.knowledge ||
-            data.knowledge.length === 0
+            knowledge.length === 0
         ) {
 
             container.innerHTML =
                 `
                 <p>
-                    Knowledge wali lama gelin.
+                    🧠 Knowledge wali lama gelin.
                 </p>
                 `;
 
@@ -886,43 +1203,49 @@ async function loadKnowledge() {
 
 
         container.innerHTML =
-            data.knowledge
+            knowledge
             .map(
-                item =>
-                `
-                <div class="knowledge-card">
+                item => {
 
-                    <h3>
+                    return `
+                    <div class="knowledge-card">
 
-                        ${escapeHTML(
-                            item.title
-                        )}
+                        <h3>
+                            🧠
+                            ${escapeHTML(
+                                item.title
+                            )}
+                        </h3>
 
-                    </h3>
+                        <p>
+                            ${escapeHTML(
+                                item.content
+                            )}
+                        </p>
 
+                        <small>
+                            📅
+                            ${formatDate(
+                                item.created_at
+                            )}
+                        </small>
 
-                    <p>
+                        <br><br>
 
-                        ${escapeHTML(
-                            item.content
-                        )}
+                        <button
+                            type="button"
+                            onclick="deleteKnowledge(${Number(
+                                item.id
+                            )})"
+                        >
+                            🗑️ Delete
+                        </button>
 
-                    </p>
+                        <hr>
 
-
-                    <button
-                        onclick="deleteKnowledge(${item.id})"
-                    >
-
-                        🗑️ Delete
-
-                    </button>
-
-
-                    <hr>
-
-                </div>
-                `
+                    </div>
+                    `;
+                }
             )
             .join("");
 
@@ -937,7 +1260,15 @@ async function loadKnowledge() {
 
         container.innerHTML =
             `
-            Knowledge lama soo qaadi karin.
+            <p>
+                ❌ Knowledge lama soo qaadi karin.
+                <br>
+                <small>
+                    ${escapeHTML(
+                        error.message
+                    )}
+                </small>
+            </p>
             `;
     }
 }
@@ -975,15 +1306,11 @@ async function addKnowledge() {
 
 
     const title =
-        titleInput
-        .value
-        .trim();
+        titleInput.value.trim();
 
 
     const content =
-        contentInput
-        .value
-        .trim();
+        contentInput.value.trim();
 
 
     if (
@@ -1001,19 +1328,16 @@ async function addKnowledge() {
 
     try {
 
-        const response =
-            await fetch(
-                "/api/admin/knowledge",
+        const result =
+            await apiRequest(
+                KNOWLEDGE_URL,
                 {
                     method:
                         "POST",
 
                     headers: {
-
                         "Content-Type":
-                            "application/json",
-
-                        ...getAuthHeaders()
+                            "application/json"
                     },
 
                     body:
@@ -1025,13 +1349,15 @@ async function addKnowledge() {
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             alert(
                 data.error ||
@@ -1043,6 +1369,7 @@ async function addKnowledge() {
 
 
         alert(
+            data.message ||
             "Knowledge waa la kaydiyay."
         );
 
@@ -1055,7 +1382,7 @@ async function addKnowledge() {
             "";
 
 
-        loadKnowledge();
+        await loadKnowledge();
 
 
     } catch (error) {
@@ -1067,7 +1394,8 @@ async function addKnowledge() {
 
 
         alert(
-            "Server error."
+            "Server error: " +
+            error.message
         );
     }
 }
@@ -1080,6 +1408,24 @@ async function addKnowledge() {
 async function deleteKnowledge(
     id
 ) {
+
+    const knowledgeId =
+        Number(id);
+
+
+    if (
+        !Number.isInteger(
+            knowledgeId
+        )
+    ) {
+
+        alert(
+            "Knowledge ID sax ah lama helin."
+        );
+
+        return;
+    }
+
 
     const confirmed =
         confirm(
@@ -1095,26 +1441,25 @@ async function deleteKnowledge(
 
     try {
 
-        const response =
-            await fetch(
-                `/api/admin/knowledge/${id}`,
+        const result =
+            await apiRequest(
+                `${KNOWLEDGE_URL}/${knowledgeId}`,
                 {
                     method:
-                        "DELETE",
-
-                    headers:
-                        getAuthHeaders()
+                        "DELETE"
                 }
             );
 
 
+        const response =
+            result.response;
+
+
         const data =
-            await response.json();
+            result.data;
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             alert(
                 data.error ||
@@ -1126,22 +1471,25 @@ async function deleteKnowledge(
 
 
         alert(
+            data.message ||
             "Knowledge waa la tirtiray."
         );
 
 
-        loadKnowledge();
+        await loadKnowledge();
 
 
     } catch (error) {
 
         console.error(
+            "DELETE KNOWLEDGE ERROR:",
             error
         );
 
 
         alert(
-            "Server error."
+            "Server error: " +
+            error.message
         );
     }
 }
@@ -1198,14 +1546,13 @@ function formatDate(
 
         return new Date(
             date
-        )
-        .toLocaleString(
+        ).toLocaleString(
             "so-SO"
         );
 
     } catch (error) {
 
-        return date;
+        return String(date);
     }
 }
 
@@ -1242,18 +1589,116 @@ function escapeHTML(
 
 
 /* =====================================================
+   SECURITY - ESCAPE ATTRIBUTE
+===================================================== */
+
+function escapeAttribute(
+    text
+) {
+
+    if (
+        text === null ||
+        text === undefined
+    ) {
+
+        return "";
+    }
+
+
+    return String(text)
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        );
+}
+
+
+/* =====================================================
+   SHOW ADMIN NAME
+===================================================== */
+
+function showAdminName() {
+
+    const adminUser =
+        localStorage.getItem(
+            "adminUser"
+        );
+
+
+    if (!adminUser) {
+
+        return;
+    }
+
+
+    try {
+
+        const user =
+            JSON.parse(
+                adminUser
+            );
+
+
+        const elements =
+            document.querySelectorAll(
+                "#adminName, .admin-name"
+            );
+
+
+        elements.forEach(
+            element => {
+
+                element.textContent =
+                    user.name ||
+                    "Administrator";
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.warn(
+            "Admin user data error:",
+            error
+        );
+    }
+}
+
+
+/* =====================================================
    DASHBOARD INITIALIZATION
 ===================================================== */
 
 async function initializeDashboard() {
 
-    if (!adminToken) {
+    const token =
+        getAdminToken();
 
-        window.location.href =
-            "/admin/";
+
+    if (!token) {
+
+        redirectToLogin();
 
         return;
     }
+
+
+    console.log(
+        "🔐 Checking Admin..."
+    );
 
 
     const isAdmin =
@@ -1262,29 +1707,97 @@ async function initializeDashboard() {
 
     if (!isAdmin) {
 
+        alert(
+            "Admin login-ka wuu dhacay ama ma saxna. Fadlan mar kale gal."
+        );
+
+
+        redirectToLogin();
+
         return;
     }
 
 
-    await loadUsers();
+    console.log(
+        "✅ Admin verified"
+    );
 
 
-    await loadChats();
+    showAdminName();
 
 
-    await loadKnowledge();
+    /* LOAD ALL ADMIN DATA */
+
+    await Promise.all([
+        loadUsers(),
+        loadChats(),
+        loadKnowledge()
+    ]);
+
+
+    console.log(
+        "✅ Admin Dashboard loaded"
+    );
 }
 
 
 /* =====================================================
-   AUTO RUN
+   GLOBAL FUNCTIONS
+   Required for HTML onclick=""
 ===================================================== */
 
-if (
-    window.location.pathname.includes(
-        "dashboard.html"
-    )
-) 
+window.deleteAllChats =
+    deleteAllChats;
 
-    initializeDashboard();
-}
+window.deleteUserChats =
+    deleteUserChats;
+
+window.deleteUser =
+    deleteUser;
+
+window.addKnowledge =
+    addKnowledge;
+
+window.deleteKnowledge =
+    deleteKnowledge;
+
+window.logout =
+    logout;
+
+window.loadUsers =
+    loadUsers;
+
+window.loadChats =
+    loadChats;
+
+window.loadKnowledge =
+    loadKnowledge;
+
+
+/* =====================================================
+   START
+===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        /* LOGIN PAGE */
+
+        setupLogin();
+
+
+        /* DASHBOARD PAGE */
+
+        if (
+            window.location.pathname.includes(
+                "dashboard.html"
+            )
+        ) {
+
+            initializeDashboard();
+
+        }
+
+    }
+);
