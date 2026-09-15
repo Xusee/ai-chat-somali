@@ -506,7 +506,7 @@ function showStatus(
         message;
 
     statusBox.className =
-        status ${type};
+            `status ${type}`;
 
 }
 
@@ -539,7 +539,7 @@ function authHeaders(
 
     const headers = {
         "Authorization":
-            Bearer ${adminToken}
+            `Bearer ${adminToken}`
     };
 
     if (includeJSON) {
@@ -629,7 +629,7 @@ if (loginForm) {
 
                 const response =
                     await fetch(
-                        ${API}/api/login,
+                        `${API}/api/login`,
                         {
                             method: "POST",
 
@@ -657,7 +657,7 @@ if (loginForm) {
 
                     throw new Error(
                         data.error ||
-                        Login error: ${response.status}
+                        `Login error: ${response.status}`
                     );
 
                 }
@@ -784,7 +784,7 @@ async function verifyAdmin() {
 
         const response =
             await fetch(
-                ${API}/api/admin/me,
+                `${API}/api/admin/me`,
                 {
                     method: "GET",
 
@@ -868,7 +868,7 @@ async function loadUsers() {
 
         const response =
             await fetch(
-                ${API}/api/admin/users,
+                `${API}/api/admin/users`,
                 {
                     headers:
                         authHeaders()
@@ -1038,14 +1038,14 @@ async function loadChats() {
     }
 
     chatsList.innerHTML =
-        <div class="loading">⏳ Chats loading...</div>;
+        `<div class="loading">⏳ Chats loading...</div>`;
 
 
     try {
 
         const response =
             await fetch(
-                ${API}/api/admin/chats,
+                `${API}/api/admin/chats`,
                 {
                     headers:
                         authHeaders()
@@ -1189,14 +1189,14 @@ async function loadKnowledge() {
     }
 
     knowledgeList.innerHTML =
-        <div class="loading">⏳ Knowledge loading...</div>;
+        `<div class="loading">⏳ Knowledge loading...</div>`;
 
 
     try {
 
         const response =
             await fetch(
-                ${API}/api/admin/knowledge,
+                `${API}/api/admin/knowledge`,
                 {
                     headers:
                         authHeaders()
@@ -1343,7 +1343,7 @@ if (knowledgeForm) {
 
                 const response =
                     await fetch(
-                        ${API}/api/admin/knowledge,
+                        `${API}/api/admin/knowledge`,
                         {
                             method: "POST",
 
@@ -1428,7 +1428,7 @@ async function deleteKnowledge(id) {
 
         const response =
             await fetch(
-                ${API}/api/admin/knowledge/${id},
+                `${API}/api/admin/knowledge/${id}`,
                 {
                     method: "DELETE",
 
@@ -1496,7 +1496,7 @@ async function deleteUserChats(id) {
 
         const response =
             await fetch(
-                ${API}/api/admin/users/${id}/chats,
+                `${API}/api/admin/users/${id}/chats`,
                 {
                     method: "DELETE",
 
@@ -1566,7 +1566,7 @@ async function deleteUser(id) {
 
         const response =
             await fetch(
-                ${API}/api/admin/users/${id},
+                `${API}/api/admin/users/${id}`,
                 {
                     method: "DELETE",
 
@@ -1646,7 +1646,7 @@ if (deleteAllChatsBtn) {
 
                 const response =
                     await fetch(
-                        ${API}/api/admin/chats,
+                        `${API}/api/admin/chats`,
                         {
                             method: "DELETE",
 
