@@ -1473,6 +1473,288 @@ document.addEventListener(
         checkServerHealth();
 
         loadChats();
+        /* =========================================
+   REGISTER
+========================================= */
+
+const registerForm =
+    document.getElementById("registerForm");
+
+if (registerForm) {
+
+    registerForm.addEventListener(
+        "submit",
+        async function(event) {
+
+            event.preventDefault();
+
+            const name =
+                document
+                .getElementById("name")
+                .value
+                .trim();
+
+            const email =
+                document
+                .getElementById("email")
+                .value
+                .trim();
+
+            const password =
+                document
+                .getElementById("password")
+                .value;
+
+            const confirmPassword =
+                document
+                .getElementById("confirmPassword")
+                .value;
+
+
+            if (!name || !email || !password) {
+
+                alert(
+                    "❌ Fadlan buuxi dhammaan xogta."
+                );
+
+                return;
+            }
+
+
+            if (password !== confirmPassword) {
+
+                alert(
+                    "❌ Labada password isma waafaqayaan."
+                );
+
+                return;
+            }
+
+
+            if (password.length < 6) {
+
+                alert(
+                    "❌ Password-ku waa inuu ahaadaa ugu yaraan 6 xaraf."
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/api/register",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    name,
+                                    email,
+                                    password
+                                })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    alert(
+                        "❌ " +
+                        (
+                            data.error ||
+                            "Akoonka lama samayn."
+                        )
+                    );
+
+                    return;
+                }
+
+
+                if (data.token) {
+
+                    localStorage.setItem(
+                        "token",
+                        data.token
+                    );
+
+                    localStorage.setItem(
+                        "user",
+                        JSON.stringify(
+                            data.user
+                        )
+                    );
+
+                }
+
+
+                alert(
+                    "✅ Akoonka si guul leh ayaa loo sameeyay."
+                );
+
+
+                window.location.href =
+                    "/";
+
+
+            } catch(error) {
+
+                console.error(
+                    "REGISTER ERROR:",
+                    error
+                );
+
+                alert(
+                    "❌ Server-ka lama xiriirin karin."
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================
+   LOGIN
+========================================= */
+
+const loginForm =
+    document.getElementById("loginForm");
+
+if (loginForm) {
+
+    loginForm.addEventListener(
+        "submit",
+        async function(event) {
+
+            event.preventDefault();
+
+
+            const email =
+                document
+                .getElementById("loginEmail")
+                .value
+                .trim();
+
+            const password =
+                document
+                .getElementById("loginPassword")
+                .value;
+
+
+            if (!email || !password) {
+
+                alert(
+                    "❌ Fadlan geli email iyo password."
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/api/login",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+
+                            body:
+                                JSON.stringify({
+                                    email,
+                                    password
+                                })
+                        }
+                    );
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    alert(
+                        "❌ " +
+                        (
+                            data.error ||
+                            "Login failed."
+                        )
+                    );
+
+                    return;
+                }
+
+
+                if (!data.token) {
+
+                    alert(
+                        "❌ Token lama helin."
+                    );
+
+                    return;
+                }
+
+
+                localStorage.setItem(
+                    "token",
+                    data.token
+                );
+
+
+                localStorage.setItem(
+                    "user",
+                    JSON.stringify(
+                        data.user
+                    )
+                );
+
+
+                alert(
+                    "✅ Si guul leh ayaad u gashay."
+                );
+
+
+                window.location.href =
+                    "/";
+
+            } catch(error) {
+
+                console.error(
+                    "LOGIN ERROR:",
+                    error
+                );
+
+
+                alert(
+                    "❌ Server-ka lama xiriirin karin."
+                );
+
+            }
+
+        }
+    );
+
+}
 
     }
 );
