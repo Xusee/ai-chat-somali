@@ -3,447 +3,933 @@
 
 <head>
 
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-<title>NASIIB BUSINESS CENTER - Admin</title>
+    <title>NASIIB BUSINESS CENTER</title>
 
-<style>
+    <style>
 
-* {
-    box-sizing: border-box;
-}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f1f5f9;
-    color: #172033;
-}
+        body {
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
 
-header {
-    background: #0f172a;
-    color: white;
-    padding: 20px;
-}
+            background: #f7f7f8;
 
-header h1 {
-    margin: 0;
-    font-size: 24px;
-}
+            color: #202123;
 
-.container {
-    max-width: 1100px;
-    margin: auto;
-    padding: 20px;
-}
+            min-height: 100vh;
+        }
 
-.card {
-    background: white;
-    padding: 20px;
-    margin-bottom: 20px;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.07);
-}
 
-input,
-textarea,
-button {
-    width: 100%;
-    padding: 12px;
-    margin-top: 8px;
-    border-radius: 9px;
-    border: 1px solid #ddd;
-    font-size: 15px;
-}
+        /* =================================================
+           HEADER
+        ================================================= */
 
-button {
-    background: #0284c7;
-    color: white;
-    border: none;
-    cursor: pointer;
-}
+        header {
 
-button:hover {
-    opacity: .9;
-}
+            background: #202123;
 
-button:disabled {
-    opacity: .6;
-    cursor: not-allowed;
-}
+            color: white;
 
-.danger {
-    background: #dc2626;
-}
+            padding: 16px 20px;
 
-.gray {
-    background: #475569;
-}
+            display: flex;
 
-.green {
-    background: #16a34a;
-}
+            align-items: center;
 
-#adminPanel {
-    display: none;
-}
+            justify-content: space-between;
 
-.tabs {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
+            position: sticky;
 
-.tabs button {
-    width: auto;
-    min-width: 130px;
-}
+            top: 0;
 
-.status {
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-    display: none;
-}
+            z-index: 100;
+        }
 
-.status.error {
-    display: block;
-    background: #fee2e2;
-    color: #991b1b;
-}
+        .logo {
 
-.status.success {
-    display: block;
-    background: #dcfce7;
-    color: #166534;
-}
+            font-size: 20px;
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
+            font-weight: bold;
+        }
 
-th,
-td {
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-    text-align: left;
-    vertical-align: top;
-}
+        .header-right {
 
-th {
-    background: #f8fafc;
-}
+            display: flex;
 
-.chat {
-    background: #f8fafc;
-    border-radius: 10px;
-    padding: 15px;
-    margin: 10px 0;
-}
+            align-items: center;
 
-.chat img {
-    max-width: 250px;
-    max-height: 250px;
-    border-radius: 10px;
-    margin-top: 10px;
-}
+            gap: 10px;
+        }
 
-.small {
-    color: #64748b;
-    font-size: 13px;
-}
+        .user-name {
 
-.action-btn {
-    width: auto;
-    padding: 8px 12px;
-    margin-right: 5px;
-    font-size: 13px;
-}
+            font-size: 14px;
 
-.loading {
-    text-align: center;
-    padding: 20px;
-    color: #64748b;
-}
+            opacity: .9;
+        }
 
-@media(max-width:700px) {
 
-    header {
-        padding: 15px;
-    }
+        /* =================================================
+           AUTH CONTAINER
+        ================================================= */
 
-    header h1 {
-        font-size: 19px;
-    }
+        #authSection {
 
-    .container {
-        padding: 10px;
-    }
+            min-height: calc(100vh - 70px);
 
-    .card {
-        padding: 15px;
-    }
+            display: flex;
 
-    table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-        font-size: 13px;
-    }
+            align-items: center;
 
-    th,
-    td {
-        padding: 7px;
-    }
+            justify-content: center;
 
-    .tabs {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-    }
+            padding: 25px 15px;
+        }
 
-    .tabs button {
-        width: 100%;
-    }
+        .auth-card {
 
-}
+            width: 100%;
 
-</style>
+            max-width: 430px;
+
+            background: white;
+
+            padding: 30px;
+
+            border-radius: 18px;
+
+            box-shadow:
+                0 10px 35px
+                rgba(0,0,0,.10);
+        }
+
+        .auth-logo {
+
+            text-align: center;
+
+            margin-bottom: 20px;
+        }
+
+        .auth-logo .icon {
+
+            font-size: 48px;
+
+            margin-bottom: 8px;
+        }
+
+        .auth-logo h1 {
+
+            font-size: 24px;
+
+            color: #10a37f;
+        }
+
+        .auth-logo p {
+
+            color: #666;
+
+            margin-top: 7px;
+
+            font-size: 14px;
+        }
+
+
+        /* =================================================
+           TABS
+        ================================================= */
+
+        .auth-tabs {
+
+            display: flex;
+
+            background: #f1f1f1;
+
+            padding: 4px;
+
+            border-radius: 10px;
+
+            margin-bottom: 20px;
+        }
+
+        .auth-tab {
+
+            flex: 1;
+
+            border: none;
+
+            background: transparent;
+
+            color: #555;
+
+            padding: 11px;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            font-size: 15px;
+
+            font-weight: bold;
+        }
+
+        .auth-tab.active {
+
+            background: #10a37f;
+
+            color: white;
+        }
+
+
+        /* =================================================
+           FORM
+        ================================================= */
+
+        .form-group {
+
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+
+            display: block;
+
+            margin-bottom: 7px;
+
+            font-size: 14px;
+
+            font-weight: bold;
+        }
+
+        .form-group input {
+
+            width: 100%;
+
+            padding: 13px;
+
+            border:
+                1px solid #d1d5db;
+
+            border-radius: 10px;
+
+            font-size: 15px;
+
+            outline: none;
+        }
+
+        .form-group input:focus {
+
+            border-color: #10a37f;
+
+            box-shadow:
+                0 0 0 3px
+                rgba(16,163,127,.12);
+        }
+
+
+        /* =================================================
+           BUTTON
+        ================================================= */
+
+        .main-button {
+
+            width: 100%;
+
+            padding: 13px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background: #10a37f;
+
+            color: white;
+
+            font-size: 16px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            margin-top: 5px;
+        }
+
+        .main-button:hover {
+
+            background: #0b8064;
+        }
+
+        .main-button:disabled {
+
+            opacity: .6;
+
+            cursor: not-allowed;
+        }
+
+
+        /* =================================================
+           MESSAGES
+        ================================================= */
+
+        #messageBox {
+
+            display: none;
+
+            padding: 12px;
+
+            border-radius: 9px;
+
+            margin-bottom: 15px;
+
+            font-size: 14px;
+
+            line-height: 1.5;
+        }
+
+        #messageBox.error {
+
+            display: block;
+
+            background: #fee2e2;
+
+            color: #991b1b;
+        }
+
+        #messageBox.success {
+
+            display: block;
+
+            background: #dcfce7;
+
+            color: #166534;
+        }
+
+
+        /* =================================================
+           CHAT SECTION
+        ================================================= */
+
+        #chatSection {
+
+            display: none;
+
+            max-width: 1000px;
+
+            margin: auto;
+
+            padding: 20px;
+        }
+
+        .chat-card {
+
+            background: white;
+
+            border-radius: 16px;
+
+            box-shadow:
+                0 5px 25px
+                rgba(0,0,0,.07);
+
+            overflow: hidden;
+        }
+
+        .chat-header {
+
+            padding: 18px;
+
+            border-bottom:
+                1px solid #eee;
+
+            font-weight: bold;
+
+            font-size: 18px;
+        }
+
+        #chatMessages {
+
+            min-height: 400px;
+
+            max-height: 60vh;
+
+            overflow-y: auto;
+
+            padding: 20px;
+        }
+
+        .message {
+
+            margin-bottom: 15px;
+
+            display: flex;
+        }
+
+        .message.user {
+
+            justify-content: flex-end;
+        }
+
+        .message.ai {
+
+            justify-content: flex-start;
+        }
+
+        .bubble {
+
+            max-width: 80%;
+
+            padding: 12px 15px;
+
+            border-radius: 14px;
+
+            line-height: 1.6;
+
+            white-space: pre-wrap;
+
+            word-wrap: break-word;
+        }
+
+        .message.user .bubble {
+
+            background: #10a37f;
+
+            color: white;
+
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .bubble {
+
+            background: #f1f1f1;
+
+            color: #202123;
+
+            border-bottom-left-radius: 4px;
+        }
+
+
+        /* =================================================
+           CHAT INPUT
+        ================================================= */
+
+        .chat-input-area {
+
+            border-top:
+                1px solid #eee;
+
+            padding: 15px;
+
+            display: flex;
+
+            gap: 10px;
+        }
+
+        #messageInput {
+
+            flex: 1;
+
+            resize: none;
+
+            min-height: 48px;
+
+            max-height: 130px;
+
+            padding: 13px;
+
+            border:
+                1px solid #ccc;
+
+            border-radius: 10px;
+
+            font-size: 15px;
+
+            outline: none;
+        }
+
+        #messageInput:focus {
+
+            border-color: #10a37f;
+        }
+
+        #sendButton {
+
+            width: 100px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background: #10a37f;
+
+            color: white;
+
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        #sendButton:disabled {
+
+            opacity: .6;
+        }
+
+
+        /* =================================================
+           CHAT CONTROLS
+        ================================================= */
+
+        .chat-controls {
+
+            display: flex;
+
+            gap: 8px;
+
+            padding: 0 15px 15px;
+        }
+
+        .control-button {
+
+            padding: 9px 13px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            background: #475569;
+
+            color: white;
+        }
+
+        .control-button.danger {
+
+            background: #dc2626;
+        }
+
+
+        /* =================================================
+           LOADING
+        ================================================= */
+
+        .typing {
+
+            color: #777;
+
+            font-style: italic;
+
+            padding: 10px;
+        }
+
+
+        /* =================================================
+           MOBILE
+        ================================================= */
+
+        @media (max-width: 600px) {
+
+            header {
+
+                padding: 13px 15px;
+            }
+
+            .logo {
+
+                font-size: 16px;
+            }
+
+            .user-name {
+
+                display: none;
+            }
+
+            .auth-card {
+
+                padding: 22px 18px;
+
+                border-radius: 14px;
+            }
+
+            .auth-logo h1 {
+
+                font-size: 21px;
+            }
+
+            #chatSection {
+
+                padding: 10px;
+            }
+
+            #chatMessages {
+
+                min-height: 55vh;
+
+                padding: 12px;
+            }
+
+            .bubble {
+
+                max-width: 90%;
+            }
+
+            .chat-input-area {
+
+                padding: 10px;
+            }
+
+            #sendButton {
+
+                width: 70px;
+            }
+
+            .chat-controls {
+
+                flex-wrap: wrap;
+            }
+        }
+
+    </style>
 
 </head>
 
+
 <body>
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
 
 <header>
 
-<h1>🤖 NASIIB BUSINESS CENTER</h1>
+    <div class="logo">
+        🤖 NASIIB BUSINESS CENTER
+    </div>
+
+    <div class="header-right">
+
+        <span
+            id="userName"
+            class="user-name"
+        ></span>
+
+        <button
+            id="headerLogout"
+            class="control-button"
+            style="display:none;"
+        >
+            🚪 Ka bax
+        </button>
+
+    </div>
 
 </header>
 
 
-<div class="container">
+<!-- =====================================================
+     AUTH SECTION
+===================================================== -->
 
+<section id="authSection">
 
-<!-- ================================================= -->
-<!-- STATUS -->
-<!-- ================================================= -->
+    <div class="auth-card">
 
-<div
-    id="statusBox"
-    class="status"
-></div>
+        <div class="auth-logo">
 
+            <div class="icon">
+                🤖
+            </div>
 
-<!-- ================================================= -->
-<!-- LOGIN -->
-<!-- ================================================= -->
+            <h1>
+                NASIIB BUSINESS CENTER
+            </h1>
 
-<div
-    id="loginPanel"
-    class="card"
->
+            <p>
+                AI Chat Somali
+            </p>
 
-<h2>🔐 Admin Login</h2>
+        </div>
 
-<p>
-    Fadlan geli xogta Admin-ka.
-</p>
 
-<form id="adminLoginForm">
+        <!-- TABS -->
 
-<input
-    id="adminEmail"
-    type="email"
-    placeholder="Admin Email"
-    autocomplete="username"
-    required
->
+        <div class="auth-tabs">
 
-<input
-    id="adminPassword"
-    type="password"
-    placeholder="Admin Password"
-    autocomplete="current-password"
-    required
->
+            <button
+                id="loginTab"
+                class="auth-tab active"
+                type="button"
+            >
+                Soo gal
+            </button>
 
-<button
-    id="loginButton"
-    type="submit"
->
-    🔐 Gal Admin
-</button>
+            <button
+                id="registerTab"
+                class="auth-tab"
+                type="button"
+            >
+                Akawn cusub
+            </button>
 
-</form>
+        </div>
 
-</div>
 
+        <!-- MESSAGE -->
 
-<!-- ================================================= -->
-<!-- ADMIN PANEL -->
-<!-- ================================================= -->
+        <div id="messageBox"></div>
 
-<div
-    id="adminPanel"
->
 
+        <!-- =================================================
+             LOGIN FORM
+        ================================================= -->
 
-<div class="card">
+        <form
+            id="loginForm"
+        >
 
-<h2>👑 Admin Dashboard</h2>
+            <div class="form-group">
 
-<p>
-    Ku soo dhowow Admin.
-</p>
+                <label for="loginEmail">
+                    Email
+                </label>
 
-<button
-    id="logoutBtn"
-    class="gray"
->
-    🚪 Ka bax
-</button>
+                <input
+                    type="email"
+                    id="loginEmail"
+                    placeholder="Geli email-kaaga"
+                    autocomplete="username"
+                    required
+                >
 
-</div>
+            </div>
 
 
-<!-- ================================================= -->
-<!-- TABS -->
-<!-- ================================================= -->
+            <div class="form-group">
 
-<div class="card">
+                <label for="loginPassword">
+                    Password
+                </label>
 
-<div class="tabs">
+                <input
+                    type="password"
+                    id="loginPassword"
+                    placeholder="Geli password-kaaga"
+                    autocomplete="current-password"
+                    required
+                >
 
-<button
-    id="usersBtn"
->
-    👥 Users
-</button>
+            </div>
 
-<button
-    id="chatsBtn"
->
-    💬 Chat History
-</button>
 
-<button
-    id="knowledgeBtn"
->
-    🧠 Knowledge
-</button>
+            <button
+                id="loginButton"
+                class="main-button"
+                type="submit"
+            >
+                🔐 Soo gal
+            </button>
 
-<button
-    id="deleteAllChatsBtn"
-    class="danger"
->
-    🗑️ Delete All Chats
-</button>
+        </form>
 
-</div>
 
-</div>
+        <!-- =================================================
+             REGISTER FORM
+        ================================================= -->
 
+        <form
+            id="registerForm"
+            style="display:none;"
+        >
 
-<!-- ================================================= -->
-<!-- USERS -->
-<!-- ================================================= -->
+            <div class="form-group">
 
-<div
-    id="usersPanel"
-    class="card"
->
+                <label for="registerName">
+                    Magaca
+                </label>
 
-<h2>👥 Users</h2>
+                <input
+                    type="text"
+                    id="registerName"
+                    placeholder="Geli magacaaga"
+                    autocomplete="name"
+                    required
+                >
 
-<div id="usersList">
+            </div>
 
-<div class="loading">
-    Loading...
-</div>
 
-</div>
+            <div class="form-group">
 
-</div>
+                <label for="registerEmail">
+                    Email
+                </label>
 
+                <input
+                    type="email"
+                    id="registerEmail"
+                    placeholder="Geli email-kaaga"
+                    autocomplete="email"
+                    required
+                >
 
-<!-- ================================================= -->
-<!-- CHATS -->
-<!-- ================================================= -->
+            </div>
 
-<div
-    id="chatsPanel"
-    class="card"
->
 
-<h2>💬 Chat History</h2>
+            <div class="form-group">
 
-<div id="chatsList">
+                <label for="registerPassword">
+                    Password
+                </label>
 
-<div class="loading">
-    Loading...
-</div>
+                <input
+                    type="password"
+                    id="registerPassword"
+                    placeholder="Ugu yaraan 6 xaraf"
+                    autocomplete="new-password"
+                    minlength="6"
+                    required
+                >
 
-</div>
+            </div>
 
-</div>
 
+            <div class="form-group">
 
-<!-- ================================================= -->
-<!-- KNOWLEDGE -->
-<!-- ================================================= -->
+                <label for="registerPassword2">
+                    Ku celi Password
+                </label>
 
-<div
-    id="knowledgePanel"
-    class="card"
->
+                <input
+                    type="password"
+                    id="registerPassword2"
+                    placeholder="Mar kale geli password-ka"
+                    autocomplete="new-password"
+                    minlength="6"
+                    required
+                >
 
-<h2>🧠 Ku dar Knowledge</h2>
+            </div>
 
-<form id="knowledgeForm">
 
-<input
-    id="knowledgeTitle"
-    placeholder="Cinwaan"
-    required
->
+            <button
+                id="registerButton"
+                class="main-button"
+                type="submit"
+            >
+                📝 Soo gal akoon cusub
+            </button>
 
-<textarea
-    id="knowledgeContent"
-    rows="8"
-    placeholder="Qoraalka knowledge-ka..."
-    required
-></textarea>
+        </form>
 
-<button
-    type="submit"
->
-    💾 Kaydi Knowledge
-</button>
+    </div>
 
-</form>
+</section>
 
-<hr>
 
-<div id="knowledgeList">
 
-<div class="loading">
-    Loading...
-</div>
+<!-- =====================================================
+     CHAT SECTION
+===================================================== -->
 
-</div>
+<section id="chatSection">
 
-</div>
+    <div class="chat-card">
 
 
-</div>
+        <div class="chat-header">
 
-</div>
+            💬 AI Chat Somali
+
+        </div>
+
+
+        <div id="chatMessages">
+
+            <div class="message ai">
+
+                <div class="bubble">
+
+                    👋 Ku soo dhowow NASIIB BUSINESS CENTER.
+
+                    <br><br>
+
+                    Waxaan ahay AI Chat Somali.
+                    Maxaan maanta kaa caawin karaa?
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div
+            id="typing"
+            class="typing"
+            style="display:none;"
+        >
+            🤖 AI ayaa qoraya...
+        </div>
+
+
+        <!-- INPUT -->
+
+        <div class="chat-input-area">
+
+            <textarea
+                id="messageInput"
+                placeholder="Halkan ku qor fariinta..."
+                rows="1"
+            ></textarea>
+
+            <button
+                id="sendButton"
+                type="button"
+            >
+                ➤ Dir
+            </button>
+
+        </div>
+
+
+        <!-- CONTROLS -->
+
+        <div class="chat-controls">
+
+            <button
+                id="clearChatsButton"
+                class="control-button danger"
+                type="button"
+            >
+                🗑️ Tirtir Chat
+            </button>
+
+            <button
+                id="chatLogout"
+                class="control-button"
+                type="button"
+            >
+                🚪 Ka bax
+            </button>
+
+        </div>
+
+    </div>
+
+</section>
+
 
 
 <script>
@@ -454,266 +940,263 @@ th {
 
 const API = window.location.origin;
 
-const TOKEN_KEY = "adminToken";
+const TOKEN_KEY = "token";
 
-let adminToken = localStorage.getItem(TOKEN_KEY);
+const USER_KEY = "user";
 
 
 /* =====================================================
    ELEMENTS
 ===================================================== */
 
-const loginPanel =
-    document.getElementById("loginPanel");
+const authSection =
+    document.getElementById(
+        "authSection"
+    );
 
-const adminPanel =
-    document.getElementById("adminPanel");
+const chatSection =
+    document.getElementById(
+        "chatSection"
+    );
 
 const loginForm =
-    document.getElementById("adminLoginForm");
+    document.getElementById(
+        "loginForm"
+    );
+
+const registerForm =
+    document.getElementById(
+        "registerForm"
+    );
+
+const loginTab =
+    document.getElementById(
+        "loginTab"
+    );
+
+const registerTab =
+    document.getElementById(
+        "registerTab"
+    );
+
+const messageBox =
+    document.getElementById(
+        "messageBox"
+    );
 
 const loginButton =
-    document.getElementById("loginButton");
+    document.getElementById(
+        "loginButton"
+    );
 
-const statusBox =
-    document.getElementById("statusBox");
+const registerButton =
+    document.getElementById(
+        "registerButton"
+    );
 
-const usersList =
-    document.getElementById("usersList");
+const userName =
+    document.getElementById(
+        "userName"
+    );
 
-const chatsList =
-    document.getElementById("chatsList");
+const headerLogout =
+    document.getElementById(
+        "headerLogout"
+    );
 
-const knowledgeList =
-    document.getElementById("knowledgeList");
+const chatLogout =
+    document.getElementById(
+        "chatLogout"
+    );
 
-const knowledgeForm =
-    document.getElementById("knowledgeForm");
+const messageInput =
+    document.getElementById(
+        "messageInput"
+    );
+
+const sendButton =
+    document.getElementById(
+        "sendButton"
+    );
+
+const chatMessages =
+    document.getElementById(
+        "chatMessages"
+    );
+
+const typing =
+    document.getElementById(
+        "typing"
+    );
+
+const clearChatsButton =
+    document.getElementById(
+        "clearChatsButton"
+    );
 
 
 /* =====================================================
-   STATUS
+   STORAGE
 ===================================================== */
 
-function showStatus(message, type = "error") {
+let token =
+    localStorage.getItem(
+        TOKEN_KEY
+    );
 
-    if (!statusBox) return;
-
-    statusBox.textContent = message;
-
-    statusBox.className =
-        `status ${type}`;
-}
+let currentUser = null;
 
 
-function clearStatus() {
+try {
 
-    if (!statusBox) return;
+    currentUser =
+        JSON.parse(
+            localStorage.getItem(
+                USER_KEY
+            )
+        );
 
-    statusBox.textContent = "";
+} catch {
 
-    statusBox.className = "status";
+    currentUser = null;
+
 }
 
 
 /* =====================================================
-   AUTH HEADERS
+   MESSAGE
 ===================================================== */
 
-function authHeaders(includeJSON = false) {
+function showMessage(
+    message,
+    type = "error"
+) {
 
-    const headers = {
-        "Authorization": `Bearer ${adminToken}`
-    };
+    messageBox.textContent =
+        message;
 
-    if (includeJSON) {
+    messageBox.className =
+        type;
 
-        headers["Content-Type"] =
-            "application/json";
+    messageBox.style.display =
+        "block";
+}
+
+
+function clearMessage() {
+
+    messageBox.textContent = "";
+
+    messageBox.className = "";
+
+    messageBox.style.display =
+        "none";
+}
+
+
+/* =====================================================
+   AUTH TABS
+===================================================== */
+
+loginTab.addEventListener(
+    "click",
+    function() {
+
+        loginTab.classList.add(
+            "active"
+        );
+
+        registerTab.classList.remove(
+            "active"
+        );
+
+        loginForm.style.display =
+            "block";
+
+        registerForm.style.display =
+            "none";
+
+        clearMessage();
+
     }
+);
 
-    return headers;
-}
+
+registerTab.addEventListener(
+    "click",
+    function() {
+
+        registerTab.classList.add(
+            "active"
+        );
+
+        loginTab.classList.remove(
+            "active"
+        );
+
+        registerForm.style.display =
+            "block";
+
+        loginForm.style.display =
+            "none";
+
+        clearMessage();
+
+    }
+);
 
 
 /* =====================================================
-   RESPONSE HANDLER
+   SAVE LOGIN
 ===================================================== */
 
-async function getResponseData(response) {
+function saveSession(
+    data
+) {
 
-    const text = await response.text();
+    token =
+        data.token;
 
-    if (!text) {
-        return {};
-    }
+    currentUser =
+        data.user;
 
-    try {
+    localStorage.setItem(
+        TOKEN_KEY,
+        token
+    );
 
-        return JSON.parse(text);
-
-    } catch {
-
-        return {
-            error:
-                text ||
-                "Server-ku jawaab sax ah ma soo celin."
-        };
-    }
-}
-
-
-/* =====================================================
-   LOGIN
-===================================================== */
-
-if (loginForm) {
-
-    loginForm.addEventListener(
-        "submit",
-        async function(event) {
-
-            event.preventDefault();
-
-            clearStatus();
-
-            const email =
-                document
-                    .getElementById("adminEmail")
-                    .value
-                    .trim()
-                    .toLowerCase();
-
-            const password =
-                document
-                    .getElementById("adminPassword")
-                    .value;
-
-            if (!email || !password) {
-
-                showStatus(
-                    "Fadlan geli email iyo password."
-                );
-
-                return;
-            }
-
-            try {
-
-                loginButton.disabled = true;
-
-                loginButton.textContent =
-                    "⏳ Galaya...";
-
-                const response =
-                    await fetch(
-                        `${API}/api/login`,
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            body:
-                                JSON.stringify({
-                                    email,
-                                    password
-                                })
-                        }
-                    );
-
-                const data =
-                    await getResponseData(
-                        response
-                    );
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.error ||
-                        `Login error: ${response.status}`
-                    );
-                }
-
-                if (!data.token) {
-
-                    throw new Error(
-                        "Token lama helin."
-                    );
-                }
-
-                if (
-                    !data.user ||
-                    data.user.role !== "admin"
-                ) {
-
-                    throw new Error(
-                        "Account-kan Admin ma aha."
-                    );
-                }
-
-                adminToken =
-                    data.token;
-
-                localStorage.setItem(
-                    TOKEN_KEY,
-                    adminToken
-                );
-
-                showAdmin();
-
-                showStatus(
-                    "✅ Admin si guul leh ayuu u galay.",
-                    "success"
-                );
-
-                await loadUsers();
-                await loadChats();
-                await loadKnowledge();
-
-            } catch (error) {
-
-                console.error(
-                    "LOGIN ERROR:",
-                    error
-                );
-
-                showStatus(
-                    error.message ||
-                    "Server error."
-                );
-
-            } finally {
-
-                loginButton.disabled = false;
-
-                loginButton.textContent =
-                    "🔐 Gal Admin";
-            }
-        }
+    localStorage.setItem(
+        USER_KEY,
+        JSON.stringify(
+            currentUser
+        )
     );
 }
 
 
 /* =====================================================
-   SHOW ADMIN
+   SHOW CHAT
 ===================================================== */
 
-function showAdmin() {
+function showChat() {
 
-    if (loginPanel) {
+    authSection.style.display =
+        "none";
 
-        loginPanel.style.display =
-            "none";
+    chatSection.style.display =
+        "block";
+
+    headerLogout.style.display =
+        "block";
+
+    if (currentUser) {
+
+        userName.textContent =
+            currentUser.name ||
+            currentUser.email;
+
     }
 
-    if (adminPanel) {
-
-        adminPanel.style.display =
-            "block";
-    }
 }
 
 
@@ -723,935 +1206,934 @@ function showAdmin() {
 
 function showLogin() {
 
-    if (loginPanel) {
+    authSection.style.display =
+        "flex";
 
-        loginPanel.style.display =
-            "block";
-    }
+    chatSection.style.display =
+        "none";
 
-    if (adminPanel) {
+    headerLogout.style.display =
+        "none";
 
-        adminPanel.style.display =
-            "none";
-    }
+    userName.textContent =
+        "";
+
 }
 
 
 /* =====================================================
-   VERIFY ADMIN
+   LOGIN
 ===================================================== */
 
-async function verifyAdmin() {
+loginForm.addEventListener(
+    "submit",
+    async function(event) {
 
-    if (!adminToken) {
+        event.preventDefault();
 
-        showLogin();
+        clearMessage();
 
-        return false;
-    }
+        const email =
+            document
+                .getElementById(
+                    "loginEmail"
+                )
+                .value
+                .trim()
+                .toLowerCase();
 
-    try {
+        const password =
+            document
+                .getElementById(
+                    "loginPassword"
+                )
+                .value;
 
-        const response =
-            await fetch(
-                `${API}/api/admin/me`,
-                {
-                    method: "GET",
 
-                    headers:
-                        authHeaders()
-                }
+        if (!email || !password) {
+
+            showMessage(
+                "Fadlan geli email iyo password."
             );
-
-        const data =
-            await getResponseData(
-                response
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                "Admin verification failed."
-            );
-        }
-
-        if (
-            !data.user ||
-            data.user.role !== "admin"
-        ) {
-
-            throw new Error(
-                "Admin access ayaa loo baahan yahay."
-            );
-        }
-
-        showAdmin();
-
-        return true;
-
-    } catch (error) {
-
-        console.error(
-            "VERIFY ADMIN ERROR:",
-            error
-        );
-
-        localStorage.removeItem(
-            TOKEN_KEY
-        );
-
-        adminToken = null;
-
-        showLogin();
-
-        return false;
-    }
-}
-
-
-/* =====================================================
-   LOAD USERS
-===================================================== */
-
-async function loadUsers() {
-
-    if (!adminToken) return;
-
-    usersList.innerHTML =
-        `
-        <div class="loading">
-            ⏳ Users loading...
-        </div>
-        `;
-
-    try {
-
-        const response =
-            await fetch(
-                `${API}/api/admin/users`,
-                {
-                    method: "GET",
-
-                    headers:
-                        authHeaders()
-                }
-            );
-
-        const data =
-            await getResponseData(
-                response
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                "Users lama soo qaadi karin."
-            );
-        }
-
-        if (
-            !Array.isArray(data.users) ||
-            data.users.length === 0
-        ) {
-
-            usersList.innerHTML =
-                "👤 Users ma jiraan.";
 
             return;
         }
 
-        usersList.innerHTML = `
 
-            <table>
+        try {
 
-                <thead>
+            loginButton.disabled =
+                true;
 
-                    <tr>
-                        <th>ID</th>
-                        <th>Magac</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Chats</th>
-                        <th>Action</th>
-                    </tr>
+            loginButton.textContent =
+                "⏳ Soo galaya...";
 
-                </thead>
 
-                <tbody>
+            const response =
+                await fetch(
+                    `${API}/api/login`,
+                    {
 
-                    ${data.users.map(user => `
+                        method:
+                            "POST",
 
-                        <tr>
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
 
-                            <td>
-                                ${user.id}
-                            </td>
+                        body:
+                            JSON.stringify({
+                                email,
+                                password
+                            })
+                    }
+                );
 
-                            <td>
-                                ${escapeHTML(user.name)}
-                            </td>
 
-                            <td>
-                                ${escapeHTML(user.email)}
-                            </td>
+            const data =
+                await response.json();
 
-                            <td>
-                                ${
-                                    user.role === "admin"
-                                    ? "👑 Admin"
-                                    : "👤 User"
-                                }
-                            </td>
 
-                            <td>
-                                ${user.chat_count || 0}
-                            </td>
+            if (!response.ok) {
 
-                            <td>
+                throw new Error(
+                    data.error ||
+                    "Soo gelitaanku wuu fashilmay."
+                );
 
-                                ${
-                                    user.role !== "admin"
-                                    ?
+            }
 
-                                    `
-                                    <button
-                                        class="action-btn"
-                                        onclick="deleteUserChats(${user.id})"
-                                    >
-                                        🗑️ Chats
-                                    </button>
 
-                                    <button
-                                        class="action-btn danger"
-                                        onclick="deleteUser(${user.id})"
-                                    >
-                                        ❌ User
-                                    </button>
-                                    `
+            if (!data.token) {
 
-                                    :
+                throw new Error(
+                    "Token lama helin."
+                );
 
-                                    "👑"
-                                }
+            }
 
-                            </td>
 
-                        </tr>
+            if (!data.user) {
 
-                    `).join("")}
+                throw new Error(
+                    "Xogta user-ka lama helin."
+                );
 
-                </tbody>
+            }
 
-            </table>
-        `;
 
-    } catch (error) {
+            /* =========================================
+               SAVE TOKEN
+            ========================================= */
 
-        console.error(
-            "LOAD USERS ERROR:",
-            error
-        );
+            saveSession(data);
 
-        usersList.innerHTML =
-            `
-            ❌ Users lama soo qaadi karin.
-            <br>
-            <small>
-                ${escapeHTML(error.message)}
-            </small>
-            `;
+
+            /* =========================================
+               ADMIN
+            ========================================= */
+
+            if (
+                data.user.role ===
+                "admin"
+            ) {
+
+                window.location.href =
+                    "/admin/";
+
+                return;
+
+            }
+
+
+            /* =========================================
+               USER
+            ========================================= */
+
+            showChat();
+
+            await loadChatHistory();
+
+
+        } catch(error) {
+
+            console.error(
+                "LOGIN ERROR:",
+                error
+            );
+
+            showMessage(
+                error.message ||
+                "Server error ayaa dhacay."
+            );
+
+        } finally {
+
+            loginButton.disabled =
+                false;
+
+            loginButton.textContent =
+                "🔐 Soo gal";
+
+        }
+
     }
-}
+);
 
 
 /* =====================================================
-   LOAD CHATS
+   REGISTER
 ===================================================== */
 
-async function loadChats() {
+registerForm.addEventListener(
+    "submit",
+    async function(event) {
 
-    if (!adminToken) return;
+        event.preventDefault();
 
-    chatsList.innerHTML =
-        `
-        <div class="loading">
-            ⏳ Chats loading...
-        </div>
-        `;
+        clearMessage();
+
+
+        const name =
+            document
+                .getElementById(
+                    "registerName"
+                )
+                .value
+                .trim();
+
+        const email =
+            document
+                .getElementById(
+                    "registerEmail"
+                )
+                .value
+                .trim()
+                .toLowerCase();
+
+        const password =
+            document
+                .getElementById(
+                    "registerPassword"
+                )
+                .value;
+
+        const password2 =
+            document
+                .getElementById(
+                    "registerPassword2"
+                )
+                .value;
+
+
+        /* =========================================
+           VALIDATION
+        ========================================= */
+
+        if (
+            !name ||
+            !email ||
+            !password ||
+            !password2
+        ) {
+
+            showMessage(
+                "Fadlan buuxi dhammaan meelaha."
+            );
+
+            return;
+
+        }
+
+
+        if (
+            password.length < 6
+        ) {
+
+            showMessage(
+                "Password-ku waa inuu ahaadaa ugu yaraan 6 xaraf."
+            );
+
+            return;
+
+        }
+
+
+        if (
+            password !==
+            password2
+        ) {
+
+            showMessage(
+                "Labada password isma laha."
+            );
+
+            return;
+
+        }
+
+
+        try {
+
+            registerButton.disabled =
+                true;
+
+            registerButton.textContent =
+                "⏳ Akoon ayaa la sameynayaa...";
+
+
+            const response =
+                await fetch(
+                    `${API}/api/register`,
+                    {
+
+                        method:
+                            "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                name,
+
+                                email,
+
+                                password
+
+                            })
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "Register-ku wuu fashilmay."
+                );
+
+            }
+
+
+            if (!data.token) {
+
+                throw new Error(
+                    "Token lama helin."
+                );
+
+            }
+
+
+            if (!data.user) {
+
+                throw new Error(
+                    "Xogta user-ka lama helin."
+                );
+
+            }
+
+
+            /* =========================================
+               SAVE SESSION
+            ========================================= */
+
+            saveSession(data);
+
+
+            /* =========================================
+               ADMIN
+            ========================================= */
+
+            if (
+                data.user.role ===
+                "admin"
+            ) {
+
+                window.location.href =
+                    "/admin/";
+
+                return;
+
+            }
+
+
+            /* =========================================
+               USER
+            ========================================= */
+
+            showChat();
+
+
+            chatMessages.innerHTML = `
+
+                <div class="message ai">
+
+                    <div class="bubble">
+
+                        👋 Soo dhowow
+                        ${escapeHTML(data.user.name)}!
+
+                        <br><br>
+
+                        Akoonkaaga si guul leh ayaa loo sameeyay.
+
+                        <br><br>
+
+                        Maxaan kaa caawin karaa?
+
+                    </div>
+
+                </div>
+
+            `;
+
+
+        } catch(error) {
+
+            console.error(
+                "REGISTER ERROR:",
+                error
+            );
+
+            showMessage(
+                error.message ||
+                "Server error ayaa dhacay."
+            );
+
+        } finally {
+
+            registerButton.disabled =
+                false;
+
+            registerButton.textContent =
+                "📝 Soo gal akoon cusub";
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+   LOAD CHAT HISTORY
+===================================================== */
+
+async function loadChatHistory() {
+
+    if (!token) return;
+
 
     try {
 
         const response =
             await fetch(
-                `${API}/api/admin/chats`,
+                `${API}/api/chats`,
                 {
-                    method: "GET",
 
-                    headers:
-                        authHeaders()
+                    method:
+                        "GET",
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${token}`
+
+                    }
+
                 }
             );
 
-        const data =
-            await getResponseData(
-                response
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                "Chats lama soo qaadi karin."
-            );
-        }
 
         if (
-            !Array.isArray(data.chats) ||
+            response.status === 401 ||
+            response.status === 403
+        ) {
+
+            logout();
+
+            return;
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            !Array.isArray(
+                data.chats
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        if (
             data.chats.length === 0
         ) {
 
-            chatsList.innerHTML =
-                "💬 Chat history ma jiro.";
-
             return;
+
         }
 
-        chatsList.innerHTML =
-            data.chats.map(
-                chat => `
 
-                <div class="chat">
+        chatMessages.innerHTML =
+            "";
 
-                    <strong>
-                        👤 ${escapeHTML(
-                            chat.name
-                        )}
-                    </strong>
 
-                    <div class="small">
-                        ${escapeHTML(
-                            chat.email
-                        )}
-                    </div>
+        data.chats.forEach(
+            chat => {
 
-                    <hr>
+                addMessage(
+                    chat.message,
+                    "user"
+                );
 
-                    <strong>
-                        Su'aal:
-                    </strong>
+                addMessage(
+                    chat.response,
+                    "ai"
+                );
 
-                    <p>
-                        ${escapeHTML(
-                            chat.message
-                        )}
-                    </p>
+            }
+        );
 
-                    <strong>
-                        🤖 AI:
-                    </strong>
 
-                    <p>
-                        ${escapeHTML(
-                            chat.response
-                        )}
-                    </p>
+        scrollChat();
 
-                    ${
-                        chat.image
-                        ?
-
-                        `
-                        <img
-                            src="${escapeHTML(
-                                chat.image
-                            )}"
-                            alt="User image"
-                        >
-                        `
-
-                        :
-
-                        ""
-                    }
-
-                    <div class="small">
-                        ${formatDate(
-                            chat.created_at
-                        )}
-                    </div>
-
-                </div>
-
-                `
-            ).join("");
-
-    } catch (error) {
+    } catch(error) {
 
         console.error(
-            "LOAD CHATS ERROR:",
+            "CHAT HISTORY ERROR:",
             error
         );
 
-        chatsList.innerHTML =
-            `
-            ❌ Chats lama soo qaadi karin.
-            <br>
-            <small>
-                ${escapeHTML(error.message)}
-            </small>
-            `;
     }
+
 }
 
 
 /* =====================================================
-   LOAD KNOWLEDGE
+   ADD MESSAGE
 ===================================================== */
 
-async function loadKnowledge() {
+function addMessage(
+    text,
+    type
+) {
 
-    if (!adminToken) return;
+    const wrapper =
+        document.createElement(
+            "div"
+        );
 
-    knowledgeList.innerHTML =
-        `
-        <div class="loading">
-            ⏳ Knowledge loading...
-        </div>
-        `;
+    wrapper.className =
+        `message ${type}`;
+
+
+    const bubble =
+        document.createElement(
+            "div"
+        );
+
+    bubble.className =
+        "bubble";
+
+
+    bubble.textContent =
+        text || "";
+
+
+    wrapper.appendChild(
+        bubble
+    );
+
+
+    chatMessages.appendChild(
+        wrapper
+    );
+
+
+    scrollChat();
+
+}
+
+
+/* =====================================================
+   SCROLL
+===================================================== */
+
+function scrollChat() {
+
+    chatMessages.scrollTop =
+        chatMessages.scrollHeight;
+
+}
+
+
+/* =====================================================
+   SEND CHAT
+===================================================== */
+
+async function sendMessage() {
+
+    const message =
+        messageInput
+            .value
+            .trim();
+
+
+    if (!message) {
+
+        return;
+
+    }
+
+
+    if (!token) {
+
+        showLogin();
+
+        return;
+
+    }
+
+
+    addMessage(
+        message,
+        "user"
+    );
+
+
+    messageInput.value =
+        "";
+
+
+    sendButton.disabled =
+        true;
+
+    messageInput.disabled =
+        true;
+
+    typing.style.display =
+        "block";
+
 
     try {
 
         const response =
             await fetch(
-                `${API}/api/admin/knowledge`,
+                `${API}/chat`,
                 {
-                    method: "GET",
 
-                    headers:
-                        authHeaders()
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            message,
+
+                            userId:
+                                currentUser
+                                ?
+                                currentUser.id
+                                :
+                                null
+
+                        })
+
                 }
             );
 
-        const data =
-            await getResponseData(
-                response
-            );
 
-        if (!response.ok) {
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+        ) {
 
             throw new Error(
                 data.error ||
-                "Knowledge lama soo qaadi karin."
+                "AI jawaab ma bixin."
             );
+
         }
 
-        if (
-            !Array.isArray(data.knowledge) ||
-            data.knowledge.length === 0
-        ) {
 
-            knowledgeList.innerHTML =
-                "🧠 Knowledge ma jiro.";
+        addMessage(
+            data.response ||
+            "Jawaab lama helin.",
+            "ai"
+        );
 
-            return;
-        }
 
-        knowledgeList.innerHTML =
-            data.knowledge.map(
-                item => `
-
-                <div class="chat">
-
-                    <h3>
-                        🧠 ${escapeHTML(
-                            item.title
-                        )}
-                    </h3>
-
-                    <p>
-                        ${escapeHTML(
-                            item.content
-                        ).replace(
-                            /\n/g,
-                            "<br>"
-                        )}
-                    </p>
-
-                    <div class="small">
-                        ${formatDate(
-                            item.created_at
-                        )}
-                    </div>
-
-                    <button
-                        class="action-btn danger"
-                        onclick="deleteKnowledge(${item.id})"
-                    >
-                        🗑️ Tirtir
-                    </button>
-
-                </div>
-
-                `
-            ).join("");
-
-    } catch (error) {
+    } catch(error) {
 
         console.error(
-            "LOAD KNOWLEDGE ERROR:",
+            "CHAT ERROR:",
             error
         );
 
-        knowledgeList.innerHTML =
-            `
-            ❌ Knowledge lama soo qaadi karin.
-            <br>
-            <small>
-                ${escapeHTML(error.message)}
-            </small>
-            `;
+
+        addMessage(
+            "❌ " +
+            (
+                error.message ||
+                "Server error ayaa dhacay."
+            ),
+            "ai"
+        );
+
+    } finally {
+
+        sendButton.disabled =
+            false;
+
+        messageInput.disabled =
+            false;
+
+        typing.style.display =
+            "none";
+
+        messageInput.focus();
+
     }
+
 }
 
 
 /* =====================================================
-   ADD KNOWLEDGE
+   SEND BUTTON
 ===================================================== */
 
-if (knowledgeForm) {
+sendButton.addEventListener(
+    "click",
+    sendMessage
+);
 
-    knowledgeForm.addEventListener(
-        "submit",
-        async function(event) {
+
+/* =====================================================
+   ENTER TO SEND
+===================================================== */
+
+messageInput.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (
+            event.key === "Enter" &&
+            !event.shiftKey
+        ) {
 
             event.preventDefault();
 
-            const title =
-                document
-                    .getElementById("knowledgeTitle")
-                    .value
-                    .trim();
+            sendMessage();
 
-            const content =
-                document
-                    .getElementById("knowledgeContent")
-                    .value
-                    .trim();
+        }
 
-            if (!title || !content) {
+    }
+);
 
-                showStatus(
-                    "Fadlan geli cinwaan iyo qoraalka knowledge-ka."
-                );
 
-                return;
-            }
+/* =====================================================
+   DELETE CHAT HISTORY
+===================================================== */
 
-            try {
+clearChatsButton.addEventListener(
+    "click",
+    async function() {
 
-                const response =
-                    await fetch(
-                        `${API}/api/admin/knowledge`,
-                        {
-                            method: "POST",
+        if (!token) {
 
-                            headers:
-                                authHeaders(true),
+            return;
 
-                            body:
-                                JSON.stringify({
-                                    title,
-                                    content
-                                })
+        }
+
+
+        const confirmed =
+            confirm(
+                "Ma hubtaa inaad tirtirayso dhammaan Chat History-ga?"
+            );
+
+
+        if (!confirmed) {
+
+            return;
+
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API}/api/chats`,
+                    {
+
+                        method:
+                            "DELETE",
+
+                        headers: {
+
+                            Authorization:
+                                `Bearer ${token}`
+
                         }
-                    );
 
-                const data =
-                    await getResponseData(
-                        response
-                    );
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        data.error ||
-                        "Knowledge lama kaydin."
-                    );
-                }
-
-                knowledgeForm.reset();
-
-                await loadKnowledge();
-
-                showStatus(
-                    "✅ Knowledge waa la kaydiyay.",
-                    "success"
+                    }
                 );
 
-            } catch (error) {
 
-                console.error(
-                    "ADD KNOWLEDGE ERROR:",
-                    error
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "Chat lama tirtirin."
                 );
 
-                showStatus(
-                    error.message ||
-                    "Knowledge lama kaydin."
-                );
-            }
-        }
-    );
-}
-
-
-/* =====================================================
-   DELETE KNOWLEDGE
-===================================================== */
-
-async function deleteKnowledge(id) {
-
-    if (
-        !confirm(
-            "Ma hubtaa inaad knowledge-kan tirtirayso?"
-        )
-    ) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `${API}/api/admin/knowledge/${id}`,
-                {
-                    method: "DELETE",
-
-                    headers:
-                        authHeaders()
-                }
-            );
-
-        const data =
-            await getResponseData(
-                response
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                "Knowledge lama tirtiri karin."
-            );
-        }
-
-        await loadKnowledge();
-
-        showStatus(
-            "✅ Knowledge waa la tirtiray.",
-            "success"
-        );
-
-    } catch (error) {
-
-        console.error(
-            "DELETE KNOWLEDGE ERROR:",
-            error
-        );
-
-        showStatus(
-            error.message ||
-            "Delete failed."
-        );
-    }
-}
-
-
-/* =====================================================
-   DELETE USER CHATS
-===================================================== */
-
-async function deleteUserChats(id) {
-
-    if (
-        !confirm(
-            "Ma hubtaa inaad tirtirayso chat history-ga user-kan?"
-        )
-    ) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `${API}/api/admin/users/${id}/chats`,
-                {
-                    method: "DELETE",
-
-                    headers:
-                        authHeaders()
-                }
-            );
-
-        const data =
-            await getResponseData(
-                response
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                "Chat history lama tirtiri karin."
-            );
-        }
-
-        await loadUsers();
-        await loadChats();
-
-        showStatus(
-            "✅ Chat history-ga user-ka waa la tirtiray.",
-            "success"
-        );
-
-    } catch (error) {
-
-        console.error(
-            "DELETE USER CHATS ERROR:",
-            error
-        );
-
-        showStatus(
-            error.message ||
-            "Delete failed."
-        );
-    }
-}
-
-
-/* =====================================================
-   DELETE USER
-===================================================== */
-
-async function deleteUser(id) {
-
-    if (
-        !confirm(
-            "⚠️ Ma hubtaa inaad user-kan tirtirayso?"
-        )
-    ) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `${API}/api/admin/users/${id}`,
-                {
-                    method: "DELETE",
-
-                    headers:
-                        authHeaders()
-                }
-            );
-
-        const data =
-            await getResponseData(
-                response
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                "User lama tirtiri karin."
-            );
-        }
-
-        await loadUsers();
-        await loadChats();
-
-        showStatus(
-            "✅ User-ka waa la tirtiray.",
-            "success"
-        );
-
-    } catch (error) {
-
-        console.error(
-            "DELETE USER ERROR:",
-            error
-        );
-
-        showStatus(
-            error.message ||
-            "Delete failed."
-        );
-    }
-}
-
-
-/* =====================================================
-   DELETE ALL CHATS
-===================================================== */
-
-const deleteAllChatsBtn =
-    document.getElementById(
-        "deleteAllChatsBtn"
-    );
-
-if (deleteAllChatsBtn) {
-
-    deleteAllChatsBtn.addEventListener(
-        "click",
-        async function() {
-
-            if (
-                !confirm(
-                    "⚠️ Dhammaan Chat History ma tirtirtaa?"
-                )
-            ) {
-                return;
             }
 
-            try {
 
-                const response =
-                    await fetch(
-                        `${API}/api/admin/chats`,
-                        {
-                            method: "DELETE",
+            chatMessages.innerHTML = `
 
-                            headers:
-                                authHeaders()
-                        }
-                    );
+                <div class="message ai">
 
-                const data =
-                    await getResponseData(
-                        response
-                    );
+                    <div class="bubble">
 
-                if (!response.ok) {
+                        🗑️ Chat History waa la tirtiray.
 
-                    throw new Error(
-                        data.error ||
-                        "Chats lama tirtiri karin."
-                    );
-                }
+                    </div>
 
-                await loadUsers();
-                await loadChats();
+                </div>
 
-                showStatus(
-                    "✅ Dhammaan chats waa la tirtiray.",
-                    "success"
-                );
+            `;
 
-            } catch (error) {
 
-                console.error(
-                    "DELETE ALL CHATS ERROR:",
-                    error
-                );
+        } catch(error) {
 
-                showStatus(
-                    error.message ||
-                    "Delete failed."
-                );
-            }
+            alert(
+                error.message ||
+                "Server error."
+            );
+
         }
-    );
-}
 
-
-/* =====================================================
-   BUTTONS
-===================================================== */
-
-const usersBtn =
-    document.getElementById("usersBtn");
-
-if (usersBtn) {
-
-    usersBtn.addEventListener(
-        "click",
-        loadUsers
-    );
-}
-
-
-const chatsBtn =
-    document.getElementById("chatsBtn");
-
-if (chatsBtn) {
-
-    chatsBtn.addEventListener(
-        "click",
-        loadChats
-    );
-}
-
-
-const knowledgeBtn =
-    document.getElementById(
-        "knowledgeBtn"
-    );
-
-if (knowledgeBtn) {
-
-    knowledgeBtn.addEventListener(
-        "click",
-        loadKnowledge
-    );
-}
+    }
+);
 
 
 /* =====================================================
    LOGOUT
 ===================================================== */
 
-const logoutBtn =
-    document.getElementById(
-        "logoutBtn"
+function logout() {
+
+    localStorage.removeItem(
+        TOKEN_KEY
     );
 
-if (logoutBtn) {
-
-    logoutBtn.addEventListener(
-        "click",
-        function() {
-
-            localStorage.removeItem(
-                TOKEN_KEY
-            );
-
-            adminToken = null;
-
-            showLogin();
-
-            clearStatus();
-
-            if (loginForm) {
-                loginForm.reset();
-            }
-        }
+    localStorage.removeItem(
+        USER_KEY
     );
+
+
+    token = null;
+
+    currentUser = null;
+
+
+    showLogin();
+
+
+    loginForm.reset();
+
+    registerForm.reset();
+
+    clearMessage();
+
+
+    chatMessages.innerHTML = `
+
+        <div class="message ai">
+
+            <div class="bubble">
+
+                👋 Ku soo dhowow NASIIB BUSINESS CENTER.
+
+                <br><br>
+
+                Fadlan soo gal akoonkaaga.
+
+            </div>
+
+        </div>
+
+    `;
+
 }
+
+
+/* =====================================================
+   LOGOUT BUTTONS
+===================================================== */
+
+headerLogout.addEventListener(
+    "click",
+    logout
+);
+
+chatLogout.addEventListener(
+    "click",
+    logout
+);
 
 
 /* =====================================================
    ESCAPE HTML
 ===================================================== */
 
-function escapeHTML(value) {
+function escapeHTML(
+    value
+) {
 
     const div =
-        document.createElement("div");
+        document.createElement(
+            "div"
+        );
 
     div.textContent =
         value == null
@@ -1659,34 +2141,7 @@ function escapeHTML(value) {
         : String(value);
 
     return div.innerHTML;
-}
 
-
-/* =====================================================
-   DATE
-===================================================== */
-
-function formatDate(date) {
-
-    if (!date) {
-        return "";
-    }
-
-    try {
-
-        return new Date(date)
-            .toLocaleString(
-                "so-SO",
-                {
-                    dateStyle: "medium",
-                    timeStyle: "short"
-                }
-            );
-
-    } catch {
-
-        return String(date);
-    }
 }
 
 
@@ -1694,22 +2149,35 @@ function formatDate(date) {
    START
 ===================================================== */
 
-(async function() {
+if (
+    token &&
+    currentUser
+) {
 
-    const loggedIn =
-        await verifyAdmin();
+    if (
+        currentUser.role ===
+        "admin"
+    ) {
 
-    if (!loggedIn) {
-        return;
+        window.location.href =
+            "/admin/";
+
+    } else {
+
+        showChat();
+
+        loadChatHistory();
+
     }
 
-    await loadUsers();
-    await loadChats();
-    await loadKnowledge();
+} else {
 
-})();
+    showLogin();
+
+}
 
 </script>
+
 </body>
 
 </html>
