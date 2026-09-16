@@ -25,7 +25,7 @@ const OPENROUTER_API_KEY =
 
 const AI_MODEL =
     process.env.AI_MODEL ||
-    "meta-llama/llama-3.3-70b-instruct:free";
+    "openrouter/free";
 
 /* =====================================================
    MIDDLEWARE
