@@ -1362,3 +1362,55 @@ function escapeHtml(value) {
             "&#039;"
         );
 }
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+/* =====================================================
+   ADD KNOWLEDGE BUTTONS
+===================================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const addKnowledgeBtn =
+        document.getElementById("addKnowledgeBtn");
+
+    if (addKnowledgeBtn) {
+        addKnowledgeBtn.addEventListener("click", () => {
+            showSection("add");
+
+            const sidebar =
+                document.querySelector(".sidebar");
+
+            if (sidebar) {
+                sidebar.classList.remove("open");
+            }
+        });
+    }
+
+    const addKnowledgeMainBtn =
+        document.getElementById("addKnowledgeMainBtn");
+
+    if (addKnowledgeMainBtn) {
+        addKnowledgeMainBtn.addEventListener("click", () => {
+            showSection("add");
+        });
+    }
+
+    const cancelAddBtn =
+        document.getElementById("cancelAddBtn");
+
+    if (cancelAddBtn) {
+        cancelAddBtn.addEventListener("click", () => {
+            resetForm();
+            showSection("knowledge");
+        });
+    }
+
+});
