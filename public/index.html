@@ -1,2183 +1,2678 @@
 <!DOCTYPE html>
 <html lang="so">
-
 <head>
+  <meta charset="UTF-8">
 
-    <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+  <meta name="theme-color" content="#10a37f">
 
-    <title>NASIIB BUSINESS CENTER</title>
+  <meta
+    name="description"
+    content="NASIIB BUSINESS CENTER - AI Chat Somali"
+  >
 
-    <style>
+  <title>NASIIB BUSINESS CENTER</title>
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  <style>
+    /* =====================================================
+       COLORS
+    ===================================================== */
 
-        body {
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
+    :root {
+      --primary: #10a37f;
+      --primary-dark: #0b8064;
 
-            background: #f7f7f8;
+      --sidebar: #202123;
 
-            color: #202123;
+      --bg: #f7f7f8;
+      --surface: #ffffff;
+      --surface-2: #f0f0f1;
 
-            min-height: 100vh;
-        }
+      --text: #202123;
+      --muted: #6b7280;
 
+      --border: #d9d9df;
 
-        /* =================================================
-           HEADER
-        ================================================= */
+      --user: #e8f7f2;
 
-        header {
+      --danger: #dc3545;
 
-            background: #202123;
+      --shadow:
+        0 10px 30px rgba(0, 0, 0, 0.08);
+    }
 
-            color: white;
 
-            padding: 16px 20px;
+    /* =====================================================
+       DARK MODE
+    ===================================================== */
 
-            display: flex;
+    body.dark {
+      --bg: #171717;
+      --surface: #212121;
+      --surface-2: #2b2b2b;
 
-            align-items: center;
+      --text: #f5f5f5;
+      --muted: #a9a9a9;
 
-            justify-content: space-between;
+      --border: #3a3a3a;
 
-            position: sticky;
+      --user: #173b32;
 
-            top: 0;
+      --shadow:
+        0 10px 30px rgba(0, 0, 0, 0.25);
+    }
 
-            z-index: 100;
-        }
 
-        .logo {
+    /* =====================================================
+       RESET
+    ===================================================== */
 
-            font-size: 20px;
+    * {
+      box-sizing: border-box;
+    }
 
-            font-weight: bold;
-        }
 
-        .header-right {
+    html,
+    body {
+      width: 100%;
+      height: 100%;
 
-            display: flex;
+      margin: 0;
 
-            align-items: center;
+      font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 
-            gap: 10px;
-        }
+      background: var(--bg);
+      color: var(--text);
+    }
 
-        .user-name {
 
-            font-size: 14px;
+    body {
+      overflow: hidden;
+    }
 
-            opacity: .9;
-        }
 
+    button,
+    textarea,
+    select {
+      font: inherit;
+    }
 
-        /* =================================================
-           AUTH CONTAINER
-        ================================================= */
 
-        #authSection {
+    /* =====================================================
+       APP
+    ===================================================== */
 
-            min-height: calc(100vh - 70px);
+    .app {
+      height: 100dvh;
 
-            display: flex;
+      display: flex;
 
-            align-items: center;
+      background: var(--bg);
+    }
 
-            justify-content: center;
 
-            padding: 25px 15px;
-        }
+    /* =====================================================
+       SIDEBAR
+    ===================================================== */
 
-        .auth-card {
+    .sidebar {
+      width: 280px;
 
-            width: 100%;
+      background: var(--sidebar);
+      color: white;
 
-            max-width: 430px;
+      display: flex;
+      flex-direction: column;
 
-            background: white;
+      flex-shrink: 0;
 
-            padding: 30px;
+      transition:
+        transform 0.25s ease;
 
-            border-radius: 18px;
+      z-index: 20;
+    }
 
-            box-shadow:
-                0 10px 35px
-                rgba(0,0,0,.10);
-        }
 
-        .auth-logo {
+    .brand {
+      padding: 20px 18px 16px;
 
-            text-align: center;
+      border-bottom:
+        1px solid rgba(255,255,255,0.1);
+    }
 
-            margin-bottom: 20px;
-        }
 
-        .auth-logo .icon {
+    .brand h1 {
+      margin: 0;
 
-            font-size: 48px;
+      font-size: 18px;
 
-            margin-bottom: 8px;
-        }
+      letter-spacing: 0.3px;
+    }
 
-        .auth-logo h1 {
 
-            font-size: 24px;
+    .brand p {
+      margin: 6px 0 0;
 
-            color: #10a37f;
-        }
+      font-size: 12px;
 
-        .auth-logo p {
+      color: #b8b8b8;
+    }
 
-            color: #666;
 
-            margin-top: 7px;
+    .sidebar-actions {
+      padding: 12px;
+    }
 
-            font-size: 14px;
-        }
 
+    .new-chat {
+      width: 100%;
 
-        /* =================================================
-           TABS
-        ================================================= */
+      border:
+        1px solid rgba(255,255,255,0.18);
 
-        .auth-tabs {
+      background: transparent;
 
-            display: flex;
+      color: white;
 
-            background: #f1f1f1;
+      border-radius: 8px;
 
-            padding: 4px;
+      padding: 11px;
 
-            border-radius: 10px;
+      cursor: pointer;
 
-            margin-bottom: 20px;
-        }
+      text-align: left;
+    }
 
-        .auth-tab {
 
-            flex: 1;
+    .new-chat:hover {
+      background:
+        rgba(255,255,255,0.08);
+    }
 
-            border: none;
 
-            background: transparent;
+    .history-title {
+      padding: 8px 16px;
 
-            color: #555;
+      color: #aaa;
 
-            padding: 11px;
+      font-size: 12px;
 
-            border-radius: 8px;
+      text-transform: uppercase;
+    }
 
-            cursor: pointer;
 
-            font-size: 15px;
+    .history {
+      flex: 1;
 
-            font-weight: bold;
-        }
+      overflow-y: auto;
 
-        .auth-tab.active {
+      padding:
+        4px 10px 14px;
+    }
 
-            background: #10a37f;
 
-            color: white;
-        }
+    .history-item {
+      padding: 10px 11px;
 
+      border-radius: 7px;
 
-        /* =================================================
-           FORM
-        ================================================= */
+      margin-bottom: 3px;
 
-        .form-group {
+      color: #ddd;
 
-            margin-bottom: 15px;
-        }
+      font-size: 13px;
 
-        .form-group label {
+      white-space: nowrap;
 
-            display: block;
+      overflow: hidden;
 
-            margin-bottom: 7px;
+      text-overflow: ellipsis;
+    }
 
-            font-size: 14px;
 
-            font-weight: bold;
-        }
+    .history-item:hover {
+      background:
+        rgba(255,255,255,0.08);
+    }
 
-        .form-group input {
 
-            width: 100%;
+    .sidebar-footer {
+      padding: 12px;
 
-            padding: 13px;
+      border-top:
+        1px solid rgba(255,255,255,0.1);
 
-            border:
-                1px solid #d1d5db;
+      font-size: 12px;
 
-            border-radius: 10px;
+      color: #aaa;
+    }
 
-            font-size: 15px;
 
-            outline: none;
-        }
+    .admin-link {
+      color: white;
 
-        .form-group input:focus {
+      text-decoration: none;
 
-            border-color: #10a37f;
+      display: block;
 
-            box-shadow:
-                0 0 0 3px
-                rgba(16,163,127,.12);
-        }
+      padding: 8px 0;
+    }
 
 
-        /* =================================================
-           BUTTON
-        ================================================= */
+    /* =====================================================
+       MAIN
+    ===================================================== */
 
-        .main-button {
+    .main {
+      min-width: 0;
 
-            width: 100%;
+      flex: 1;
 
-            padding: 13px;
+      display: flex;
+      flex-direction: column;
 
-            border: none;
+      height: 100%;
+    }
 
-            border-radius: 10px;
 
-            background: #10a37f;
+    /* =====================================================
+       TOPBAR
+    ===================================================== */
 
-            color: white;
+    .topbar {
+      height: 62px;
 
-            font-size: 16px;
+      flex-shrink: 0;
 
-            font-weight: bold;
+      background: var(--surface);
 
-            cursor: pointer;
+      border-bottom:
+        1px solid var(--border);
 
-            margin-top: 5px;
-        }
+      display: flex;
 
-        .main-button:hover {
+      align-items: center;
 
-            background: #0b8064;
-        }
+      gap: 10px;
 
-        .main-button:disabled {
+      padding:
+        0 16px;
+    }
 
-            opacity: .6;
 
-            cursor: not-allowed;
-        }
+    .menu-btn {
+      display: none;
 
+      width: 40px;
+      height: 40px;
 
-        /* =================================================
-           MESSAGES
-        ================================================= */
+      border: 0;
 
-        #messageBox {
+      background: transparent;
 
-            display: none;
+      color: var(--text);
 
-            padding: 12px;
+      border-radius: 8px;
 
-            border-radius: 9px;
+      font-size: 22px;
 
-            margin-bottom: 15px;
+      cursor: pointer;
+    }
 
-            font-size: 14px;
 
-            line-height: 1.5;
-        }
+    .top-title {
+      flex: 1;
 
-        #messageBox.error {
+      min-width: 0;
+    }
 
-            display: block;
 
-            background: #fee2e2;
+    .top-title strong {
+      display: block;
 
-            color: #991b1b;
-        }
+      font-size: 15px;
 
-        #messageBox.success {
+      white-space: nowrap;
 
-            display: block;
+      overflow: hidden;
 
-            background: #dcfce7;
+      text-overflow: ellipsis;
+    }
 
-            color: #166534;
-        }
 
+    .status {
+      font-size: 12px;
 
-        /* =================================================
-           CHAT SECTION
-        ================================================= */
+      color: var(--muted);
 
-        #chatSection {
+      display: flex;
 
-            display: none;
+      align-items: center;
 
-            max-width: 1000px;
+      gap: 6px;
 
-            margin: auto;
+      white-space: nowrap;
+    }
 
-            padding: 20px;
-        }
 
-        .chat-card {
+    .status-dot {
+      width: 8px;
+      height: 8px;
 
-            background: white;
+      border-radius: 50%;
 
-            border-radius: 16px;
+      background: #999;
+    }
 
-            box-shadow:
-                0 5px 25px
-                rgba(0,0,0,.07);
 
-            overflow: hidden;
-        }
+    .status-dot.online {
+      background: #16a34a;
+    }
 
-        .chat-header {
 
-            padding: 18px;
+    .status-dot.offline {
+      background: #dc3545;
+    }
 
-            border-bottom:
-                1px solid #eee;
 
-            font-weight: bold;
+    .theme-select {
+      border:
+        1px solid var(--border);
 
-            font-size: 18px;
-        }
+      background:
+        var(--surface);
 
-        #chatMessages {
+      color:
+        var(--text);
 
-            min-height: 400px;
+      border-radius: 8px;
 
-            max-height: 60vh;
+      padding:
+        7px 9px;
 
-            overflow-y: auto;
+      cursor: pointer;
+    }
 
-            padding: 20px;
-        }
 
-        .message {
+    .delete-top {
+      border:
+        1px solid var(--border);
 
-            margin-bottom: 15px;
+      background:
+        var(--surface);
 
-            display: flex;
-        }
+      color:
+        var(--danger);
 
-        .message.user {
+      border-radius: 8px;
 
-            justify-content: flex-end;
-        }
+      padding:
+        8px 10px;
 
-        .message.ai {
+      cursor: pointer;
+    }
 
-            justify-content: flex-start;
-        }
 
-        .bubble {
+    /* =====================================================
+       CHAT AREA
+    ===================================================== */
 
-            max-width: 80%;
+    .chat {
+      flex: 1;
 
-            padding: 12px 15px;
+      min-height: 0;
 
-            border-radius: 14px;
+      overflow-y: auto;
 
-            line-height: 1.6;
+      scroll-behavior: smooth;
 
-            white-space: pre-wrap;
+      padding:
+        22px 16px 12px;
+    }
 
-            word-wrap: break-word;
-        }
 
-        .message.user .bubble {
+    .chat-inner {
+      width:
+        min(900px, 100%);
 
-            background: #10a37f;
+      margin:
+        0 auto;
+    }
 
-            color: white;
 
-            border-bottom-right-radius: 4px;
-        }
+    /* =====================================================
+       WELCOME
+    ===================================================== */
 
-        .message.ai .bubble {
+    .welcome {
+      text-align: center;
 
-            background: #f1f1f1;
+      padding:
+        8vh 15px 35px;
+    }
 
-            color: #202123;
 
-            border-bottom-left-radius: 4px;
-        }
+    .welcome-icon {
+      width: 64px;
+      height: 64px;
 
+      margin:
+        0 auto 14px;
 
-        /* =================================================
-           CHAT INPUT
-        ================================================= */
+      border-radius: 18px;
 
-        .chat-input-area {
+      background:
+        var(--primary);
 
-            border-top:
-                1px solid #eee;
+      color: white;
 
-            padding: 15px;
+      display: grid;
 
-            display: flex;
+      place-items: center;
 
-            gap: 10px;
-        }
+      font-size: 28px;
 
-        #messageInput {
+      box-shadow:
+        var(--shadow);
+    }
 
-            flex: 1;
 
-            resize: none;
+    .welcome h2 {
+      margin:
+        0 0 8px;
 
-            min-height: 48px;
+      font-size: 25px;
+    }
 
-            max-height: 130px;
 
-            padding: 13px;
+    .welcome p {
+      margin:
+        0 auto;
 
-            border:
-                1px solid #ccc;
+      max-width: 600px;
 
-            border-radius: 10px;
+      color:
+        var(--muted);
 
-            font-size: 15px;
+      line-height: 1.6;
+    }
 
-            outline: none;
-        }
 
-        #messageInput:focus {
+    /* =====================================================
+       MESSAGE
+    ===================================================== */
 
-            border-color: #10a37f;
-        }
+    .message {
+      display: flex;
 
-        #sendButton {
+      gap: 12px;
 
-            width: 100px;
+      margin:
+        0 auto 18px;
 
-            border: none;
+      max-width: 860px;
+    }
 
-            border-radius: 10px;
 
-            background: #10a37f;
+    .avatar {
+      width: 34px;
+      height: 34px;
 
-            color: white;
+      border-radius: 9px;
 
-            font-weight: bold;
+      flex:
+        0 0 34px;
 
-            cursor: pointer;
-        }
+      display: grid;
 
-        #sendButton:disabled {
+      place-items: center;
 
-            opacity: .6;
-        }
+      font-size: 16px;
 
+      background:
+        var(--surface-2);
+    }
 
-        /* =================================================
-           CHAT CONTROLS
-        ================================================= */
 
-        .chat-controls {
+    .message.user .avatar {
+      background:
+        var(--primary);
 
-            display: flex;
+      color: white;
+    }
 
-            gap: 8px;
 
-            padding: 0 15px 15px;
-        }
+    .message-content {
+      min-width: 0;
 
-        .control-button {
+      flex: 1;
 
-            padding: 9px 13px;
+      line-height: 1.65;
 
-            border: none;
+      overflow-wrap:
+        anywhere;
+    }
 
-            border-radius: 8px;
 
-            cursor: pointer;
+    .message-name {
+      font-size: 12px;
 
-            background: #475569;
+      font-weight: 700;
 
-            color: white;
-        }
+      color:
+        var(--muted);
 
-        .control-button.danger {
+      margin-bottom: 3px;
+    }
 
-            background: #dc2626;
-        }
 
+    .bubble {
+      white-space: pre-wrap;
 
-        /* =================================================
-           LOADING
-        ================================================= */
+      border-radius: 12px;
 
-        .typing {
+      padding:
+        10px 13px;
 
-            color: #777;
+      background:
+        var(--surface);
 
-            font-style: italic;
+      border:
+        1px solid var(--border);
+    }
 
-            padding: 10px;
-        }
 
+    .message.user .bubble {
+      background:
+        var(--user);
 
-        /* =================================================
-           MOBILE
-        ================================================= */
+      border-color:
+        transparent;
+    }
 
-        @media (max-width: 600px) {
 
-            header {
+    /* =====================================================
+       MESSAGE IMAGE
+    ===================================================== */
 
-                padding: 13px 15px;
-            }
+    .message-image {
+      display: block;
 
-            .logo {
+      max-width:
+        min(420px, 100%);
 
-                font-size: 16px;
-            }
+      max-height: 360px;
 
-            .user-name {
+      object-fit: contain;
 
-                display: none;
-            }
+      border-radius: 10px;
 
-            .auth-card {
+      margin-bottom: 9px;
 
-                padding: 22px 18px;
+      border:
+        1px solid var(--border);
+    }
 
-                border-radius: 14px;
-            }
 
-            .auth-logo h1 {
+    /* =====================================================
+       TYPING
+    ===================================================== */
 
-                font-size: 21px;
-            }
+    .typing {
+      color:
+        var(--muted);
 
-            #chatSection {
+      font-size: 13px;
 
-                padding: 10px;
-            }
+      padding:
+        8px 0;
+    }
 
-            #chatMessages {
 
-                min-height: 55vh;
+    .typing span {
+      animation:
+        blink 1.2s infinite;
+    }
 
-                padding: 12px;
-            }
 
-            .bubble {
+    .typing span:nth-child(2) {
+      animation-delay:
+        0.2s;
+    }
 
-                max-width: 90%;
-            }
 
-            .chat-input-area {
+    .typing span:nth-child(3) {
+      animation-delay:
+        0.4s;
+    }
 
-                padding: 10px;
-            }
 
-            #sendButton {
+    @keyframes blink {
 
-                width: 70px;
-            }
+      0%,
+      80%,
+      100% {
+        opacity: 0.25;
+      }
 
-            .chat-controls {
+      40% {
+        opacity: 1;
+      }
+    }
 
-                flex-wrap: wrap;
-            }
-        }
 
-    </style>
+    /* =====================================================
+       COMPOSER
+    ===================================================== */
 
+    .composer-area {
+      flex-shrink: 0;
+
+      padding:
+        8px 14px
+        max(12px, env(safe-area-inset-bottom));
+
+      background:
+        var(--bg);
+    }
+
+
+    .composer {
+      width:
+        min(900px, 100%);
+
+      margin:
+        0 auto;
+
+      background:
+        var(--surface);
+
+      border:
+        1px solid var(--border);
+
+      border-radius: 15px;
+
+      box-shadow:
+        var(--shadow);
+
+      overflow:
+        hidden;
+    }
+
+
+    /* =====================================================
+       IMAGE PREVIEW
+    ===================================================== */
+
+    .preview {
+      display: none;
+
+      position: relative;
+
+      padding: 10px;
+
+      border-bottom:
+        1px solid var(--border);
+    }
+
+
+    .preview.show {
+      display: block;
+    }
+
+
+    .preview img {
+      width: auto;
+
+      max-width: 220px;
+
+      max-height: 150px;
+
+      border-radius: 9px;
+
+      display: block;
+
+      object-fit: cover;
+    }
+
+
+    .remove-image {
+      position: absolute;
+
+      top: 16px;
+
+      right: 14px;
+
+      width: 32px;
+      height: 32px;
+
+      border: 0;
+
+      border-radius: 50%;
+
+      background:
+        rgba(0,0,0,0.72);
+
+      color: white;
+
+      cursor: pointer;
+
+      font-size: 17px;
+    }
+
+
+    /* =====================================================
+       INPUT ROW
+    ===================================================== */
+
+    .input-row {
+      display: flex;
+
+      align-items: flex-end;
+
+      gap: 6px;
+
+      padding: 8px;
+    }
+
+
+    .tool-btn,
+    .send-btn {
+      width: 42px;
+      height: 42px;
+
+      border: 0;
+
+      border-radius: 10px;
+
+      cursor: pointer;
+
+      flex:
+        0 0 42px;
+
+      display: grid;
+
+      place-items: center;
+
+      font-size: 20px;
+    }
+
+
+    .tool-btn {
+      background:
+        var(--surface-2);
+
+      color:
+        var(--text);
+    }
+
+
+    .tool-btn:hover {
+      background:
+        var(--border);
+    }
+
+
+    .send-btn {
+      background:
+        var(--primary);
+
+      color: white;
+    }
+
+
+    .send-btn:hover {
+      background:
+        var(--primary-dark);
+    }
+
+
+    .send-btn:disabled {
+      opacity: 0.5;
+
+      cursor:
+        not-allowed;
+    }
+
+
+    /* =====================================================
+       TEXTAREA
+    ===================================================== */
+
+    #messageInput {
+      flex: 1;
+
+      min-width: 0;
+
+      min-height: 42px;
+
+      max-height: 150px;
+
+      resize: none;
+
+      border: 0;
+
+      outline: 0;
+
+      background:
+        transparent;
+
+      color:
+        var(--text);
+
+      padding:
+        10px 8px;
+
+      line-height: 1.45;
+    }
+
+
+    /* =====================================================
+       HINT
+    ===================================================== */
+
+    .hint {
+      text-align: center;
+
+      font-size: 11px;
+
+      color:
+        var(--muted);
+
+      padding:
+        0 10px 8px;
+    }
+
+
+    /* =====================================================
+       ERROR
+    ===================================================== */
+
+    .error {
+      color:
+        var(--danger);
+
+      font-size: 13px;
+
+      text-align: center;
+
+      padding:
+        7px 10px;
+    }
+
+
+    /* =====================================================
+       FILE INPUT
+    ===================================================== */
+
+    input[type="file"] {
+      display: none;
+    }
+
+
+    /* =====================================================
+       MOBILE
+    ===================================================== */
+
+    .mobile-overlay {
+      display: none;
+    }
+
+
+    @media (max-width: 760px) {
+
+      .sidebar {
+        position: fixed;
+
+        inset:
+          0 auto 0 0;
+
+        height: 100dvh;
+
+        transform:
+          translateX(-100%);
+
+        width:
+          min(84vw, 300px);
+
+        box-shadow:
+          8px 0 30px rgba(0,0,0,0.25);
+      }
+
+
+      .sidebar.open {
+        transform:
+          translateX(0);
+      }
+
+
+      .mobile-overlay {
+        position: fixed;
+
+        inset: 0;
+
+        background:
+          rgba(0,0,0,0.45);
+
+        z-index: 15;
+      }
+
+
+      .mobile-overlay.show {
+        display: block;
+      }
+
+
+      .menu-btn {
+        display: grid;
+
+        place-items: center;
+      }
+
+
+      .status {
+        display: none;
+      }
+
+
+      .theme-select {
+        max-width: 105px;
+
+        font-size: 12px;
+      }
+
+
+      .delete-top {
+        font-size: 12px;
+
+        padding: 8px;
+      }
+
+
+      .chat {
+        padding:
+          12px 9px 8px;
+      }
+
+
+      .welcome {
+        padding:
+          7vh 10px 25px;
+      }
+
+
+      .welcome h2 {
+        font-size: 21px;
+      }
+
+
+      .welcome-icon {
+        width: 55px;
+        height: 55px;
+
+        border-radius: 15px;
+      }
+
+
+      .message {
+        gap: 8px;
+
+        margin-bottom: 14px;
+      }
+
+
+      .avatar {
+        width: 30px;
+        height: 30px;
+
+        flex-basis: 30px;
+
+        border-radius: 8px;
+      }
+
+
+      .bubble {
+        padding:
+          9px 11px;
+
+        font-size: 14px;
+      }
+
+
+      .composer-area {
+        padding-left: 7px;
+
+        padding-right: 7px;
+      }
+
+
+      .input-row {
+        gap: 4px;
+
+        padding: 6px;
+      }
+
+
+      .tool-btn,
+      .send-btn {
+        width: 39px;
+        height: 39px;
+
+        flex-basis: 39px;
+
+        font-size: 18px;
+      }
+
+
+      #messageInput {
+        min-height: 39px;
+
+        padding:
+          9px 6px;
+      }
+
+
+      .hint {
+        display: none;
+      }
+    }
+  </style>
 </head>
 
 
 <body>
 
+  <div class="app">
 
-<!-- =====================================================
-     HEADER
-===================================================== -->
+    <!-- ===================================================
+         SIDEBAR
+    ==================================================== -->
 
-<header>
+    <aside class="sidebar" id="sidebar">
 
-    <div class="logo">
-        🤖 NASIIB BUSINESS CENTER
-    </div>
+      <div class="brand">
 
-    <div class="header-right">
+        <h1>
+          NASIIB BUSINESS CENTER
+        </h1>
 
-        <span
-            id="userName"
-            class="user-name"
-        ></span>
+        <p>
+          AI Chat — Af Soomaali
+        </p>
+
+      </div>
+
+
+      <div class="sidebar-actions">
 
         <button
-            id="headerLogout"
-            class="control-button"
-            style="display:none;"
+          class="new-chat"
+          id="newChatBtn"
         >
-            🚪 Ka bax
+          ＋ Chat cusub
         </button>
 
-    </div>
-
-</header>
+      </div>
 
 
-<!-- =====================================================
-     AUTH SECTION
-===================================================== -->
+      <div class="history-title">
+        Taariikhda Chat-ka
+      </div>
 
-<section id="authSection">
 
-    <div class="auth-card">
+      <div
+        class="history"
+        id="historyList"
+      >
 
-        <div class="auth-logo">
+        <div class="history-item">
+          Chat-yadii hore halkan ayay ka muuqanayaan.
+        </div>
 
-            <div class="icon">
-                🤖
-            </div>
+      </div>
 
-            <h1>
-                NASIIB BUSINESS CENTER
-            </h1>
 
-            <p>
-                AI Chat Somali
-            </p>
+      <div class="sidebar-footer">
+
+        <a
+          class="admin-link"
+          href="/admin/"
+        >
+          👑 Admin Panel
+        </a>
+
+        <div>
+          Public User Chat • Login la'aan
+        </div>
+
+      </div>
+
+    </aside>
+
+
+    <!-- ===================================================
+         MOBILE OVERLAY
+    ==================================================== -->
+
+    <div
+      class="mobile-overlay"
+      id="overlay"
+    ></div>
+
+
+    <!-- ===================================================
+         MAIN
+    ==================================================== -->
+
+    <main class="main">
+
+
+      <!-- =================================================
+           TOP BAR
+      ================================================== -->
+
+      <header class="topbar">
+
+        <button
+          class="menu-btn"
+          id="menuBtn"
+          aria-label="Menu"
+        >
+          ☰
+        </button>
+
+
+        <div class="top-title">
+
+          <strong>
+            NASIIB BUSINESS CENTER
+          </strong>
 
         </div>
 
 
-        <!-- TABS -->
+        <div class="status">
 
-        <div class="auth-tabs">
+          <span
+            class="status-dot"
+            id="statusDot"
+          ></span>
 
-            <button
-                id="loginTab"
-                class="auth-tab active"
-                type="button"
-            >
-                Soo gal
-            </button>
-
-            <button
-                id="registerTab"
-                class="auth-tab"
-                type="button"
-            >
-                Akawn cusub
-            </button>
+          <span id="statusText">
+            Hubinaya...
+          </span>
 
         </div>
 
 
-        <!-- MESSAGE -->
+        <!-- THEME -->
 
-        <div id="messageBox"></div>
-
-
-        <!-- =================================================
-             LOGIN FORM
-        ================================================= -->
-
-        <form
-            id="loginForm"
+        <select
+          class="theme-select"
+          id="themeSelect"
+          aria-label="Muuqaalka"
         >
 
-            <div class="form-group">
+          <option value="system">
+            ⚙️ System
+          </option>
 
-                <label for="loginEmail">
-                    Email
-                </label>
+          <option value="light">
+            ☀️ Light
+          </option>
 
-                <input
-                    type="email"
-                    id="loginEmail"
-                    placeholder="Geli email-kaaga"
-                    autocomplete="username"
-                    required
-                >
+          <option value="dark">
+            🌙 Dark
+          </option>
 
-            </div>
+        </select>
 
 
-            <div class="form-group">
+        <!-- DELETE -->
 
-                <label for="loginPassword">
-                    Password
-                </label>
-
-                <input
-                    type="password"
-                    id="loginPassword"
-                    placeholder="Geli password-kaaga"
-                    autocomplete="current-password"
-                    required
-                >
-
-            </div>
-
-
-            <button
-                id="loginButton"
-                class="main-button"
-                type="submit"
-            >
-                🔐 Soo gal
-            </button>
-
-        </form>
-
-
-        <!-- =================================================
-             REGISTER FORM
-        ================================================= -->
-
-        <form
-            id="registerForm"
-            style="display:none;"
+        <button
+          class="delete-top"
+          id="deleteChatBtn"
+          title="Tirtir dhammaan chat-ka"
         >
+          🗑️
+        </button>
 
-            <div class="form-group">
-
-                <label for="registerName">
-                    Magaca
-                </label>
-
-                <input
-                    type="text"
-                    id="registerName"
-                    placeholder="Geli magacaaga"
-                    autocomplete="name"
-                    required
-                >
-
-            </div>
+      </header>
 
 
-            <div class="form-group">
+      <!-- =================================================
+           CHAT
+      ================================================== -->
 
-                <label for="registerEmail">
-                    Email
-                </label>
-
-                <input
-                    type="email"
-                    id="registerEmail"
-                    placeholder="Geli email-kaaga"
-                    autocomplete="email"
-                    required
-                >
-
-            </div>
-
-
-            <div class="form-group">
-
-                <label for="registerPassword">
-                    Password
-                </label>
-
-                <input
-                    type="password"
-                    id="registerPassword"
-                    placeholder="Ugu yaraan 6 xaraf"
-                    autocomplete="new-password"
-                    minlength="6"
-                    required
-                >
-
-            </div>
-
-
-            <div class="form-group">
-
-                <label for="registerPassword2">
-                    Ku celi Password
-                </label>
-
-                <input
-                    type="password"
-                    id="registerPassword2"
-                    placeholder="Mar kale geli password-ka"
-                    autocomplete="new-password"
-                    minlength="6"
-                    required
-                >
-
-            </div>
-
-
-            <button
-                id="registerButton"
-                class="main-button"
-                type="submit"
-            >
-                📝 Soo gal akoon cusub
-            </button>
-
-        </form>
-
-    </div>
-
-</section>
-
-
-
-<!-- =====================================================
-     CHAT SECTION
-===================================================== -->
-
-<section id="chatSection">
-
-    <div class="chat-card">
-
-
-        <div class="chat-header">
-
-            💬 AI Chat Somali
-
-        </div>
-
-
-        <div id="chatMessages">
-
-            <div class="message ai">
-
-                <div class="bubble">
-
-                    👋 Ku soo dhowow NASIIB BUSINESS CENTER.
-
-                    <br><br>
-
-                    Waxaan ahay AI Chat Somali.
-                    Maxaan maanta kaa caawin karaa?
-
-                </div>
-
-            </div>
-
-        </div>
-
+      <section
+        class="chat"
+        id="chatBox"
+      >
 
         <div
-            id="typing"
-            class="typing"
-            style="display:none;"
+          class="chat-inner"
+          id="chatInner"
         >
-            🤖 AI ayaa qoraya...
+
+          <div
+            class="welcome"
+            id="welcome"
+          >
+
+            <div class="welcome-icon">
+              🤖
+            </div>
+
+
+            <h2>
+              Ku soo dhawoow
+              NASIIB BUSINESS CENTER
+            </h2>
+
+
+            <p>
+              Weydii su'aal Af Soomaali ah.
+              Waxaad diri kartaa qoraal, sawir,
+              ama qoraal iyo sawir isku mar.
+            </p>
+
+          </div>
+
         </div>
 
+      </section>
 
-        <!-- INPUT -->
 
-        <div class="chat-input-area">
+      <!-- =================================================
+           COMPOSER
+      ================================================== -->
+
+      <div class="composer-area">
+
+        <div class="composer">
+
+
+          <!-- IMAGE PREVIEW -->
+
+          <div
+            class="preview"
+            id="previewBox"
+          >
+
+            <img
+              id="previewImage"
+              alt="Sawirka la doortay"
+            >
+
+
+            <button
+              class="remove-image"
+              id="removeImageBtn"
+              title="Ka saar sawirka"
+            >
+              ×
+            </button>
+
+          </div>
+
+
+          <!-- ERROR -->
+
+          <div
+            class="error"
+            id="errorBox"
+            hidden
+          ></div>
+
+
+          <!-- INPUT -->
+
+          <div class="input-row">
+
+
+            <!-- GALLERY -->
+
+            <label
+              class="tool-btn"
+              title="Gallery"
+              aria-label="Gallery"
+            >
+
+              🖼️
+
+              <input
+                id="galleryInput"
+                type="file"
+                accept="image/*"
+              >
+
+            </label>
+
+
+            <!-- CAMERA -->
+
+            <label
+              class="tool-btn"
+              title="Camera"
+              aria-label="Camera"
+            >
+
+              📷
+
+              <input
+                id="cameraInput"
+                type="file"
+                accept="image/*"
+                capture="environment"
+              >
+
+            </label>
+
+
+            <!-- TEXT -->
 
             <textarea
-                id="messageInput"
-                placeholder="Halkan ku qor fariinta..."
-                rows="1"
+              id="messageInput"
+              rows="1"
+              placeholder="Qor fariintaada..."
+              autocomplete="off"
+              spellcheck="true"
             ></textarea>
 
+
+            <!-- SEND -->
+
             <button
-                id="sendButton"
-                type="button"
+              class="send-btn"
+              id="sendBtn"
+              title="Dir"
             >
-                ➤ Dir
+              ➤
             </button>
+
+          </div>
+
+
+          <div class="hint">
+            Enter = dir • Shift + Enter = sadar cusub
+          </div>
 
         </div>
 
+      </div>
 
-        <!-- CONTROLS -->
+    </main>
 
-        <div class="chat-controls">
-
-            <button
-                id="clearChatsButton"
-                class="control-button danger"
-                type="button"
-            >
-                🗑️ Tirtir Chat
-            </button>
-
-            <button
-                id="chatLogout"
-                class="control-button"
-                type="button"
-            >
-                🚪 Ka bax
-            </button>
-
-        </div>
-
-    </div>
-
-</section>
+  </div>
 
 
+  <script>
 
-<script>
+    (() => {
 
-/* =====================================================
-   CONFIG
-===================================================== */
-
-const API = window.location.origin;
-
-const TOKEN_KEY = "token";
-
-const USER_KEY = "user";
+      "use strict";
 
 
-/* =====================================================
-   ELEMENTS
-===================================================== */
+      /* ===================================================
+         API
+      ==================================================== */
 
-const authSection =
-    document.getElementById(
-        "authSection"
-    );
+      const API_CHAT = "/chat";
 
-const chatSection =
-    document.getElementById(
-        "chatSection"
-    );
+      const API_HISTORY =
+        "/api/chats";
 
-const loginForm =
-    document.getElementById(
-        "loginForm"
-    );
-
-const registerForm =
-    document.getElementById(
-        "registerForm"
-    );
-
-const loginTab =
-    document.getElementById(
-        "loginTab"
-    );
-
-const registerTab =
-    document.getElementById(
-        "registerTab"
-    );
-
-const messageBox =
-    document.getElementById(
-        "messageBox"
-    );
-
-const loginButton =
-    document.getElementById(
-        "loginButton"
-    );
-
-const registerButton =
-    document.getElementById(
-        "registerButton"
-    );
-
-const userName =
-    document.getElementById(
-        "userName"
-    );
-
-const headerLogout =
-    document.getElementById(
-        "headerLogout"
-    );
-
-const chatLogout =
-    document.getElementById(
-        "chatLogout"
-    );
-
-const messageInput =
-    document.getElementById(
-        "messageInput"
-    );
-
-const sendButton =
-    document.getElementById(
-        "sendButton"
-    );
-
-const chatMessages =
-    document.getElementById(
-        "chatMessages"
-    );
-
-const typing =
-    document.getElementById(
-        "typing"
-    );
-
-const clearChatsButton =
-    document.getElementById(
-        "clearChatsButton"
-    );
+      const API_HEALTH =
+        "/api/health";
 
 
-/* =====================================================
-   STORAGE
-===================================================== */
-
-let token =
-    localStorage.getItem(
-        TOKEN_KEY
-    );
-
-let currentUser = null;
+      const MAX_IMAGE_SIZE =
+        5 * 1024 * 1024;
 
 
-try {
+      /* ===================================================
+         ELEMENTS
+      ==================================================== */
 
-    currentUser =
-        JSON.parse(
-            localStorage.getItem(
-                USER_KEY
-            )
+      const $ = (id) =>
+        document.getElementById(id);
+
+
+      const chatBox =
+        $("chatBox");
+
+      const chatInner =
+        $("chatInner");
+
+      const messageInput =
+        $("messageInput");
+
+      const sendBtn =
+        $("sendBtn");
+
+      const galleryInput =
+        $("galleryInput");
+
+      const cameraInput =
+        $("cameraInput");
+
+      const previewBox =
+        $("previewBox");
+
+      const previewImage =
+        $("previewImage");
+
+      const removeImageBtn =
+        $("removeImageBtn");
+
+      const errorBox =
+        $("errorBox");
+
+      const historyList =
+        $("historyList");
+
+      const newChatBtn =
+        $("newChatBtn");
+
+      const deleteChatBtn =
+        $("deleteChatBtn");
+
+      const themeSelect =
+        $("themeSelect");
+
+      const statusDot =
+        $("statusDot");
+
+      const statusText =
+        $("statusText");
+
+      const sidebar =
+        $("sidebar");
+
+      const menuBtn =
+        $("menuBtn");
+
+      const overlay =
+        $("overlay");
+
+
+      /* ===================================================
+         ANONYMOUS CLIENT ID
+         
+         Ma aha login.
+         Ma aha account.
+         Waa aqoonsi random ah oo browser-ka
+         lagu xiriirinayo chat history.
+      ==================================================== */
+
+      let clientId =
+        localStorage.getItem(
+          "nasiib_client_id"
         );
 
-} catch {
 
-    currentUser = null;
+      if (!clientId) {
 
-}
+        clientId =
+          crypto.randomUUID
+            ? crypto.randomUUID()
+            : "client-" +
+              Date.now() +
+              "-" +
+              Math.random()
+                .toString(36)
+                .slice(2);
 
-
-/* =====================================================
-   MESSAGE
-===================================================== */
-
-function showMessage(
-    message,
-    type = "error"
-) {
-
-    messageBox.textContent =
-        message;
-
-    messageBox.className =
-        type;
-
-    messageBox.style.display =
-        "block";
-}
-
-
-function clearMessage() {
-
-    messageBox.textContent = "";
-
-    messageBox.className = "";
-
-    messageBox.style.display =
-        "none";
-}
-
-
-/* =====================================================
-   AUTH TABS
-===================================================== */
-
-loginTab.addEventListener(
-    "click",
-    function() {
-
-        loginTab.classList.add(
-            "active"
+        localStorage.setItem(
+          "nasiib_client_id",
+          clientId
         );
+      }
 
-        registerTab.classList.remove(
-            "active"
-        );
 
-        loginForm.style.display =
-            "block";
+      /* ===================================================
+         VARIABLES
+      ==================================================== */
 
-        registerForm.style.display =
-            "none";
+      let currentImage = null;
 
-        clearMessage();
+      let sending = false;
 
-    }
-);
 
+      /* ===================================================
+         ESCAPE HTML
+      ==================================================== */
 
-registerTab.addEventListener(
-    "click",
-    function() {
+      function escapeHtml(value) {
 
-        registerTab.classList.add(
-            "active"
-        );
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
 
-        loginTab.classList.remove(
-            "active"
-        );
 
-        registerForm.style.display =
-            "block";
+      /* ===================================================
+         ERROR
+      ==================================================== */
 
-        loginForm.style.display =
-            "none";
+      function showError(message) {
 
-        clearMessage();
+        errorBox.textContent =
+          message;
 
-    }
-);
+        errorBox.hidden = false;
+      }
 
 
-/* =====================================================
-   SAVE LOGIN
-===================================================== */
+      function clearError() {
 
-function saveSession(
-    data
-) {
+        errorBox.textContent = "";
 
-    token =
-        data.token;
+        errorBox.hidden = true;
+      }
 
-    currentUser =
-        data.user;
 
-    localStorage.setItem(
-        TOKEN_KEY,
-        token
-    );
+      /* ===================================================
+         SCROLL
+      ==================================================== */
 
-    localStorage.setItem(
-        USER_KEY,
-        JSON.stringify(
-            currentUser
-        )
-    );
-}
+      function scrollBottom() {
 
+        requestAnimationFrame(() => {
 
-/* =====================================================
-   SHOW CHAT
-===================================================== */
+          chatBox.scrollTop =
+            chatBox.scrollHeight;
 
-function showChat() {
+        });
+      }
 
-    authSection.style.display =
-        "none";
 
-    chatSection.style.display =
-        "block";
+      /* ===================================================
+         WELCOME REMOVE
+      ==================================================== */
 
-    headerLogout.style.display =
-        "block";
+      function removeWelcome() {
 
-    if (currentUser) {
+        document
+          .getElementById("welcome")
+          ?.remove();
 
-        userName.textContent =
-            currentUser.name ||
-            currentUser.email;
+      }
 
-    }
 
-}
+      /* ===================================================
+         ADD MESSAGE
+      ==================================================== */
 
+      function addMessage(
+        role,
+        text,
+        image
+      ) {
 
-/* =====================================================
-   SHOW LOGIN
-===================================================== */
+        removeWelcome();
 
-function showLogin() {
 
-    authSection.style.display =
-        "flex";
+        const wrapper =
+          document.createElement("div");
 
-    chatSection.style.display =
-        "none";
 
-    headerLogout.style.display =
-        "none";
+        wrapper.className =
+          "message " +
+          (
+            role === "user"
+              ? "user"
+              : "assistant"
+          );
 
-    userName.textContent =
-        "";
 
-}
-
-
-/* =====================================================
-   LOGIN
-===================================================== */
-
-loginForm.addEventListener(
-    "submit",
-    async function(event) {
-
-        event.preventDefault();
-
-        clearMessage();
-
-        const email =
-            document
-                .getElementById(
-                    "loginEmail"
-                )
-                .value
-                .trim()
-                .toLowerCase();
-
-        const password =
-            document
-                .getElementById(
-                    "loginPassword"
-                )
-                .value;
-
-
-        if (!email || !password) {
-
-            showMessage(
-                "Fadlan geli email iyo password."
-            );
-
-            return;
-        }
-
-
-        try {
-
-            loginButton.disabled =
-                true;
-
-            loginButton.textContent =
-                "⏳ Soo galaya...";
-
-
-            const response =
-                await fetch(
-                    `${API}/api/login`,
-                    {
-
-                        method:
-                            "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body:
-                            JSON.stringify({
-                                email,
-                                password
-                            })
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data.error ||
-                    "Soo gelitaanku wuu fashilmay."
-                );
-
-            }
-
-
-            if (!data.token) {
-
-                throw new Error(
-                    "Token lama helin."
-                );
-
-            }
-
-
-            if (!data.user) {
-
-                throw new Error(
-                    "Xogta user-ka lama helin."
-                );
-
-            }
-
-
-            /* =========================================
-               SAVE TOKEN
-            ========================================= */
-
-            saveSession(data);
-
-
-            /* =========================================
-               ADMIN
-            ========================================= */
-
-            if (
-                data.user.role ===
-                "admin"
-            ) {
-
-                window.location.href =
-                    "/admin/";
-
-                return;
-
-            }
-
-
-            /* =========================================
-               USER
-            ========================================= */
-
-            showChat();
-
-            await loadChatHistory();
-
-
-        } catch(error) {
-
-            console.error(
-                "LOGIN ERROR:",
-                error
-            );
-
-            showMessage(
-                error.message ||
-                "Server error ayaa dhacay."
-            );
-
-        } finally {
-
-            loginButton.disabled =
-                false;
-
-            loginButton.textContent =
-                "🔐 Soo gal";
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   REGISTER
-===================================================== */
-
-registerForm.addEventListener(
-    "submit",
-    async function(event) {
-
-        event.preventDefault();
-
-        clearMessage();
+        const avatar =
+          role === "user"
+            ? "👤"
+            : "🤖";
 
 
         const name =
-            document
-                .getElementById(
-                    "registerName"
-                )
-                .value
-                .trim();
-
-        const email =
-            document
-                .getElementById(
-                    "registerEmail"
-                )
-                .value
-                .trim()
-                .toLowerCase();
-
-        const password =
-            document
-                .getElementById(
-                    "registerPassword"
-                )
-                .value;
-
-        const password2 =
-            document
-                .getElementById(
-                    "registerPassword2"
-                )
-                .value;
+          role === "user"
+            ? "Adiga"
+            : "AI";
 
 
-        /* =========================================
-           VALIDATION
-        ========================================= */
+        let imageHtml = "";
 
-        if (
-            !name ||
-            !email ||
-            !password ||
-            !password2
-        ) {
 
-            showMessage(
-                "Fadlan buuxi dhammaan meelaha."
-            );
+        if (image) {
 
-            return;
+          imageHtml = `
+            <img
+              class="message-image"
+              src="${escapeHtml(image)}"
+              alt="Sawir"
+            >
+          `;
 
         }
 
 
-        if (
-            password.length < 6
-        ) {
+        wrapper.innerHTML = `
 
-            showMessage(
-                "Password-ku waa inuu ahaadaa ugu yaraan 6 xaraf."
-            );
+          <div class="avatar">
+            ${avatar}
+          </div>
 
-            return;
+          <div class="message-content">
 
+            <div class="message-name">
+              ${name}
+            </div>
+
+            <div class="bubble">
+
+              ${imageHtml}
+
+              ${escapeHtml(text || "")}
+
+            </div>
+
+          </div>
+
+        `;
+
+
+        chatInner.appendChild(
+          wrapper
+        );
+
+
+        scrollBottom();
+
+      }
+
+
+      /* ===================================================
+         TYPING
+      ==================================================== */
+
+      function addTyping() {
+
+        removeWelcome();
+
+
+        const wrapper =
+          document.createElement("div");
+
+
+        wrapper.className =
+          "message assistant";
+
+
+        wrapper.id =
+          "typingMessage";
+
+
+        wrapper.innerHTML = `
+
+          <div class="avatar">
+            🤖
+          </div>
+
+          <div class="message-content">
+
+            <div class="message-name">
+              AI
+            </div>
+
+            <div class="typing">
+
+              Wuu qorayaa
+
+              <span>●</span>
+              <span>●</span>
+              <span>●</span>
+
+            </div>
+
+          </div>
+
+        `;
+
+
+        chatInner.appendChild(
+          wrapper
+        );
+
+
+        scrollBottom();
+
+      }
+
+
+      function removeTyping() {
+
+        document
+          .getElementById(
+            "typingMessage"
+          )
+          ?.remove();
+
+      }
+
+
+      /* ===================================================
+         IMAGE
+      ==================================================== */
+
+      function setImage(file) {
+
+        clearError();
+
+
+        if (!file) {
+          return;
         }
 
 
         if (
-            password !==
-            password2
+          !file.type.startsWith(
+            "image/"
+          )
         ) {
 
-            showMessage(
-                "Labada password isma laha."
-            );
+          showError(
+            "Fadlan dooro sawir."
+          );
 
-            return;
-
+          return;
         }
+
+
+        if (
+          file.size >
+          MAX_IMAGE_SIZE
+        ) {
+
+          showError(
+            "Sawirku waa inuu ka yaraadaa 5MB."
+          );
+
+          return;
+        }
+
+
+        const reader =
+          new FileReader();
+
+
+        reader.onload = () => {
+
+          currentImage =
+            reader.result;
+
+
+          previewImage.src =
+            currentImage;
+
+
+          previewBox.classList.add(
+            "show"
+          );
+
+        };
+
+
+        reader.onerror = () => {
+
+          showError(
+            "Sawirka lama akhrin karin."
+          );
+
+        };
+
+
+        reader.readAsDataURL(file);
+
+      }
+
+
+      /* ===================================================
+         REMOVE IMAGE
+      ==================================================== */
+
+      function removeImage() {
+
+        currentImage = null;
+
+
+        previewImage.removeAttribute(
+          "src"
+        );
+
+
+        previewBox.classList.remove(
+          "show"
+        );
+
+
+        galleryInput.value = "";
+
+        cameraInput.value = "";
+
+      }
+
+
+      /* ===================================================
+         TEXTAREA AUTO RESIZE
+      ==================================================== */
+
+      function autoResize() {
+
+        messageInput.style.height =
+          "auto";
+
+
+        messageInput.style.height =
+          Math.min(
+            messageInput.scrollHeight,
+            150
+          ) + "px";
+
+      }
+
+
+      /* ===================================================
+         SENDING STATE
+      ==================================================== */
+
+      function setSending(value) {
+
+        sending = value;
+
+        sendBtn.disabled =
+          value;
+
+        messageInput.disabled =
+          value;
+
+        galleryInput.disabled =
+          value;
+
+        cameraInput.disabled =
+          value;
+
+      }
+
+
+      /* ===================================================
+         SEND MESSAGE
+      ==================================================== */
+
+      async function sendMessage() {
+
+        if (sending) {
+          return;
+        }
+
+
+        const message =
+          messageInput.value.trim();
+
+
+        if (
+          !message &&
+          !currentImage
+        ) {
+
+          showError(
+            "Qor fariin ama dooro sawir."
+          );
+
+          messageInput.focus();
+
+          return;
+        }
+
+
+        clearError();
+
+
+        const sentText =
+          message;
+
+
+        const sentImage =
+          currentImage;
+
+
+        /* SHOW USER MESSAGE */
+
+        addMessage(
+          "user",
+          sentText,
+          sentImage
+        );
+
+
+        addTyping();
+
+
+        setSending(true);
+
+
+        messageInput.value =
+          "";
+
+        autoResize();
 
 
         try {
 
-            registerButton.disabled =
-                true;
-
-            registerButton.textContent =
-                "⏳ Akoon ayaa la sameynayaa...";
-
-
-            const response =
-                await fetch(
-                    `${API}/api/register`,
-                    {
-
-                        method:
-                            "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body:
-                            JSON.stringify({
-
-                                name,
-
-                                email,
-
-                                password
-
-                            })
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data.error ||
-                    "Register-ku wuu fashilmay."
-                );
-
-            }
-
-
-            if (!data.token) {
-
-                throw new Error(
-                    "Token lama helin."
-                );
-
-            }
-
-
-            if (!data.user) {
-
-                throw new Error(
-                    "Xogta user-ka lama helin."
-                );
-
-            }
-
-
-            /* =========================================
-               SAVE SESSION
-            ========================================= */
-
-            saveSession(data);
-
-
-            /* =========================================
-               ADMIN
-            ========================================= */
-
-            if (
-                data.user.role ===
-                "admin"
-            ) {
-
-                window.location.href =
-                    "/admin/";
-
-                return;
-
-            }
-
-
-            /* =========================================
-               USER
-            ========================================= */
-
-            showChat();
-
-
-            chatMessages.innerHTML = `
-
-                <div class="message ai">
-
-                    <div class="bubble">
-
-                        👋 Soo dhowow
-                        ${escapeHTML(data.user.name)}!
-
-                        <br><br>
-
-                        Akoonkaaga si guul leh ayaa loo sameeyay.
-
-                        <br><br>
-
-                        Maxaan kaa caawin karaa?
-
-                    </div>
-
-                </div>
-
-            `;
-
-
-        } catch(error) {
-
-            console.error(
-                "REGISTER ERROR:",
-                error
-            );
-
-            showMessage(
-                error.message ||
-                "Server error ayaa dhacay."
-            );
-
-        } finally {
-
-            registerButton.disabled =
-                false;
-
-            registerButton.textContent =
-                "📝 Soo gal akoon cusub";
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   LOAD CHAT HISTORY
-===================================================== */
-
-async function loadChatHistory() {
-
-    if (!token) return;
-
-
-    try {
-
-        const response =
+          const response =
             await fetch(
-                `${API}/api/chats`,
-                {
+              API_CHAT,
+              {
+                method: "POST",
 
-                    method:
-                        "GET",
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
 
-                    headers: {
+                body: JSON.stringify({
 
-                        Authorization:
-                            `Bearer ${token}`
+                  message:
+                    sentText,
 
-                    }
+                  image:
+                    sentImage,
 
-                }
+                  clientId:
+                    clientId
+
+                })
+
+              }
             );
 
 
-        if (
-            response.status === 401 ||
-            response.status === 403
-        ) {
+          const data =
+            await response
+              .json()
+              .catch(
+                () => ({})
+              );
 
-            logout();
 
-            return;
+          if (!response.ok) {
+
+            throw new Error(
+              data.error ||
+              data.message ||
+              `Server error: ${response.status}`
+            );
+
+          }
+
+
+          removeTyping();
+
+
+          const aiResponse =
+            data.response ||
+            data.answer ||
+            data.message ||
+            "AI jawaab kama soo celin.";
+
+
+          addMessage(
+            "assistant",
+            aiResponse,
+            null
+          );
+
+
+          removeImage();
+
+
+          await loadHistory();
 
         }
 
+        catch (error) {
 
-        const data =
+          removeTyping();
+
+
+          addMessage(
+            "assistant",
+            "❌ Khalad ayaa dhacay: " +
+            (
+              error.message ||
+              "Server lama heli karo."
+            )
+          );
+
+        }
+
+        finally {
+
+          setSending(false);
+
+          messageInput.focus();
+
+        }
+
+      }
+
+
+      /* ===================================================
+         LOAD CHAT HISTORY
+      ==================================================== */
+
+      async function loadHistory() {
+
+        try {
+
+          const response =
+            await fetch(
+              API_HISTORY +
+              "?clientId=" +
+              encodeURIComponent(
+                clientId
+              )
+            );
+
+
+          if (!response.ok) {
+            return;
+          }
+
+
+          const data =
             await response.json();
 
 
-        if (
-            !response.ok
-        ) {
-
-            return;
-
-        }
-
-
-        if (
-            !Array.isArray(
-                data.chats
-            )
-        ) {
-
-            return;
-
-        }
+          const chats =
+            Array.isArray(data)
+              ? data
+              : Array.isArray(
+                  data.chats
+                )
+                ? data.chats
+                : [];
 
 
-        if (
-            data.chats.length === 0
-        ) {
-
-            return;
-
-        }
-
-
-        chatMessages.innerHTML =
+          historyList.innerHTML =
             "";
 
 
-        data.chats.forEach(
-            chat => {
+          if (!chats.length) {
 
-                addMessage(
-                    chat.message,
-                    "user"
+            historyList.innerHTML = `
+
+              <div class="history-item">
+                Chat-yadii hore halkan ayay
+                ka muuqanayaan.
+              </div>
+
+            `;
+
+            return;
+          }
+
+
+          chats
+            .slice()
+            .reverse()
+            .forEach(
+              (chat) => {
+
+                const item =
+                  document.createElement(
+                    "div"
+                  );
+
+
+                item.className =
+                  "history-item";
+
+
+                const text =
+                  chat.message ||
+                  chat.response ||
+                  "Chat";
+
+
+                item.textContent =
+                  text
+                    .replace(
+                      /\s+/g,
+                      " "
+                    )
+                    .slice(
+                      0,
+                      70
+                    );
+
+
+                historyList.appendChild(
+                  item
                 );
 
-                addMessage(
-                    chat.response,
-                    "ai"
-                );
-
-            }
-        );
-
-
-        scrollChat();
-
-    } catch(error) {
-
-        console.error(
-            "CHAT HISTORY ERROR:",
-            error
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   ADD MESSAGE
-===================================================== */
-
-function addMessage(
-    text,
-    type
-) {
-
-    const wrapper =
-        document.createElement(
-            "div"
-        );
-
-    wrapper.className =
-        `message ${type}`;
-
-
-    const bubble =
-        document.createElement(
-            "div"
-        );
-
-    bubble.className =
-        "bubble";
-
-
-    bubble.textContent =
-        text || "";
-
-
-    wrapper.appendChild(
-        bubble
-    );
-
-
-    chatMessages.appendChild(
-        wrapper
-    );
-
-
-    scrollChat();
-
-}
-
-
-/* =====================================================
-   SCROLL
-===================================================== */
-
-function scrollChat() {
-
-    chatMessages.scrollTop =
-        chatMessages.scrollHeight;
-
-}
-
-
-/* =====================================================
-   SEND CHAT
-===================================================== */
-
-async function sendMessage() {
-
-    const message =
-        messageInput
-            .value
-            .trim();
-
-
-    if (!message) {
-
-        return;
-
-    }
-
-
-    if (!token) {
-
-        showLogin();
-
-        return;
-
-    }
-
-
-    addMessage(
-        message,
-        "user"
-    );
-
-
-    messageInput.value =
-        "";
-
-
-    sendButton.disabled =
-        true;
-
-    messageInput.disabled =
-        true;
-
-    typing.style.display =
-        "block";
-
-
-    try {
-
-        const response =
-            await fetch(
-                `${API}/chat`,
-                {
-
-                    method:
-                        "POST",
-
-                    headers: {
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
-
-                    body:
-                        JSON.stringify({
-
-                            message,
-
-                            userId:
-                                currentUser
-                                ?
-                                currentUser.id
-                                :
-                                null
-
-                        })
-
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "AI jawaab ma bixin."
+              }
             );
 
         }
 
+        catch {
 
-        addMessage(
-            data.response ||
-            "Jawaab lama helin.",
-            "ai"
-        );
+          // History failure
+          // ma joojinayo chat-ka.
 
+        }
 
-    } catch(error) {
-
-        console.error(
-            "CHAT ERROR:",
-            error
-        );
+      }
 
 
-        addMessage(
-            "❌ " +
-            (
-                error.message ||
-                "Server error ayaa dhacay."
-            ),
-            "ai"
-        );
+      /* ===================================================
+         DELETE ALL CHAT
+      ==================================================== */
 
-    } finally {
+      async function deleteAllChats() {
 
-        sendButton.disabled =
-            false;
+        const ok =
+          confirm(
+            "Ma hubtaa inaad tirtirayso dhammaan taariikhda Chat-ka?"
+          );
 
-        messageInput.disabled =
-            false;
 
-        typing.style.display =
-            "none";
+        if (!ok) {
+          return;
+        }
+
+
+        clearError();
+
+
+        try {
+
+          const response =
+            await fetch(
+              API_HISTORY,
+              {
+                method: "DELETE",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body: JSON.stringify({
+                  clientId
+                })
+              }
+            );
+
+
+          const data =
+            await response
+              .json()
+              .catch(
+                () => ({})
+              );
+
+
+          if (!response.ok) {
+
+            throw new Error(
+              data.error ||
+              "Chat-ka lama tirtirin."
+            );
+
+          }
+
+
+          chatInner.innerHTML = `
+
+            <div
+              class="welcome"
+              id="welcome"
+            >
+
+              <div class="welcome-icon">
+                🤖
+              </div>
+
+              <h2>
+                Chat cusub
+              </h2>
+
+              <p>
+                Qor fariintaada si aad
+                ula hadasho AI.
+              </p>
+
+            </div>
+
+          `;
+
+
+          historyList.innerHTML = `
+
+            <div class="history-item">
+              Chat-yadii hore halkan ayay
+              ka muuqanayaan.
+            </div>
+
+          `;
+
+        }
+
+        catch (error) {
+
+          showError(
+            error.message ||
+            "Chat-ka lama tirtirin."
+          );
+
+        }
+
+      }
+
+
+      /* ===================================================
+         NEW CHAT
+      ==================================================== */
+
+      function newChat() {
+
+        chatInner.innerHTML = `
+
+          <div
+            class="welcome"
+            id="welcome"
+          >
+
+            <div class="welcome-icon">
+              🤖
+            </div>
+
+            <h2>
+              Chat cusub
+            </h2>
+
+            <p>
+              Qor fariintaada si aad
+              ula hadasho AI.
+            </p>
+
+          </div>
+
+        `;
+
+
+        clearError();
+
+
+        removeImage();
+
+
+        messageInput.value =
+          "";
+
+
+        autoResize();
+
 
         messageInput.focus();
 
-    }
 
-}
+        closeSidebar();
 
-
-/* =====================================================
-   SEND BUTTON
-===================================================== */
-
-sendButton.addEventListener(
-    "click",
-    sendMessage
-);
+      }
 
 
-/* =====================================================
-   ENTER TO SEND
-===================================================== */
+      /* ===================================================
+         SERVER HEALTH
+      ==================================================== */
 
-messageInput.addEventListener(
-    "keydown",
-    function(event) {
+      async function checkHealth() {
+
+        try {
+
+          const response =
+            await fetch(
+              API_HEALTH,
+              {
+                cache:
+                  "no-store"
+              }
+            );
+
+
+          if (!response.ok) {
+            throw new Error();
+          }
+
+
+          statusDot.classList.add(
+            "online"
+          );
+
+
+          statusDot.classList.remove(
+            "offline"
+          );
+
+
+          statusText.textContent =
+            "Online";
+
+        }
+
+        catch {
+
+          statusDot.classList.add(
+            "offline"
+          );
+
+
+          statusDot.classList.remove(
+            "online"
+          );
+
+
+          statusText.textContent =
+            "Offline";
+
+        }
+
+      }
+
+
+      /* ===================================================
+         THEME
+      ==================================================== */
+
+      function applyTheme(theme) {
+
+        let selected =
+          theme;
+
 
         if (
+          selected ===
+          "system"
+        ) {
+
+          selected =
+            window
+              .matchMedia(
+                "(prefers-color-scheme: dark)"
+              )
+              .matches
+              ? "dark"
+              : "light";
+
+        }
+
+
+        document.body.classList.toggle(
+          "dark",
+          selected === "dark"
+        );
+
+      }
+
+
+      function saveTheme(theme) {
+
+        localStorage.setItem(
+          "nasiib_theme",
+          theme
+        );
+
+
+        themeSelect.value =
+          theme;
+
+
+        applyTheme(theme);
+
+      }
+
+
+      function initTheme() {
+
+        const saved =
+          localStorage.getItem(
+            "nasiib_theme"
+          ) ||
+          "system";
+
+
+        themeSelect.value =
+          saved;
+
+
+        applyTheme(
+          saved
+        );
+
+
+        const media =
+          window.matchMedia(
+            "(prefers-color-scheme: dark)"
+          );
+
+
+        media.addEventListener?.(
+          "change",
+          () => {
+
+            if (
+              (
+                localStorage.getItem(
+                  "nasiib_theme"
+                ) ||
+                "system"
+              ) === "system"
+            ) {
+
+              applyTheme(
+                "system"
+              );
+
+            }
+
+          }
+        );
+
+      }
+
+
+      /* ===================================================
+         MOBILE SIDEBAR
+      ==================================================== */
+
+      function openSidebar() {
+
+        sidebar.classList.add(
+          "open"
+        );
+
+
+        overlay.classList.add(
+          "show"
+        );
+
+      }
+
+
+      function closeSidebar() {
+
+        sidebar.classList.remove(
+          "open"
+        );
+
+
+        overlay.classList.remove(
+          "show"
+        );
+
+      }
+
+
+      /* ===================================================
+         EVENTS
+      ==================================================== */
+
+      galleryInput.addEventListener(
+        "change",
+        (event) => {
+
+          setImage(
+            event.target.files?.[0]
+          );
+
+        }
+      );
+
+
+      cameraInput.addEventListener(
+        "change",
+        (event) => {
+
+          setImage(
+            event.target.files?.[0]
+          );
+
+        }
+      );
+
+
+      removeImageBtn.addEventListener(
+        "click",
+        removeImage
+      );
+
+
+      sendBtn.addEventListener(
+        "click",
+        sendMessage
+      );
+
+
+      newChatBtn.addEventListener(
+        "click",
+        newChat
+      );
+
+
+      deleteChatBtn.addEventListener(
+        "click",
+        deleteAllChats
+      );
+
+
+      menuBtn.addEventListener(
+        "click",
+        openSidebar
+      );
+
+
+      overlay.addEventListener(
+        "click",
+        closeSidebar
+      );
+
+
+      themeSelect.addEventListener(
+        "change",
+        (event) => {
+
+          saveTheme(
+            event.target.value
+          );
+
+        }
+      );
+
+
+      messageInput.addEventListener(
+        "input",
+        autoResize
+      );
+
+
+      /* ===================================================
+         ENTER = SEND
+         
+         SHIFT + ENTER = NEW LINE
+      ==================================================== */
+
+      messageInput.addEventListener(
+        "keydown",
+        (event) => {
+
+          if (
             event.key === "Enter" &&
             !event.shiftKey
-        ) {
+          ) {
 
             event.preventDefault();
 
             sendMessage();
 
-        }
-
-    }
-);
-
-
-/* =====================================================
-   DELETE CHAT HISTORY
-===================================================== */
-
-clearChatsButton.addEventListener(
-    "click",
-    async function() {
-
-        if (!token) {
-
-            return;
+          }
 
         }
-
-
-        const confirmed =
-            confirm(
-                "Ma hubtaa inaad tirtirayso dhammaan Chat History-ga?"
-            );
-
-
-        if (!confirmed) {
-
-            return;
-
-        }
-
-
-        try {
-
-            const response =
-                await fetch(
-                    `${API}/api/chats`,
-                    {
-
-                        method:
-                            "DELETE",
-
-                        headers: {
-
-                            Authorization:
-                                `Bearer ${token}`
-
-                        }
-
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data.error ||
-                    "Chat lama tirtirin."
-                );
-
-            }
-
-
-            chatMessages.innerHTML = `
-
-                <div class="message ai">
-
-                    <div class="bubble">
-
-                        🗑️ Chat History waa la tirtiray.
-
-                    </div>
-
-                </div>
-
-            `;
-
-
-        } catch(error) {
-
-            alert(
-                error.message ||
-                "Server error."
-            );
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   LOGOUT
-===================================================== */
-
-function logout() {
-
-    localStorage.removeItem(
-        TOKEN_KEY
-    );
-
-    localStorage.removeItem(
-        USER_KEY
-    );
-
-
-    token = null;
-
-    currentUser = null;
-
-
-    showLogin();
-
-
-    loginForm.reset();
-
-    registerForm.reset();
-
-    clearMessage();
-
-
-    chatMessages.innerHTML = `
-
-        <div class="message ai">
-
-            <div class="bubble">
-
-                👋 Ku soo dhowow NASIIB BUSINESS CENTER.
-
-                <br><br>
-
-                Fadlan soo gal akoonkaaga.
-
-            </div>
-
-        </div>
-
-    `;
-
-}
-
-
-/* =====================================================
-   LOGOUT BUTTONS
-===================================================== */
-
-headerLogout.addEventListener(
-    "click",
-    logout
-);
-
-chatLogout.addEventListener(
-    "click",
-    logout
-);
-
-
-/* =====================================================
-   ESCAPE HTML
-===================================================== */
-
-function escapeHTML(
-    value
-) {
-
-    const div =
-        document.createElement(
-            "div"
+      );
+
+
+      document
+        .querySelector(
+          ".admin-link"
+        )
+        ?.addEventListener(
+          "click",
+          closeSidebar
         );
 
-    div.textContent =
-        value == null
-        ? ""
-        : String(value);
 
-    return div.innerHTML;
+      /* ===================================================
+         START
+      ==================================================== */
 
-}
+      initTheme();
+
+      autoResize();
+
+      loadHistory();
+
+      checkHealth();
 
 
-/* =====================================================
-   START
-===================================================== */
+      /* Check server every 30 seconds */
 
-if (
-    token &&
-    currentUser
-) {
+      setInterval(
+        checkHealth,
+        30000
+      );
 
-    if (
-        currentUser.role ===
-        "admin"
-    ) {
+    })();
 
-        window.location.href =
-            "/admin/";
-
-    } else {
-
-        showChat();
-
-        loadChatHistory();
-
-    }
-
-} else {
-
-    showLogin();
-
-}
-
-</script>
+  </script>
 
 </body>
-
 </html>
