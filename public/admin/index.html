@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="so">
+
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -10,23 +12,125 @@
 
     <title>Admin - Knowledge Database</title>
 
-    <link rel="stylesheet" href="/admin/admin.css">
+    <link
+        rel="stylesheet"
+        href="/admin/admin.css"
+    >
+
 </head>
+
 
 <body>
 
-<div class="admin-layout">
 
-    <!-- =====================================================
+<!-- =====================================================
+     LOGIN
+====================================================== -->
+
+<div
+    id="loginPage"
+    class="login-page hidden"
+>
+
+    <div class="login-box">
+
+        <div class="login-logo">
+            👑
+        </div>
+
+        <h1>
+            ADMIN LOGIN
+        </h1>
+
+        <p>
+            NASIIB BUSINESS CENTER
+        </p>
+
+
+        <form id="loginForm">
+
+            <div class="form-group">
+
+                <label for="email">
+                    📧 Email
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                    placeholder="Admin Email"
+                    autocomplete="username"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="password">
+                    🔐 Password
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Admin Password"
+                    autocomplete="current-password"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                id="loginButton"
+                class="login-btn"
+            >
+                🔐 Soo Gal
+            </button>
+
+
+            <div
+                id="loginMessage"
+                class="login-message"
+            ></div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     ADMIN PANEL
+====================================================== -->
+
+<div
+    id="adminPanel"
+    class="admin-layout hidden"
+>
+
+
+    <!-- =================================================
          SIDEBAR
-    ====================================================== -->
+    ================================================== -->
 
     <aside class="sidebar">
 
         <div class="logo">
+
             <span>👑</span>
-            <strong>ADMIN PANEL</strong>
+
+            <strong>
+                ADMIN PANEL
+            </strong>
+
         </div>
+
 
         <nav>
 
@@ -38,6 +142,7 @@
                 📚 Knowledge
             </button>
 
+
             <button
                 type="button"
                 class="nav-btn"
@@ -47,6 +152,7 @@
             </button>
 
         </nav>
+
 
         <button
             type="button"
@@ -59,23 +165,32 @@
     </aside>
 
 
-    <!-- =====================================================
+
+    <!-- =================================================
          MAIN
-    ====================================================== -->
+    ================================================== -->
 
     <main class="main">
 
-        <!-- TOPBAR -->
+
+        <!-- =================================================
+             TOPBAR
+        ================================================== -->
 
         <header class="topbar">
 
             <div>
-                <h1>👑 Admin Panel</h1>
+
+                <h1>
+                    👑 Admin Panel
+                </h1>
 
                 <p>
                     Knowledge / Database Manager
                 </p>
+
             </div>
+
 
             <button
                 type="button"
@@ -86,6 +201,7 @@
             </button>
 
         </header>
+
 
 
         <!-- =================================================
@@ -111,6 +227,7 @@
 
                 </div>
 
+
                 <button
                     type="button"
                     class="primary-btn"
@@ -120,6 +237,7 @@
                 </button>
 
             </div>
+
 
 
             <!-- SEARCH -->
@@ -136,13 +254,17 @@
             </div>
 
 
+
             <!-- STATS -->
 
             <div class="stats">
 
+
                 <div class="stat-card">
 
-                    <span>📚</span>
+                    <span>
+                        📚
+                    </span>
 
                     <strong id="totalKnowledge">
                         0
@@ -157,7 +279,9 @@
 
                 <div class="stat-card">
 
-                    <span>🎙️</span>
+                    <span>
+                        🎙️
+                    </span>
 
                     <strong id="totalAudio">
                         0
@@ -172,7 +296,9 @@
 
                 <div class="stat-card">
 
-                    <span>🖼️</span>
+                    <span>
+                        🖼️
+                    </span>
 
                     <strong id="totalImages">
                         0
@@ -184,7 +310,9 @@
 
                 </div>
 
+
             </div>
+
 
 
             <!-- KNOWLEDGE LIST -->
@@ -200,8 +328,9 @@
         </section>
 
 
+
         <!-- =================================================
-             ADD KNOWLEDGE SECTION
+             ADD KNOWLEDGE
         ================================================== -->
 
         <section
@@ -226,14 +355,14 @@
             </div>
 
 
+
             <form
                 id="knowledgeForm"
                 class="knowledge-form"
             >
 
-                <!-- =========================================
-                     TITLE
-                ========================================== -->
+
+                <!-- TITLE -->
 
                 <div class="form-group">
 
@@ -252,9 +381,8 @@
                 </div>
 
 
-                <!-- =========================================
-                     CONTENT
-                ========================================== -->
+
+                <!-- CONTENT -->
 
                 <div class="form-group">
 
@@ -272,9 +400,10 @@
                 </div>
 
 
-                <!-- =========================================
+
+                <!-- =================================================
                      AUDIO
-                ========================================== -->
+                ================================================== -->
 
                 <div class="media-card">
 
@@ -341,9 +470,10 @@
                 </div>
 
 
-                <!-- =========================================
+
+                <!-- =================================================
                      IMAGE
-                ========================================== -->
+                ================================================== -->
 
                 <div class="media-card">
 
@@ -378,8 +508,6 @@
                     </div>
 
 
-                    <!-- CAMERA -->
-
                     <input
                         type="file"
                         id="cameraInput"
@@ -389,8 +517,6 @@
                     >
 
 
-                    <!-- GALLERY -->
-
                     <input
                         type="file"
                         id="imageInput"
@@ -399,15 +525,11 @@
                     >
 
 
-                    <!-- IMAGE PREVIEW -->
-
                     <div
                         id="imagePreview"
                         class="image-preview"
                     ></div>
 
-
-                    <!-- AI IMAGE -->
 
                     <button
                         type="button"
@@ -426,9 +548,10 @@
                 </div>
 
 
-                <!-- =========================================
+
+                <!-- =================================================
                      AUDIO + IMAGE
-                ========================================== -->
+                ================================================== -->
 
                 <div class="combined-card">
 
@@ -459,9 +582,10 @@
                 </div>
 
 
-                <!-- =========================================
-                     ACTION BUTTONS
-                ========================================== -->
+
+                <!-- =================================================
+                     ACTIONS
+                ================================================== -->
 
                 <div class="form-actions">
 
@@ -483,13 +607,16 @@
 
                 </div>
 
+
             </form>
 
         </section>
 
+
     </main>
 
 </div>
+
 
 
 <!-- =====================================================
@@ -508,6 +635,7 @@
             <h2>
                 ✏️ Wax ka beddel
             </h2>
+
 
             <button
                 type="button"
@@ -558,11 +686,14 @@
 </div>
 
 
+
 <!-- =====================================================
-     ADMIN JAVASCRIPT
+     JAVASCRIPT
 ====================================================== -->
 
-<script src="/admin/app.js"></script>
+<script src="/admin/admin.js"></script>
+
 
 </body>
+
 </html>
