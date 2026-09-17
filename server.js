@@ -1,37 +1,89 @@
+/* =========================================================
+   NASIIB BUSINESS CENTER
+   COMPLETE SERVER
+   ---------------------------------------------------------
+   Features:
+
+   USER
+   - Public Chat
+   - No Register
+   - No User Login
+   - Anonymous Client ID
+   - Chat History
+   - Delete Chat History
+   - Text
+   - Image
+
+   ADMIN
+   - Admin Login
+   - Knowledge Database
+   - Add Text
+   - Upload Audio
+   - Upload Image
+   - Audio -> Text
+   - Image -> AI Interpretation
+   - Edit Knowledge
+   - Delete Knowledge
+   - Search Knowledge
+
+   DATABASE
+   - SQLite
+
+   AI
+   - OpenRouter
+   - OpenAI SDK
+========================================================= */
+
+
+/* =========================================================
+   1. REQUIREMENTS
+========================================================= */
+
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
+const sqlite3 = require("sqlite3").verbose();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const sqlite3 = require("sqlite3").verbose();
+const multer = require("multer");
 const OpenAI = require("openai");
+
+
+/* =========================================================
+   2. EXPRESS CONFIG
+========================================================= */
 
 const app = express();
 
-/* =====================================================
-   CONFIG
-===================================================== */
-
-const PORT = process.env.PORT || 3000;
+const PORT =
+    process.env.PORT || 3000;
 
 const JWT_SECRET =
     process.env.JWT_SECRET ||
     "BADAL_SECRET_KAN_PRODUCTION";
 
 const OPENROUTER_API_KEY =
-    process.env.OPENROUTER_API_KEY;
+    process.env.OPENROUTER_API_KEY || "";
 
 const AI_MODEL =
     process.env.AI_MODEL ||
     "openrouter/free";
 
-/* =====================================================
-   MIDDLEWARE
-===================================================== */
+const APP_URL =
+    process.env.APP_URL ||
+    `http://localhost:${PORT}`;
 
-app.use(cors());
+
+/* =========================================================
+   3. MIDDLEWARE
+========================================================= */
+
+app.use(
+    cors()
+);
 
 app.use(
     express.json({
@@ -46,9 +98,88 @@ app.use(
     })
 );
 
-/* =====================================================
-   STATIC FILES
-===================================================== */
+
+/* =========================================================
+   4. OPENROUTER
+========================================================= */
+
+let openai = null;
+
+if (OPENROUTER_API_KEY) {
+
+    openai = new OpenAI({
+
+        baseURL:
+            "https://openrouter.ai/api/v1",
+
+        apiKey:
+            OPENROUTER_API_KEY,
+
+        defaultHeaders: {
+
+            "HTTP-Referer":
+                APP_URL,
+
+            "X-Title":
+                "NASIIB BUSINESS CENTER"
+
+        }
+
+    });
+
+}
+
+
+/* =========================================================
+   5. FOLDERS
+========================================================= */
+
+const databaseDir =
+    path.join(
+        __dirname,
+        "database"
+    );
+
+const uploadDir =
+    path.join(
+        __dirname,
+        "uploads"
+    );
+
+const knowledgeUploadDir =
+    path.join(
+        uploadDir,
+        "knowledge"
+    );
+
+
+/* ---------------------------------------------------------
+   CREATE FOLDERS
+--------------------------------------------------------- */
+
+[
+    databaseDir,
+    uploadDir,
+    knowledgeUploadDir
+].forEach(folder => {
+
+    if (!fs.existsSync(folder)) {
+
+        fs.mkdirSync(
+            folder,
+            {
+                recursive: true
+            }
+        );
+
+    }
+
+});
+
+
+/* =========================================================
+   6. STATIC FILES
+========================================================= */
 
 app.use(
     express.static(
@@ -59,342 +190,394 @@ app.use(
     )
 );
 
-/* =====================================================
-   DATABASE
-===================================================== */
 
-const dbPath =
+/* =========================================================
+   7. STATIC UPLOADS
+========================================================= */
+
+app.use(
+    "/uploads",
+    express.static(
+        uploadDir
+    )
+);
+
+
+/* =========================================================
+   8. MULTER / UPLOAD CONFIGURATION
+========================================================= */
+
+const storage =
+    multer.diskStorage({
+
+        destination:
+            function (
+                req,
+                file,
+                cb
+            ) {
+
+                cb(
+                    null,
+                    knowledgeUploadDir
+                );
+
+            },
+
+
+        filename:
+            function (
+                req,
+                file,
+                cb
+            ) {
+
+                const extension =
+                    path.extname(
+                        file.originalname
+                    );
+
+
+                const filename =
+                    Date.now() +
+                    "-" +
+                    Math.random()
+                        .toString(36)
+                        .substring(2, 10) +
+                    extension;
+
+
+                cb(
+                    null,
+                    filename
+                );
+
+            }
+
+    });
+
+
+const knowledgeUpload =
+    multer({
+
+        storage,
+
+        limits: {
+
+            fileSize:
+                25 * 1024 * 1024
+
+        }
+
+    });
+
+
+/* =========================================================
+   9. SQLITE DATABASE
+========================================================= */
+
+const databasePath =
     path.join(
-        __dirname,
-        "database.db"
+        databaseDir,
+        "database.sqlite"
     );
+
 
 const db =
     new sqlite3.Database(
-        dbPath,
+        databasePath,
         error => {
 
             if (error) {
 
                 console.error(
-                    "Database error:",
+                    "❌ Database Error:",
                     error.message
                 );
 
             } else {
 
                 console.log(
-                    "✅ SQLite Database connected"
+                    "✅ SQLite Database Connected"
                 );
+
             }
+
         }
     );
 
+
+/* =========================================================
+   10. DATABASE TABLES
+========================================================= */
 
 db.serialize(() => {
 
-    db.run(
-        "PRAGMA foreign_keys = ON"
-    );
+
+    /* -----------------------------------------------------
+       USERS
+    ----------------------------------------------------- */
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            email TEXT UNIQUE NOT NULL,
+
+            password TEXT NOT NULL,
+
+            role TEXT DEFAULT 'user',
+
+            created_at DATETIME
+                DEFAULT CURRENT_TIMESTAMP
+
+        )
+    `);
+
+
+    /* -----------------------------------------------------
+       CHATS
+    ----------------------------------------------------- */
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS chats (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            client_id TEXT,
+
+            user_id INTEGER,
+
+            message TEXT,
+
+            image TEXT,
+
+            response TEXT,
+
+            created_at DATETIME
+                DEFAULT CURRENT_TIMESTAMP
+
+        )
+    `);
+
+
+    /* -----------------------------------------------------
+       KNOWLEDGE
+    ----------------------------------------------------- */
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS knowledge (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            title TEXT,
+
+            content TEXT,
+
+            audio_url TEXT,
+
+            image_url TEXT,
+
+            created_at DATETIME
+                DEFAULT CURRENT_TIMESTAMP,
+
+            updated_at DATETIME
+                DEFAULT CURRENT_TIMESTAMP
+
+        )
+    `);
 
 });
-/* =====================================================
-   DATABASE HELPERS
-===================================================== */
 
-function run(sql, params = []) {
 
-    return new Promise(
-        (resolve, reject) => {
+/* =========================================================
+   11. DEFAULT ADMIN
+========================================================= */
 
-            db.run(
-                sql,
-                params,
-                function(error) {
+const ADMIN_EMAIL =
+    process.env.ADMIN_EMAIL ||
+    "admin@nasiib.com";
 
-                    if (error) {
+const ADMIN_PASSWORD =
+    process.env.ADMIN_PASSWORD ||
+    "123456";
 
-                        reject(error);
-
-                    } else {
-
-                        resolve({
-                            id:
-                                this.lastID,
-
-                            changes:
-                                this.changes
-                        });
-                    }
-                }
-            );
-
-        }
-    );
-}
-
-function get(sql, params = []) {
-
-    return new Promise(
-        (resolve, reject) => {
-
-            db.get(
-                sql,
-                params,
-                (error, row) => {
-
-                    if (error) {
-
-                        reject(error);
-
-                    } else {
-
-                        resolve(row);
-                    }
-                }
-            );
-
-        }
-    );
-}
-
-function all(sql, params = []) {
-
-    return new Promise(
-        (resolve, reject) => {
-
-            db.all(
-                sql,
-                params,
-                (error, rows) => {
-
-                    if (error) {
-
-                        reject(error);
-
-                    } else {
-
-                        resolve(rows);
-                    }
-                }
-            );
-
-        }
-    );
-}
-
-/* =====================================================
-   CREATE TABLES
-===================================================== */
-
-async function initializeDatabase() {
-
-    try {
-
-        await run(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT DEFAULT 'user',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await run(`
-            CREATE TABLE IF NOT EXISTS chats (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                message TEXT NOT NULL,
-                response TEXT NOT NULL,
-                image TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id)
-                    REFERENCES users(id)
-                    ON DELETE CASCADE
-            )
-        `);
-
-        await run(`
-            CREATE TABLE IF NOT EXISTS knowledge (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        console.log(
-            "✅ Database tables ready"
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Database initialization error:",
-            error
-        );
-    }
-}
-
-/* =====================================================
-   CREATE ADMIN
-===================================================== */
 
 async function createDefaultAdmin() {
 
-    const email =
-        process.env.ADMIN_EMAIL;
-
-    const password =
-        process.env.ADMIN_PASSWORD;
-
-    if (!email || !password) {
-
-        console.log(
-            "⚠️ ADMIN_EMAIL ama ADMIN_PASSWORD lama dejin."
-        );
-
-        return;
-    }
-
     try {
 
-        const existingAdmin =
-            await get(
-                `
-                SELECT id
-                FROM users
-                WHERE email = ?
-                `,
-                [email]
-            );
-
-        if (existingAdmin) {
-
-            console.log(
-                "ℹ️ Admin hore ayuu u jiraa."
-            );
-
-            return;
-        }
-
-        const hashedPassword =
-            await bcrypt.hash(
-                password,
-                10
-            );
-
-        await run(
+        db.get(
             `
-            INSERT INTO users
-            (
-                name,
-                email,
-                password,
-                role
-            )
-            VALUES
-            (?, ?, ?, ?)
+            SELECT id
+            FROM users
+            WHERE email = ?
             `,
-            [
-                "Administrator",
-                email,
-                hashedPassword,
-                "admin"
-            ]
-        );
+            [ADMIN_EMAIL],
 
-        console.log(
-            "👑 Default Admin created"
+            async (
+                error,
+                user
+            ) => {
+
+                if (error) {
+
+                    console.error(
+                        "Admin check error:",
+                        error.message
+                    );
+
+                    return;
+
+                }
+
+
+                if (user) {
+
+                    return;
+
+                }
+
+
+                const hashedPassword =
+                    await bcrypt.hash(
+                        ADMIN_PASSWORD,
+                        10
+                    );
+
+
+                db.run(
+                    `
+                    INSERT INTO users
+                    (
+                        email,
+                        password,
+                        role
+                    )
+
+                    VALUES (?, ?, ?)
+                    `,
+
+                    [
+                        ADMIN_EMAIL,
+                        hashedPassword,
+                        "admin"
+                    ],
+
+                    insertError => {
+
+                        if (insertError) {
+
+                            console.error(
+                                "Admin creation error:",
+                                insertError.message
+                            );
+
+                        } else {
+
+                            console.log(
+                                "👑 Default Admin Created"
+                            );
+
+                            console.log(
+                                "Email:",
+                                ADMIN_EMAIL
+                            );
+
+                        }
+
+                    }
+                );
+
+            }
         );
 
     } catch (error) {
 
         console.error(
-            "Admin creation error:",
+            "Default admin error:",
             error
         );
+
     }
+
 }
 
-/* =====================================================
-   OPENROUTER AI
-===================================================== */
 
-let openai = null;
+createDefaultAdmin();
 
-if (OPENROUTER_API_KEY) {
 
-    openai =
-        new OpenAI({
-            baseURL:
-                "https://openrouter.ai/api/v1",
+/* =========================================================
+   12. AUTHENTICATION
+========================================================= */
 
-            apiKey:
-                OPENROUTER_API_KEY,
+function createToken(user) {
 
-            defaultHeaders: {
-                "HTTP-Referer":
-                    process.env.APP_URL ||
-                    "http://localhost:3000",
+    return jwt.sign(
 
-                "X-Title":
-                    "AI Chat Somali"
-            }
-        });
+        {
+            id:
+                user.id,
 
-    console.log(
-        "🤖 OpenRouter AI diyaar ah"
+            email:
+                user.email,
+
+            role:
+                user.role
+
+        },
+
+        JWT_SECRET,
+
+        {
+            expiresIn:
+                "7d"
+        }
+
     );
 
-} else {
-
-    console.log(
-        "⚠️ OPENROUTER_API_KEY lama helin"
-    );
 }
 
-/* =====================================================
-   AUTH MIDDLEWARE
-===================================================== */
 
-function authenticateToken(
-    request,
-    response,
+/* =========================================================
+   13. ADMIN AUTH MIDDLEWARE
+========================================================= */
+
+function adminMiddleware(
+    req,
+    res,
     next
 ) {
 
-    const authHeader =
-        request.headers.authorization;
-
-    if (!authHeader) {
-
-        return response.status(401).json({
-            error:
-                "Token lama helin."
-        });
-    }
-
-    const token =
-        authHeader.startsWith(
-            "Bearer "
-        )
-        ?
-        authHeader.substring(7)
-        :
-        null;
-
-    if (!token) {
-
-        return response.status(401).json({
-            error:
-                "Bearer token sax ah lama helin."
-        });
-    }
-
     try {
+
+        const auth =
+            req.headers.authorization || "";
+
+
+        if (
+            !auth.startsWith(
+                "Bearer "
+            )
+        ) {
+
+            return res
+                .status(401)
+                .json({
+                    error:
+                        "Admin authentication required"
+                });
+
+        }
+
+
+        const token =
+            auth.replace(
+                "Bearer ",
+                ""
+            );
+
 
         const decoded =
             jwt.verify(
@@ -402,1157 +585,1496 @@ function authenticateToken(
                 JWT_SECRET
             );
 
-        request.user =
-            decoded;
-
-        next();
-
-    } catch (error) {
-
-        return response.status(403).json({
-            error:
-                "Token-ka ma saxna ama wuu dhacay."
-        });
-    }
-}
-
-/* =====================================================
-   ADMIN MIDDLEWARE
-===================================================== */
-
-async function requireAdmin(
-    request,
-    response,
-    next
-) {
-
-    try {
-
-        const user =
-            await get(
-                `
-                SELECT
-                    id,
-                    name,
-                    email,
-                    role
-                FROM users
-                WHERE id = ?
-                `,
-                [
-                    request.user.id
-                ]
-            );
-
-        if (!user) {
-
-            return response.status(401).json({
-                error:
-                    "User lama helin."
-            });
-        }
 
         if (
-            user.role !==
-            "admin"
+            decoded.role !== "admin"
         ) {
 
-            return response.status(403).json({
-                error:
-                    "Admin access ayaa loo baahan yahay."
-            });
+            return res
+                .status(403)
+                .json({
+                    error:
+                        "Admin access only"
+                });
+
         }
 
-        request.admin =
-            user;
+
+        req.admin =
+            decoded;
+
 
         next();
 
+
     } catch (error) {
 
-        return response.status(500).json({
-            error:
-                "Admin verification error."
-        });
+        return res
+            .status(401)
+            .json({
+                error:
+                    "Token-ka Admin-ka waa khaldan yahay ama dhacay"
+            });
+
     }
+
 }
 
-/* =====================================================
-   REGISTER
-===================================================== */
 
-app.post(
-    "/api/register",
-    async (
-        request,
-        response
-    ) => {
-
-        try {
-
-            const {
-                name,
-                email,
-                password
-            } =
-                request.body;
-
-            if (
-                !name ||
-                !email ||
-                !password
-            ) {
-
-                return response
-                    .status(400)
-                    .json({
-                        error:
-                            "Name, email iyo password ayaa loo baahan yahay."
-                    });
-            }
-
-            if (
-                password.length < 6
-            ) {
-
-                return response
-                    .status(400)
-                    .json({
-                        error:
-                            "Password-ku waa inuu ahaadaa ugu yaraan 6 xaraf."
-                    });
-            }
-
-            const existingUser =
-                await get(
-                    `
-                    SELECT id
-                    FROM users
-                    WHERE email = ?
-                    `,
-                    [
-                        email.toLowerCase()
-                    ]
-                );
-
-            if (existingUser) {
-
-                return response
-                    .status(409)
-                    .json({
-                        error:
-                            "Email-kan hore ayaa loo isticmaalay."
-                    });
-            }
-
-            const hashedPassword =
-                await bcrypt.hash(
-                    password,
-                    10
-                );
-
-            const result =
-                await run(
-                    `
-                    INSERT INTO users
-                    (
-                        name,
-                        email,
-                        password,
-                        role
-                    )
-                    VALUES
-                    (?, ?, ?, 'user')
-                    `,
-                    [
-                        name.trim(),
-                        email
-                            .trim()
-                            .toLowerCase(),
-                        hashedPassword
-                    ]
-                );
-
-            const user =
-                await get(
-                    `
-                    SELECT
-                        id,
-                        name,
-                        email,
-                        role
-                    FROM users
-                    WHERE id = ?
-                    `,
-                    [
-                        result.id
-                    ]
-                );
-
-            const token =
-                jwt.sign(
-                    {
-                        id:
-                            user.id,
-
-                        role:
-                            user.role
-                    },
-                    JWT_SECRET,
-                    {
-                        expiresIn:
-                            "7d"
-                    }
-                );
-
-            response.status(201).json({
-                message:
-                    "User waa la sameeyay.",
-                token,
-                user
-            });
-
-        } catch (error) {
-
-            console.error(
-                error
-            );
-
-            response.status(500).json({
-                error:
-                    "Register error."
-            });
-        }
-    }
-);
-
-/* =====================================================
-   LOGIN
-===================================================== */
+/* =========================================================
+   14. ADMIN LOGIN
+========================================================= */
 
 app.post(
     "/api/login",
-    async (
-        request,
-        response
-    ) => {
+    (req, res) => {
 
-        try {
+        const email =
+            String(
+                req.body.email || ""
+            )
+            .trim()
+            .toLowerCase();
 
-            const {
-                email,
-                password
-            } =
-                request.body;
 
-            if (
-                !email ||
-                !password
-            ) {
+        const password =
+            String(
+                req.body.password || ""
+            );
 
-                return response
-                    .status(400)
-                    .json({
-                        error:
-                            "Email iyo password ayaa loo baahan yahay."
-                    });
-            }
 
-            const user =
-                await get(
-                    `
-                    SELECT *
-                    FROM users
-                    WHERE email = ?
-                    `,
-                    [
-                        email
-                            .trim()
-                            .toLowerCase()
-                    ]
-                );
+        if (
+            !email ||
+            !password
+        ) {
 
-            if (!user) {
+            return res
+                .status(400)
+                .json({
+                    error:
+                        "Email iyo password waa loo baahan yahay"
+                });
 
-                return response
-                    .status(401)
-                    .json({
-                        error:
-                            "Email ama password waa khalad."
-                    });
-            }
+        }
 
-            const passwordCorrect =
-                await bcrypt.compare(
-                    password,
-                    user.password
-                );
 
-            if (!passwordCorrect) {
+        db.get(
+            `
+            SELECT *
+            FROM users
+            WHERE email = ?
+            `,
 
-                return response
-                    .status(401)
-                    .json({
-                        error:
-                            "Email ama password waa khalad."
-                    });
-            }
+            [email],
 
-            const token =
-                jwt.sign(
-                    {
+            async (
+                error,
+                user
+            ) => {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                if (!user) {
+
+                    return res
+                        .status(401)
+                        .json({
+                            error:
+                                "Email ama password khaldan"
+                        });
+
+                }
+
+
+                const valid =
+                    await bcrypt.compare(
+                        password,
+                        user.password
+                    );
+
+
+                if (!valid) {
+
+                    return res
+                        .status(401)
+                        .json({
+                            error:
+                                "Email ama password khaldan"
+                        });
+
+                }
+
+
+                const token =
+                    createToken(
+                        user
+                    );
+
+
+                res.json({
+
+                    success:
+                        true,
+
+                    token,
+
+                    user: {
+
                         id:
                             user.id,
 
+                        email:
+                            user.email,
+
                         role:
                             user.role
-                    },
-                    JWT_SECRET,
-                    {
-                        expiresIn:
-                            "7d"
+
                     }
-                );
 
-            response.json({
-                message:
-                    "Login successful.",
+                });
 
-                token,
+            }
+        );
 
-                user: {
-                    id:
-                        user.id,
-
-                    name:
-                        user.name,
-
-                    email:
-                        user.email,
-
-                    role:
-                        user.role
-                }
-            });
-
-        } catch (error) {
-
-            console.error(
-                error
-            );
-
-            response.status(500).json({
-                error:
-                    "Login error."
-            });
-        }
     }
 );
 
-/* =====================================================
-   ADMIN ME
-===================================================== */
+
+/* =========================================================
+   15. ADMIN ME
+========================================================= */
 
 app.get(
     "/api/admin/me",
-    authenticateToken,
-    requireAdmin,
-    (
-        request,
-        response
-    ) => {
+    adminMiddleware,
+    (req, res) => {
 
-        response.json({
-            user:
-                request.admin
+        res.json({
+
+            success:
+                true,
+
+            admin:
+                req.admin
+
         });
+
     }
 );
 
-/* =====================================================
-   ADMIN USERS
-===================================================== */
 
-app.get(
-    "/api/admin/users",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
-
-        try {
-
-            const users =
-                await all(`
-                    SELECT
-                        users.id,
-                        users.name,
-                        users.email,
-                        users.role,
-                        users.created_at,
-
-                        COUNT(
-                            chats.id
-                        )
-                        AS chat_count
-
-                    FROM users
-
-                    LEFT JOIN chats
-                    ON chats.user_id =
-                        users.id
-
-                    GROUP BY
-                        users.id
-
-                    ORDER BY
-                        users.id DESC
-                `);
-
-            response.json({
-                users
-            });
-
-        } catch (error) {
-
-            console.error(
-                error
-            );
-
-            response.status(500).json({
-                error:
-                    "Users lama soo qaadi karin."
-            });
-        }
-    }
-);
-
-/* =====================================================
-   ADMIN ALL CHATS
-===================================================== */
-
-app.get(
-    "/api/admin/chats",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
-
-        try {
-
-            const chats =
-                await all(`
-                    SELECT
-                        chats.id,
-                        chats.user_id,
-                        chats.message,
-                        chats.response,
-                        chats.image,
-                        chats.created_at,
-
-                        COALESCE(
-                            users.name,
-                            'Anonymous'
-                        )
-                        AS name,
-
-                        COALESCE(
-                            users.email,
-                            'anonymous'
-                        )
-                        AS email
-
-                    FROM chats
-
-                    LEFT JOIN users
-                    ON users.id =
-                        chats.user_id
-
-                    ORDER BY
-                        chats.id DESC
-                `);
-
-            response.json({
-                chats
-            });
-
-        } catch (error) {
-
-            console.error(
-                error
-            );
-
-            response.status(500).json({
-                error:
-                    "Chats lama soo qaadi karin."
-            });
-        }
-    }
-);
-
-/* =====================================================
-   DELETE ALL CHATS
-===================================================== */
-
-app.delete(
-    "/api/admin/chats",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
-
-        try {
-
-            await run(
-                "DELETE FROM chats"
-            );
-
-            response.json({
-                message:
-                    "Dhammaan chats waa la tirtiray."
-            });
-
-        } catch (error) {
-
-            response.status(500).json({
-                error:
-                    "Chats lama tirtiri karin."
-            });
-        }
-    }
-);
-
-/* =====================================================
-   DELETE USER CHATS
-===================================================== */
-
-app.delete(
-    "/api/admin/users/:id/chats",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
-
-        try {
-
-            const userId =
-                Number(
-                    request.params.id
-                );
-
-            await run(
-                `
-                DELETE FROM chats
-                WHERE user_id = ?
-                `,
-                [
-                    userId
-                ]
-            );
-
-            response.json({
-                message:
-                    "User chats waa la tirtiray."
-            });
-
-        } catch (error) {
-
-            response.status(500).json({
-                error:
-                    "User chats lama tirtiri karin."
-            });
-        }
-    }
-);
-
-/* =====================================================
-   DELETE USER
-===================================================== */
-
-app.delete(
-    "/api/admin/users/:id",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
-
-        try {
-
-            const userId =
-                Number(
-                    request.params.id
-                );
-
-            if (
-                userId ===
-                request.admin.id
-            ) {
-
-                return response
-                    .status(400)
-                    .json({
-                        error:
-                            "Admin-kaaga adigu isma tirtiri kartid."
-                    });
-            }
-
-            const user =
-                await get(
-                    `
-                    SELECT *
-                    FROM users
-                    WHERE id = ?
-                    `,
-                    [
-                        userId
-                    ]
-                );
-
-            if (!user) {
-
-                return response
-                    .status(404)
-                    .json({
-                        error:
-                            "User lama helin."
-                    });
-            }
-
-            if (
-                user.role ===
-                "admin"
-            ) {
-
-                return response
-                    .status(403)
-                    .json({
-                        error:
-                            "Admin lama tirtiri karo."
-                    });
-            }
-
-            await run(
-                `
-                DELETE FROM chats
-                WHERE user_id = ?
-                `,
-                [
-                    userId
-                ]
-            );
-
-            await run(
-                `
-                DELETE FROM users
-                WHERE id = ?
-                `,
-                [
-                    userId
-                ]
-            );
-
-            response.json({
-                message:
-                    "User waa la tirtiray."
-            });
-
-        } catch (error) {
-
-            response.status(500).json({
-                error:
-                    "User lama tirtiri karin."
-            });
-        }
-    }
-);
-
-/* =====================================================
-   KNOWLEDGE LIST
-===================================================== */
+/* =========================================================
+   16. KNOWLEDGE - GET
+========================================================= */
 
 app.get(
     "/api/admin/knowledge",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
+    adminMiddleware,
+    (req, res) => {
 
-        try {
+        db.all(
+            `
+            SELECT
+                id,
+                title,
+                content,
+                audio_url,
+                image_url,
+                created_at,
+                updated_at
 
-            const knowledge =
-                await all(`
-                    SELECT *
-                    FROM knowledge
-                    ORDER BY id DESC
-                `);
+            FROM knowledge
 
-            response.json({
-                knowledge
-            });
+            ORDER BY id DESC
+            `,
 
-        } catch (error) {
+            [],
 
-            response.status(500).json({
-                error:
-                    "Knowledge lama soo qaadi karin."
-            });
-        }
+            (error, rows) => {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                res.json(rows);
+
+            }
+        );
+
     }
 );
 
-/* =====================================================
-   ADD KNOWLEDGE
-===================================================== */
+
+/* =========================================================
+   17. KNOWLEDGE - SEARCH
+========================================================= */
+
+app.get(
+    "/api/admin/knowledge/search",
+    adminMiddleware,
+    (req, res) => {
+
+        const q =
+            String(
+                req.query.q || ""
+            ).trim();
+
+
+        db.all(
+            `
+            SELECT *
+            FROM knowledge
+
+            WHERE
+                title LIKE ?
+                OR content LIKE ?
+
+            ORDER BY id DESC
+            `,
+
+            [
+                `%${q}%`,
+                `%${q}%`
+            ],
+
+            (error, rows) => {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                res.json(rows);
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   18. KNOWLEDGE - ADD
+========================================================= */
 
 app.post(
     "/api/admin/knowledge",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
 
-        try {
+    adminMiddleware,
 
-            const {
-                title,
-                content
-            } =
-                request.body;
+    knowledgeUpload.fields([
 
-            if (
-                !title ||
-                !content
-            ) {
+        {
+            name:
+                "audio",
 
-                return response
-                    .status(400)
-                    .json({
-                        error:
-                            "Cinwaan iyo content ayaa loo baahan yahay."
-                    });
-            }
+            maxCount:
+                1
+        },
 
-            const result =
-                await run(
-                    `
-                    INSERT INTO knowledge
-                    (
-                        title,
-                        content
-                    )
-                    VALUES (?, ?)
-                    `,
-                    [
-                        title.trim(),
-                        content.trim()
-                    ]
-                );
+        {
+            name:
+                "image",
 
-            response.status(201).json({
-                message:
-                    "Knowledge waa la kaydiyay.",
-
-                id:
-                    result.id
-            });
-
-        } catch (error) {
-
-            response.status(500).json({
-                error:
-                    "Knowledge lama kaydin."
-            });
+            maxCount:
+                1
         }
+
+    ]),
+
+    (req, res) => {
+
+        const title =
+            String(
+                req.body.title || ""
+            ).trim();
+
+
+        const content =
+            String(
+                req.body.content || ""
+            ).trim();
+
+
+        const audioFile =
+            req.files?.audio?.[0];
+
+
+        const imageFile =
+            req.files?.image?.[0];
+
+
+        const audioUrl =
+            audioFile
+                ? `/uploads/knowledge/${audioFile.filename}`
+                : null;
+
+
+        const imageUrl =
+            imageFile
+                ? `/uploads/knowledge/${imageFile.filename}`
+                : null;
+
+
+        if (
+            !title &&
+            !content &&
+            !audioFile &&
+            !imageFile
+        ) {
+
+            return res
+                .status(400)
+                .json({
+                    error:
+                        "Fadlan xog geli"
+                });
+
+        }
+
+
+        db.run(
+            `
+            INSERT INTO knowledge
+            (
+                title,
+                content,
+                audio_url,
+                image_url
+            )
+
+            VALUES (?, ?, ?, ?)
+            `,
+
+            [
+                title,
+                content,
+                audioUrl,
+                imageUrl
+            ],
+
+            function (error) {
+
+                if (error) {
+
+                    console.error(
+                        "Knowledge INSERT:",
+                        error.message
+                    );
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                res.json({
+
+                    success:
+                        true,
+
+                    message:
+                        "Knowledge Database-ka waa lagu daray",
+
+                    id:
+                        this.lastID
+
+                });
+
+            }
+        );
+
     }
 );
 
-/* =====================================================
-   DELETE KNOWLEDGE
-===================================================== */
+
+/* =========================================================
+   19. KNOWLEDGE - EDIT
+========================================================= */
+
+app.put(
+    "/api/admin/knowledge/:id",
+
+    adminMiddleware,
+
+    (req, res) => {
+
+        const id =
+            Number(
+                req.params.id
+            );
+
+
+        const title =
+            String(
+                req.body.title || ""
+            ).trim();
+
+
+        const content =
+            String(
+                req.body.content || ""
+            ).trim();
+
+
+        if (
+            !Number.isInteger(id)
+        ) {
+
+            return res
+                .status(400)
+                .json({
+                    error:
+                        "ID khaldan"
+                });
+
+        }
+
+
+        db.run(
+            `
+            UPDATE knowledge
+
+            SET
+                title = ?,
+                content = ?,
+                updated_at =
+                    CURRENT_TIMESTAMP
+
+            WHERE id = ?
+            `,
+
+            [
+                title,
+                content,
+                id
+            ],
+
+            function (error) {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                if (
+                    this.changes === 0
+                ) {
+
+                    return res
+                        .status(404)
+                        .json({
+                            error:
+                                "Knowledge lama helin"
+                        });
+
+                }
+
+
+                res.json({
+
+                    success:
+                        true,
+
+                    message:
+                        "Knowledge waa la cusbooneysiiyey"
+
+                });
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   20. KNOWLEDGE - DELETE
+========================================================= */
 
 app.delete(
     "/api/admin/knowledge/:id",
-    authenticateToken,
-    requireAdmin,
-    async (
-        request,
-        response
-    ) => {
 
-        try {
+    adminMiddleware,
 
-            const id =
-                Number(
-                    request.params.id
-                );
+    (req, res) => {
 
-            await run(
-                `
-                DELETE FROM knowledge
-                WHERE id = ?
-                `,
-                [
-                    id
-                ]
+        const id =
+            Number(
+                req.params.id
             );
 
-            response.json({
-                message:
-                    "Knowledge waa la tirtiray."
-            });
 
-        } catch (error) {
+        db.get(
+            `
+            SELECT
+                audio_url,
+                image_url
 
-            response.status(500).json({
-                error:
-                    "Knowledge lama tirtiri karin."
-            });
-        }
-    }
-);
+            FROM knowledge
 
-/* =====================================================
-   USER CHAT HISTORY
-===================================================== */
+            WHERE id = ?
+            `,
 
-app.get(
-    "/api/chats",
-    authenticateToken,
-    async (
-        request,
-        response
-    ) => {
+            [id],
 
-        try {
+            (error, row) => {
 
-            const chats =
-                await all(
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                if (!row) {
+
+                    return res
+                        .status(404)
+                        .json({
+                            error:
+                                "Knowledge lama helin"
+                        });
+
+                }
+
+
+                db.run(
                     `
-                    SELECT
-                        id,
-                        message,
-                        response,
-                        image,
-                        created_at
-                    FROM chats
-                    WHERE user_id = ?
-                    ORDER BY id ASC
+                    DELETE FROM knowledge
+                    WHERE id = ?
                     `,
-                    [
-                        request.user.id
-                    ]
+
+                    [id],
+
+                    function (
+                        deleteError
+                    ) {
+
+                        if (
+                            deleteError
+                        ) {
+
+                            return res
+                                .status(500)
+                                .json({
+                                    error:
+                                        deleteError.message
+                                });
+
+                        }
+
+
+                        /* ---------------------------------
+                           DELETE AUDIO
+                        --------------------------------- */
+
+                        if (
+                            row.audio_url
+                        ) {
+
+                            const audioPath =
+                                path.join(
+                                    __dirname,
+                                    row.audio_url
+                                        .replace(
+                                            /^\/uploads\//,
+                                            "uploads/"
+                                        )
+                                );
+
+
+                            if (
+                                fs.existsSync(
+                                    audioPath
+                                )
+                            ) {
+
+                                fs.unlink(
+                                    audioPath,
+                                    () => {}
+                                );
+
+                            }
+
+                        }
+
+
+                        /* ---------------------------------
+                           DELETE IMAGE
+                        --------------------------------- */
+
+                        if (
+                            row.image_url
+                        ) {
+
+                            const imagePath =
+                                path.join(
+                                    __dirname,
+                                    row.image_url
+                                        .replace(
+                                            /^\/uploads\//,
+                                            "uploads/"
+                                        )
+                                );
+
+
+                            if (
+                                fs.existsSync(
+                                    imagePath
+                                )
+                            ) {
+
+                                fs.unlink(
+                                    imagePath,
+                                    () => {}
+                                );
+
+                            }
+
+                        }
+
+
+                        res.json({
+
+                            success:
+                                true,
+
+                            message:
+                                "Knowledge waa la tirtiray"
+
+                        });
+
+                    }
                 );
 
-            response.json({
-                chats
-            });
+            }
+        );
 
-        } catch (error) {
-
-            response.status(500).json({
-                error:
-                    "Chat history lama soo qaadi karin."
-            });
-        }
     }
 );
 
-/* =====================================================
-   DELETE USER CHAT HISTORY
-===================================================== */
 
-app.delete(
-    "/api/chats",
-    authenticateToken,
+/* =========================================================
+   21. AUDIO -> TEXT
+========================================================= */
+
+app.post(
+    "/api/admin/knowledge/transcribe",
+
+    adminMiddleware,
+
+    knowledgeUpload.single(
+        "audio"
+    ),
+
     async (
-        request,
-        response
+        req,
+        res
     ) => {
 
         try {
 
-            await run(
-                `
-                DELETE FROM chats
-                WHERE user_id = ?
-                `,
-                [
-                    request.user.id
-                ]
-            );
+            if (
+                !req.file
+            ) {
 
-            response.json({
-                message:
-                    "Chat history waa la tirtiray."
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            "Audio lama helin"
+                    });
+
+            }
+
+
+            if (
+                !process.env
+                    .OPENAI_API_KEY
+            ) {
+
+                return res
+                    .status(500)
+                    .json({
+                        error:
+                            "OPENAI_API_KEY kuma jiro .env"
+                    });
+
+            }
+
+
+            const transcription =
+                await openai.audio
+                    .transcriptions
+                    .create({
+
+                        file:
+                            fs.createReadStream(
+                                req.file.path
+                            ),
+
+                        model:
+                            "gpt-4o-transcribe"
+
+                    });
+
+
+            res.json({
+
+                success:
+                    true,
+
+                text:
+                    transcription.text ||
+                    ""
+
             });
+
 
         } catch (error) {
 
-            response.status(500).json({
-                error:
-                    "Chat history lama tirtiri karin."
-            });
+            console.error(
+                "TRANSCRIPTION ERROR:",
+                error
+            );
+
+
+            res
+                .status(500)
+                .json({
+                    error:
+                        error.message
+                });
+
         }
+
     }
 );
 
-/* =====================================================
-   AI CHAT
-===================================================== */
+
+/* =========================================================
+   22. IMAGE -> AI INTERPRETATION
+========================================================= */
+
+app.post(
+    "/api/admin/knowledge/interpret-image",
+
+    adminMiddleware,
+
+    knowledgeUpload.single(
+        "image"
+    ),
+
+    async (
+        req,
+        res
+    ) => {
+
+        try {
+
+            if (
+                !req.file
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            "Sawir lama helin"
+                    });
+
+            }
+
+
+            if (!openai) {
+
+                return res
+                    .status(500)
+                    .json({
+                        error:
+                            "OPENROUTER_API_KEY kuma jiro .env"
+                    });
+
+            }
+
+
+            const buffer =
+                fs.readFileSync(
+                    req.file.path
+                );
+
+
+            const base64 =
+                buffer.toString(
+                    "base64"
+                );
+
+
+            const imageData =
+                `data:${req.file.mimetype};base64,${base64}`;
+
+
+            const completion =
+                await openai.chat
+                    .completions
+                    .create({
+
+                        model:
+                            AI_MODEL,
+
+                        messages: [
+
+                            {
+                                role:
+                                    "system",
+
+                                content:
+                                    `
+Waxaad tahay AI
+Af-Soomaali ku jawaaba.
+
+Sawirka si taxaddar
+leh u baar.
+
+Haddii uu leeyahay
+qoraal, akhri.
+
+Haddii uu leeyahay
+xog muhiim ah, sharax.
+
+Jawaabta ku qor
+Af-Soomaali.
+`
+                            },
+
+                            {
+                                role:
+                                    "user",
+
+                                content: [
+
+                                    {
+                                        type:
+                                            "text",
+
+                                        text:
+                                            "Fasir sawirkan oo soo saar xogta muhiimka ah."
+                                    },
+
+                                    {
+                                        type:
+                                            "image_url",
+
+                                        image_url: {
+                                            url:
+                                                imageData
+                                        }
+
+                                    }
+
+                                ]
+
+                            }
+
+                        ]
+
+                    });
+
+
+            const text =
+                completion
+                    .choices?.[0]
+                    ?.message
+                    ?.content || "";
+
+
+            res.json({
+
+                success:
+                    true,
+
+                text
+
+            });
+
+
+        } catch (error) {
+
+            console.error(
+                "IMAGE INTERPRET ERROR:",
+                error
+            );
+
+
+            res
+                .status(500)
+                .json({
+                    error:
+                        error.message
+                });
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   23. PUBLIC CHAT
+========================================================= */
 
 app.post(
     "/chat",
     async (
-        request,
-        response
+        req,
+        res
     ) => {
 
         try {
 
-            const {
-                message,
-                image,
-                userId
-            } =
-                request.body;
+            const message =
+                String(
+                    req.body.message || ""
+                ).trim();
+
+
+            const image =
+                req.body.image ||
+                null;
+
+
+            const clientId =
+                String(
+                    req.body.clientId ||
+                    "anonymous"
+                );
+
 
             if (
                 !message &&
                 !image
             ) {
 
-                return response
+                return res
                     .status(400)
                     .json({
                         error:
-                            "Fariin ama sawir ayaa loo baahan yahay."
+                            "Qoraal ama sawir geli"
                     });
+
             }
 
-            let knowledgeContext =
-                "";
-
-            try {
-
-                const knowledge =
-                    await all(`
-                        SELECT
-                            title,
-                            content
-                        FROM knowledge
-                        ORDER BY id DESC
-                        LIMIT 20
-                    `);
-
-                if (
-                    knowledge.length >
-                    0
-                ) {
-
-                    knowledgeContext =
-                        knowledge
-                        .map(
-                            item =>
-                            `
-${item.title}:
-${item.content}
-                            `
-                        )
-                        .join("\n\n");
-                }
-
-            } catch (error) {
-
-                console.error(
-                    "Knowledge error:",
-                    error
-                );
-            }
 
             if (!openai) {
 
-                return response
+                return res
                     .status(500)
                     .json({
                         error:
-                            "OPENROUTER_API_KEY lama dejin."
+                            "OPENROUTER_API_KEY kuma jiro .env"
                     });
+
             }
 
-            const messages = [
 
-                {
-                    role:
-                        "system",
+            /* -----------------------------------------
+               GET KNOWLEDGE
+            ----------------------------------------- */
 
-                    content:
-`
-Waxaad tahay AI Chat Somali.
+            const knowledge =
+                await getKnowledge();
 
-Mar walba ku jawaab
+
+            const knowledgeText =
+                knowledge
+                    .map(item => {
+
+                        return `
+Cinwaan:
+${item.title || ""}
+
+Xog:
+${item.content || ""}
+`;
+
+                    })
+                    .join("\n");
+
+
+            /* -----------------------------------------
+               SYSTEM
+            ----------------------------------------- */
+
+            const systemPrompt = `
+
+Waxaad tahay AI-ga
+NASIIB BUSINESS CENTER.
+
+Waxaad ku jawaabaysaa
 Af-Soomaali.
 
-Jawaabtaadu ha noqoto
-mid cad, saaxiibtinimo leh
-oo caawimaad leh.
+Haddii Knowledge Database
+ku jiro xog la xiriirta
+su'aasha user-ka, isticmaal
+xogtaas.
 
-Knowledge-ka shirkadda:
+Ha sheegan xog aanad
+hubin.
 
-${knowledgeContext || "Knowledge lama gelin."}
-`
-                }
+Haddii user-ku sawir
+soo diro, isku day inaad
+fahanto sawirka.
 
-            ];
+KNOWLEDGE DATABASE:
 
-            const userContent =
-                [];
+${knowledgeText}
 
-            if (message) {
+`;
 
-                userContent.push({
-                    type:
-                        "text",
 
-                    text:
-                        message
-                });
-            }
+            /* -----------------------------------------
+               USER MESSAGE
+            ----------------------------------------- */
 
-            if (
-                image &&
-                image.startsWith(
-                    "data:image"
-                )
-            ) {
+            let userContent;
 
-                userContent.push({
-                    type:
-                        "image_url",
 
-                    image_url: {
-                        url:
-                            image
+            if (image) {
+
+                userContent = [
+
+                    {
+                        type:
+                            "text",
+
+                        text:
+                            message ||
+                            "Fasir sawirkan."
+                    },
+
+                    {
+                        type:
+                            "image_url",
+
+                        image_url: {
+
+                            url:
+                                image
+
+                        }
+
                     }
-                });
+
+                ];
+
+            } else {
+
+                userContent =
+                    message;
+
             }
 
-            messages.push({
-                role:
-                    "user",
 
-                content:
-                    userContent
-            });
+            /* -----------------------------------------
+               AI REQUEST
+            ----------------------------------------- */
 
             const completion =
-                await openai
-                .chat
-                .completions
-                .create({
-                    model:
-                        AI_MODEL,
+                await openai.chat
+                    .completions
+                    .create({
 
-                    messages
-                });
+                        model:
+                            AI_MODEL,
+
+                        messages: [
+
+                            {
+                                role:
+                                    "system",
+
+                                content:
+                                    systemPrompt
+                            },
+
+                            {
+                                role:
+                                    "user",
+
+                                content:
+                                    userContent
+                            }
+
+                        ]
+
+                    });
+
 
             const aiResponse =
                 completion
-                .choices?.[0]
-                ?.message
-                ?.content ||
-                "Waan ka xumahay, jawaab lama helin.";
+                    .choices?.[0]
+                    ?.message
+                    ?.content ||
+                "AI jawaab ma bixin."
 
-            let validUserId =
-                null;
 
-            if (userId) {
+            /* -----------------------------------------
+               SAVE CHAT
+            ----------------------------------------- */
 
-                const user =
-                    await get(
-                        `
-                        SELECT id
-                        FROM users
-                        WHERE id = ?
-                        `,
-                        [
-                            userId
-                        ]
-                    );
-
-                if (user) {
-
-                    validUserId =
-                        user.id;
-                }
-            }
-
-            await run(
+            db.run(
                 `
                 INSERT INTO chats
                 (
+                    client_id,
                     user_id,
                     message,
-                    response,
-                    image
+                    image,
+                    response
                 )
-                VALUES
-                (?, ?, ?, ?)
+
+                VALUES (?, ?, ?, ?, ?)
                 `,
+
                 [
-                    validUserId,
-                    message || "",
-                    aiResponse,
-                    image || null
-                ]
+                    clientId,
+                    null,
+                    message,
+                    image,
+                    aiResponse
+                ],
+
+                error => {
+
+                    if (error) {
+
+                        console.error(
+                            "CHAT SAVE ERROR:",
+                            error.message
+                        );
+
+                    }
+
+                }
             );
 
-            response.json({
+
+            /* -----------------------------------------
+               RESPONSE
+            ----------------------------------------- */
+
+            res.json({
+
+                success:
+                    true,
+
                 response:
                     aiResponse
+
             });
+
 
         } catch (error) {
 
             console.error(
-                "AI CHAT ERROR:",
+                "CHAT ERROR:",
                 error
             );
 
-            response.status(500).json({
-                error:
-                    error.message ||
-                    "AI error ayaa dhacay."
-            });
+
+            res
+                .status(500)
+                .json({
+
+                    error:
+                        error.message
+
+                });
+
         }
+
     }
 );
 
-/* =====================================================
-   HEALTH CHECK
-===================================================== */
+
+/* =========================================================
+   24. GET PUBLIC CHAT HISTORY
+========================================================= */
+
+app.get(
+    "/api/chats",
+    (req, res) => {
+
+        const clientId =
+            String(
+                req.query.clientId ||
+                ""
+            );
+
+
+        if (!clientId) {
+
+            return res.json([]);
+
+        }
+
+
+        db.all(
+            `
+            SELECT
+                id,
+                message,
+                image,
+                response,
+                created_at
+
+            FROM chats
+
+            WHERE client_id = ?
+
+            ORDER BY id ASC
+            `,
+
+            [clientId],
+
+            (error, rows) => {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                res.json(rows);
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   25. DELETE PUBLIC CHAT HISTORY
+========================================================= */
+
+app.delete(
+    "/api/chats",
+    (req, res) => {
+
+        const clientId =
+            String(
+                req.query.clientId ||
+                req.body.clientId ||
+                ""
+            );
+
+
+        if (!clientId) {
+
+            return res
+                .status(400)
+                .json({
+                    error:
+                        "clientId ayaa loo baahan yahay"
+                });
+
+        }
+
+
+        db.run(
+            `
+            DELETE FROM chats
+            WHERE client_id = ?
+            `,
+
+            [clientId],
+
+            function (error) {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                res.json({
+
+                    success:
+                        true,
+
+                    deleted:
+                        this.changes
+
+                });
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   26. ADMIN CHAT HISTORY
+========================================================= */
+
+app.get(
+    "/api/admin/chats",
+    adminMiddleware,
+    (req, res) => {
+
+        db.all(
+            `
+            SELECT
+                id,
+                client_id,
+                message,
+                image,
+                response,
+                created_at
+
+            FROM chats
+
+            ORDER BY id DESC
+            `,
+
+            [],
+
+            (error, rows) => {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                res.json(rows);
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   27. ADMIN DELETE ALL CHATS
+========================================================= */
+
+app.delete(
+    "/api/admin/chats",
+    adminMiddleware,
+    (req, res) => {
+
+        db.run(
+            `
+            DELETE FROM chats
+            `,
+
+            [],
+
+            function (error) {
+
+                if (error) {
+
+                    return res
+                        .status(500)
+                        .json({
+                            error:
+                                error.message
+                        });
+
+                }
+
+
+                res.json({
+
+                    success:
+                        true,
+
+                    deleted:
+                        this.changes
+
+                });
+
+            }
+        );
+
+    }
+);
+
+
+/* =========================================================
+   28. HEALTH CHECK
+========================================================= */
 
 app.get(
     "/api/health",
-    (
-        request,
-        response
-    ) => {
+    (req, res) => {
 
-        response.json({
+        res.json({
+
             status:
                 "online",
 
@@ -1561,46 +2083,140 @@ app.get(
 
             ai:
                 openai
-                ?
-                "ready"
-                :
-                "not configured"
+                    ? "ready"
+                    : "not configured",
+
+            model:
+                AI_MODEL
+
         });
+
     }
 );
 
-/* =====================================================
-   START SERVER
-===================================================== */
 
-async function startServer() {
+/* =========================================================
+   29. KNOWLEDGE HELPER
+========================================================= */
 
-    await initializeDatabase();
+function getKnowledge() {
 
-    await createDefaultAdmin();
+    return new Promise(
+        (
+            resolve,
+            reject
+        ) => {
 
-    app.listen(
-        PORT,
-        "0.0.0.0",
-        () => {
-
-            console.log(
+            db.all(
                 `
-========================================
-🚀 Server running
+                SELECT
+                    id,
+                    title,
+                    content,
+                    audio_url,
+                    image_url
 
-http://localhost:${PORT}
+                FROM knowledge
 
-Admin:
-http://localhost:${PORT}/admin/
+                ORDER BY id DESC
+                `,
 
-Health:
-http://localhost:${PORT}/api/health
-========================================
-                `
+                [],
+
+                (
+                    error,
+                    rows
+                ) => {
+
+                    if (error) {
+
+                        reject(
+                            error
+                        );
+
+                    } else {
+
+                        resolve(
+                            rows || []
+                        );
+
+                    }
+
+                }
             );
+
         }
     );
+
 }
 
-startServer();
+
+/* =========================================================
+   30. FRONTEND FALLBACK
+========================================================= */
+
+app.get(
+    "*",
+    (req, res) => {
+
+        res.sendFile(
+            path.join(
+                __dirname,
+                "public",
+                "index.html"
+            )
+        );
+
+    }
+);
+
+
+/* =========================================================
+   31. START SERVER
+========================================================= */
+
+app.listen(
+    PORT,
+    () => {
+
+        console.log("");
+        console.log(
+            "======================================"
+        );
+
+        console.log(
+            "🚀 NASIIB BUSINESS CENTER"
+        );
+
+        console.log(
+            "======================================"
+        );
+
+        console.log(
+            `🌐 Port: ${PORT}`
+        );
+
+        console.log(
+            `🤖 AI Model: ${AI_MODEL}`
+        );
+
+        console.log(
+            `🗄️ Database: ${databasePath}`
+        );
+
+        console.log(
+            `📁 Uploads: ${knowledgeUploadDir}`
+        );
+
+        console.log(
+            `👑 Admin: ${ADMIN_EMAIL}`
+        );
+
+        console.log(
+            "======================================"
+        );
+
+        console.log("");
+
+    }
+);
