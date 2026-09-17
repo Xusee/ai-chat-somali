@@ -1,82 +1,665 @@
 * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body {
-    margin: 0;
-    background: #f1f5f9;
-    font-family: Arial, sans-serif;
-    color: #111827;
+    font-family:
+        Arial,
+        sans-serif;
+
+    background: #f7f7f8;
+    color: #202123;
 }
 
-header {
-    background: #111827;
+
+/* =========================
+   LAYOUT
+========================= */
+
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.sidebar {
+    width: 260px;
+    background: #202123;
     color: white;
-    padding: 18px;
+
+    padding: 20px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.logo {
+    font-size: 20px;
+    font-weight: bold;
+
+    padding: 15px 5px 30px;
+
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-btn {
+    border: 0;
+    background: transparent;
+
+    color: #ddd;
+
+    padding: 14px;
+
+    border-radius: 10px;
+
+    text-align: left;
+
+    font-size: 15px;
+
+    cursor: pointer;
+}
+
+.nav-btn:hover,
+.nav-btn.active {
+    background: #10a37f;
+    color: white;
+}
+
+.logout-btn {
+    margin-top: auto;
+
+    border: 1px solid #555;
+
+    background: transparent;
+
+    color: white;
+
+    padding: 13px;
+
+    border-radius: 10px;
+
+    cursor: pointer;
+}
+
+
+/* =========================
+   MAIN
+========================= */
+
+.main {
+    flex: 1;
+    min-width: 0;
+}
+
+
+/* =========================
+   TOPBAR
+========================= */
+
+.topbar {
+    background: white;
+
+    padding: 20px 30px;
+
+    border-bottom: 1px solid #ddd;
+
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-header button {
-    background: #dc2626;
-    color: white;
+.topbar h1 {
+    font-size: 23px;
+}
+
+.topbar p {
+    color: #777;
+    margin-top: 5px;
+}
+
+.mobile-menu {
+    display: none;
+
     border: 0;
-    padding: 10px 15px;
+    background: #10a37f;
+
+    color: white;
+
+    padding: 10px;
+
     border-radius: 8px;
 }
 
-main {
-    max-width: 900px;
+
+/* =========================
+   SECTION
+========================= */
+
+.section {
+    padding: 30px;
+    max-width: 1100px;
     margin: auto;
-    padding: 20px;
 }
 
-.card {
-    background: white;
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 5px 20px rgba(0,0,0,.08);
+.hidden {
+    display: none !important;
 }
 
-input,
-textarea {
-    width: 100%;
-    padding: 13px;
-    margin: 8px 0;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 16px;
+.section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 25px;
 }
 
-textarea {
-    min-height: 180px;
+.section-title h2 {
+    margin-bottom: 6px;
 }
+
+.section-title p {
+    color: #777;
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
 
 button {
+    font-family: inherit;
+}
+
+.primary-btn,
+.save-btn {
+    background: #10a37f;
+    color: white;
+
+    border: 0;
+
+    padding: 12px 18px;
+
+    border-radius: 9px;
+
+    cursor: pointer;
+
+    font-weight: bold;
+}
+
+.primary-btn:hover,
+.save-btn:hover {
+    background: #0b8064;
+}
+
+.secondary-btn {
+    background: #fff;
+
+    border: 1px solid #ccc;
+
+    padding: 11px 14px;
+
+    border-radius: 8px;
+
     cursor: pointer;
 }
 
-.card > button {
-    background: #10a37f;
+.ai-btn {
+    width: 100%;
+
+    background: #202123;
     color: white;
+
     border: 0;
-    padding: 12px 18px;
-    border-radius: 8px;
+
+    padding: 12px;
+
+    border-radius: 9px;
+
+    margin-top: 12px;
+
+    cursor: pointer;
 }
 
-.knowledge-item {
-    border: 1px solid #ddd;
+.ai-btn:hover {
+    background: #10a37f;
+}
+
+.ai-btn.big {
     padding: 15px;
-    margin-top: 10px;
+    font-size: 15px;
+}
+
+.cancel-btn {
+    background: #eee;
+
+    border: 0;
+
+    padding: 12px 18px;
+
+    border-radius: 9px;
+
+    cursor: pointer;
+}
+
+
+/* =========================
+   SEARCH
+========================= */
+
+.search-box {
+    margin-bottom: 20px;
+}
+
+.search-box input {
+    width: 100%;
+
+    padding: 14px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+
+    outline: none;
+}
+
+.search-box input:focus {
+    border-color: #10a37f;
+}
+
+
+/* =========================
+   STATS
+========================= */
+
+.stats {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 15px;
+
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: white;
+
+    padding: 20px;
+
+    border-radius: 12px;
+
+    border: 1px solid #e5e5e5;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 5px;
+}
+
+.stat-card span {
+    font-size: 25px;
+}
+
+.stat-card strong {
+    font-size: 24px;
+}
+
+.stat-card small {
+    color: #777;
+}
+
+
+/* =========================
+   FORM
+========================= */
+
+.knowledge-form {
+    display: flex;
+    flex-direction: column;
+
+    gap: 20px;
+}
+
+.form-group {
+    background: white;
+
+    padding: 20px;
+
+    border-radius: 12px;
+
+    border: 1px solid #ddd;
+}
+
+.form-group label,
+.modal-box label {
+    display: block;
+
+    font-weight: bold;
+
+    margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group textarea,
+.modal-box input,
+.modal-box textarea {
+    width: 100%;
+
+    border: 1px solid #ccc;
+
+    border-radius: 9px;
+
+    padding: 13px;
+
+    font-size: 15px;
+
+    outline: none;
+
+    resize: vertical;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: #10a37f;
+}
+
+
+/* =========================
+   MEDIA
+========================= */
+
+.media-card,
+.combined-card {
+    background: white;
+
+    border: 1px solid #ddd;
+
+    border-radius: 14px;
+
+    padding: 20px;
+}
+
+.media-title {
+    font-size: 18px;
+    font-weight: bold;
+
+    margin-bottom: 5px;
+}
+
+.media-card p,
+.combined-card p {
+    color: #777;
+
+    margin-bottom: 15px;
+}
+
+.media-buttons {
+    display: flex;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+}
+
+.preview {
+    margin-top: 15px;
+}
+
+.preview audio {
+    width: 100%;
+}
+
+.image-preview {
+    margin-top: 15px;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 300px;
+
+    border-radius: 10px;
+
+    display: block;
+}
+
+.result-box {
+    margin-top: 12px;
+
+    background: #f3f3f3;
+
+    border-radius: 9px;
+
+    padding: 12px;
+
+    white-space: pre-wrap;
+
+    min-height: 10px;
+}
+
+.form-actions {
+    display: flex;
+
+    gap: 10px;
+}
+
+
+/* =========================
+   KNOWLEDGE ITEM
+========================= */
+
+.knowledge-item {
+    background: white;
+
+    border: 1px solid #ddd;
+
+    border-radius: 14px;
+
+    padding: 20px;
+
+    margin-bottom: 15px;
+}
+
+.knowledge-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 10px;
+}
+
+.knowledge-header h3 {
+    margin-bottom: 8px;
+}
+
+.knowledge-date {
+    color: #888;
+    font-size: 12px;
+}
+
+.knowledge-content {
+    margin-top: 12px;
+
+    white-space: pre-wrap;
+
+    line-height: 1.6;
+}
+
+.knowledge-media {
+    margin-top: 15px;
+}
+
+.knowledge-media img {
+    max-width: 100%;
+    max-height: 250px;
+
     border-radius: 10px;
 }
 
-.delete {
-    background: #dc2626;
-    color: white;
+.knowledge-media audio {
+    width: 100%;
+}
+
+.item-actions {
+    margin-top: 15px;
+
+    display: flex;
+
+    gap: 8px;
+}
+
+.edit-btn,
+.delete-btn {
     border: 0;
-    padding: 8px 12px;
-    border-radius: 7px;
+
+    padding: 9px 13px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+}
+
+.edit-btn {
+    background: #eee;
+}
+
+.delete-btn {
+    background: #ffdddd;
+    color: #b00000;
+}
+
+
+/* =========================
+   MODAL
+========================= */
+
+.modal {
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0,0,0,.6);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    z-index: 1000;
+}
+
+.modal-box {
+    background: white;
+
+    width: 100%;
+    max-width: 600px;
+
+    border-radius: 15px;
+
+    padding: 22px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+.modal-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 10px;
+}
+
+.modal-header button {
+    border: 0;
+
+    background: #eee;
+
+    border-radius: 50%;
+
+    width: 35px;
+    height: 35px;
+
+    cursor: pointer;
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 800px) {
+
+    .sidebar {
+        position: fixed;
+
+        left: -270px;
+        top: 0;
+        bottom: 0;
+
+        z-index: 1000;
+
+        transition: .3s;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .mobile-menu {
+        display: block;
+    }
+
+    .topbar {
+        padding: 15px;
+    }
+
+    .section {
+        padding: 15px;
+    }
+
+    .section-title {
+        flex-direction: column;
+
+        align-items: stretch;
+
+        gap: 15px;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .save-btn,
+    .cancel-btn {
+        width: 100%;
+    }
+
 }
