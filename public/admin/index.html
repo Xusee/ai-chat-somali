@@ -17,17 +17,21 @@
 
 <div class="admin-layout">
 
-    <!-- SIDEBAR -->
+    <!-- =====================================================
+         SIDEBAR
+    ====================================================== -->
+
     <aside class="sidebar">
 
         <div class="logo">
-            👑
-            <span>ADMIN PANEL</span>
+            <span>👑</span>
+            <strong>ADMIN PANEL</strong>
         </div>
 
         <nav>
 
             <button
+                type="button"
                 class="nav-btn active"
                 onclick="showSection('knowledge')"
             >
@@ -35,6 +39,7 @@
             </button>
 
             <button
+                type="button"
                 class="nav-btn"
                 onclick="showSection('add')"
             >
@@ -44,6 +49,7 @@
         </nav>
 
         <button
+            type="button"
             class="logout-btn"
             onclick="adminLogout()"
         >
@@ -53,18 +59,26 @@
     </aside>
 
 
-    <!-- MAIN -->
+    <!-- =====================================================
+         MAIN
+    ====================================================== -->
+
     <main class="main">
 
-        <!-- HEADER -->
+        <!-- TOPBAR -->
+
         <header class="topbar">
 
             <div>
                 <h1>👑 Admin Panel</h1>
-                <p>Knowledge / Database Manager</p>
+
+                <p>
+                    Knowledge / Database Manager
+                </p>
             </div>
 
             <button
+                type="button"
                 class="mobile-menu"
                 onclick="toggleSidebar()"
             >
@@ -74,7 +88,10 @@
         </header>
 
 
-        <!-- KNOWLEDGE -->
+        <!-- =================================================
+             KNOWLEDGE SECTION
+        ================================================== -->
+
         <section
             id="knowledgeSection"
             class="section"
@@ -83,13 +100,19 @@
             <div class="section-title">
 
                 <div>
-                    <h2>📚 Knowledge Database</h2>
+
+                    <h2>
+                        📚 Knowledge Database
+                    </h2>
+
                     <p>
                         Maamul xogta AI-ga isticmaalo.
                     </p>
+
                 </div>
 
                 <button
+                    type="button"
                     class="primary-btn"
                     onclick="showSection('add')"
                 >
@@ -100,6 +123,7 @@
 
 
             <!-- SEARCH -->
+
             <div class="search-box">
 
                 <input
@@ -113,36 +137,58 @@
 
 
             <!-- STATS -->
+
             <div class="stats">
 
                 <div class="stat-card">
+
                     <span>📚</span>
+
                     <strong id="totalKnowledge">
                         0
                     </strong>
-                    <small>Knowledge</small>
+
+                    <small>
+                        Knowledge
+                    </small>
+
                 </div>
 
+
                 <div class="stat-card">
+
                     <span>🎙️</span>
+
                     <strong id="totalAudio">
                         0
                     </strong>
-                    <small>Cod</small>
+
+                    <small>
+                        Cod
+                    </small>
+
                 </div>
 
+
                 <div class="stat-card">
+
                     <span>🖼️</span>
+
                     <strong id="totalImages">
                         0
                     </strong>
-                    <small>Sawir</small>
+
+                    <small>
+                        Sawir
+                    </small>
+
                 </div>
 
             </div>
 
 
-            <!-- LIST -->
+            <!-- KNOWLEDGE LIST -->
+
             <div id="knowledgeList">
 
                 <div class="loading">
@@ -154,8 +200,10 @@
         </section>
 
 
+        <!-- =================================================
+             ADD KNOWLEDGE SECTION
+        ================================================== -->
 
-        <!-- ADD -->
         <section
             id="addSection"
             class="section hidden"
@@ -164,11 +212,15 @@
             <div class="section-title">
 
                 <div>
-                    <h2>➕ Ku dar Knowledge</h2>
+
+                    <h2>
+                        ➕ Ku dar Knowledge
+                    </h2>
 
                     <p>
                         Qoraal, cod iyo sawir ku kaydi Database-ka.
                     </p>
+
                 </div>
 
             </div>
@@ -179,16 +231,20 @@
                 class="knowledge-form"
             >
 
-                <!-- TITLE -->
+                <!-- =========================================
+                     TITLE
+                ========================================== -->
+
                 <div class="form-group">
 
-                    <label>
+                    <label for="title">
                         📝 Cinwaan
                     </label>
 
                     <input
                         type="text"
                         id="title"
+                        name="title"
                         placeholder="Tusaale: Adeegyada shirkadda"
                         required
                     >
@@ -196,15 +252,19 @@
                 </div>
 
 
-                <!-- TEXT -->
+                <!-- =========================================
+                     CONTENT
+                ========================================== -->
+
                 <div class="form-group">
 
-                    <label>
+                    <label for="content">
                         📝 Qoraal / Knowledge
                     </label>
 
                     <textarea
                         id="content"
+                        name="content"
                         rows="7"
                         placeholder="Halkan ku qor xogta..."
                     ></textarea>
@@ -212,7 +272,10 @@
                 </div>
 
 
-                <!-- AUDIO -->
+                <!-- =========================================
+                     AUDIO
+                ========================================== -->
+
                 <div class="media-card">
 
                     <div class="media-title">
@@ -222,6 +285,7 @@
                     <p>
                         Duub cod ama ka dooro audio.
                     </p>
+
 
                     <div class="media-buttons">
 
@@ -233,15 +297,17 @@
                             🎙️ Duub Cod
                         </button>
 
+
                         <button
                             type="button"
                             class="secondary-btn"
-                            onclick="audioInput.click()"
+                            onclick="document.getElementById('audioInput').click()"
                         >
                             📁 Dooro Audio
                         </button>
 
                     </div>
+
 
                     <input
                         type="file"
@@ -250,10 +316,12 @@
                         hidden
                     >
 
+
                     <div
                         id="audioPreview"
                         class="preview"
                     ></div>
+
 
                     <button
                         type="button"
@@ -264,6 +332,7 @@
                         🤖 Cod → Qoraal
                     </button>
 
+
                     <div
                         id="transcriptionResult"
                         class="result-box"
@@ -272,7 +341,10 @@
                 </div>
 
 
-                <!-- IMAGE -->
+                <!-- =========================================
+                     IMAGE
+                ========================================== -->
+
                 <div class="media-card">
 
                     <div class="media-title">
@@ -283,25 +355,30 @@
                         Sawir ka qaad Camera ama Gallery ka dooro.
                     </p>
 
+
                     <div class="media-buttons">
 
                         <button
                             type="button"
                             class="secondary-btn"
-                            onclick="cameraInput.click()"
+                            onclick="document.getElementById('cameraInput').click()"
                         >
                             📷 Camera
                         </button>
 
+
                         <button
                             type="button"
                             class="secondary-btn"
-                            onclick="imageInput.click()"
+                            onclick="document.getElementById('imageInput').click()"
                         >
                             🖼️ Gallery
                         </button>
 
                     </div>
+
+
+                    <!-- CAMERA -->
 
                     <input
                         type="file"
@@ -311,6 +388,9 @@
                         hidden
                     >
 
+
+                    <!-- GALLERY -->
+
                     <input
                         type="file"
                         id="imageInput"
@@ -318,10 +398,16 @@
                         hidden
                     >
 
+
+                    <!-- IMAGE PREVIEW -->
+
                     <div
                         id="imagePreview"
                         class="image-preview"
                     ></div>
+
+
+                    <!-- AI IMAGE -->
 
                     <button
                         type="button"
@@ -331,6 +417,7 @@
                         🤖 Sawir Fasir
                     </button>
 
+
                     <div
                         id="imageResult"
                         class="result-box"
@@ -339,7 +426,10 @@
                 </div>
 
 
-                <!-- BOTH -->
+                <!-- =========================================
+                     AUDIO + IMAGE
+                ========================================== -->
+
                 <div class="combined-card">
 
                     <h3>
@@ -351,6 +441,7 @@
                         kadib AI ha isku fasirto.
                     </p>
 
+
                     <button
                         type="button"
                         class="ai-btn big"
@@ -358,6 +449,7 @@
                     >
                         🤖 ISKU FASIR COD + SAWIR
                     </button>
+
 
                     <div
                         id="combinedResult"
@@ -367,7 +459,10 @@
                 </div>
 
 
-                <!-- ACTIONS -->
+                <!-- =========================================
+                     ACTION BUTTONS
+                ========================================== -->
+
                 <div class="form-actions">
 
                     <button
@@ -376,6 +471,7 @@
                     >
                         💾 DATABASE KU DAR
                     </button>
+
 
                     <button
                         type="button"
@@ -396,7 +492,10 @@
 </div>
 
 
-<!-- EDIT MODAL -->
+<!-- =====================================================
+     EDIT MODAL
+====================================================== -->
+
 <div
     id="editModal"
     class="modal hidden"
@@ -406,9 +505,12 @@
 
         <div class="modal-header">
 
-            <h2>✏️ Wax ka beddel</h2>
+            <h2>
+                ✏️ Wax ka beddel
+            </h2>
 
             <button
+                type="button"
                 onclick="closeEdit()"
             >
                 ✕
@@ -416,12 +518,14 @@
 
         </div>
 
+
         <input
             type="hidden"
             id="editId"
         >
 
-        <label>
+
+        <label for="editTitle">
             📝 Cinwaan
         </label>
 
@@ -430,7 +534,8 @@
             type="text"
         >
 
-        <label>
+
+        <label for="editContent">
             📝 Qoraal
         </label>
 
@@ -439,7 +544,9 @@
             rows="8"
         ></textarea>
 
+
         <button
+            type="button"
             class="save-btn"
             onclick="saveEdit()"
         >
@@ -451,7 +558,11 @@
 </div>
 
 
-<script src="/admin/admin.js"></script>
+<!-- =====================================================
+     ADMIN JAVASCRIPT
+====================================================== -->
+
+<script src="/admin/app.js"></script>
 
 </body>
 </html>
