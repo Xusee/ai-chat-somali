@@ -1555,34 +1555,139 @@ app.post(
 
         try {
 
+            if (!OPENROUTER_API_KEY) {
+                return res.status(500).json({
+                    success: false,
+                    error: "OPENROUTER_API_KEY lama helin."
+                });
+            }
+
             if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Fadlan cod geli."
+                });
+            }
+
+            const base64Audio =
+                req.file.buffer.toString("base64");
+
+            const mimeType =
+                req.file.mimetype || "audio/webm";
+
+            const format =
+                mimeType.includes("webm")
+                    ? "webm"
+                    : mimeType.includes("mpeg")
+                    ? "mp3"
+                    : mimeType.includes("wav")
+                    ? "wav"
+                    : mimeType.includes("mp4")
+                    ? "mp4"
+                    : "webm";
+
+
+            const response =
+                await fetch(
+                    "https://openrouter.ai/api/v1/audio/transcriptions",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Authorization":
+                                `Bearer ${OPENROUTER_API_KEY}`,
+
+                            "Content-Type":
+                                "application/json",
+
+                            "HTTP-Referer":
+                                APP_URL,
+
+                            "X-Title":
+                                "NASIIB BUSINESS CENTER"
+                        },
+
+                        body: JSON.stringify({
+
+                            model:
+                                "openai/whisper-1",
+
+                            input_audio: {
+                                data:
+                                    base64Audio,
+
+                                format:
+                                    format
+                            }
+
+                        })
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                console.error(
+                    "OPENROUTER TRANSCRIPTION ERROR:",
+                    data
+                );
 
                 return res.status(
-                    400
+                    response.status
                 ).json({
 
+                    success: false,
+
                     error:
-                        "Audio geli."
+                        data?.error?.message ||
+                        "Codka lama turjumi karin."
 
                 });
 
             }
 
 
-            if (!openai) {
+            res.json({
 
-                return res.status(
-                    500
-                ).json({
+                success: true,
 
-                    error:
-                        "OPENAI_API_KEY lama dejin."
+                text:
+                    data.text || ""
 
-                });
-
-            }
+            });
 
 
+        } catch (error) {
+
+            console.error(
+                "TRANSCRIPTION ERROR:",
+                error
+            );
+
+            res.status(500).json({
+
+                success: false,
+
+                error:
+                    error.message ||
+                    "Transcription error."
+
+            });
+
+        }
+
+    }
+);
+
+app.post(
+    "/transcribe",
+    upload.single("audio"),
+    async (req, res) => {
+        try {
             const audioFile =
                 new File(
                     [
@@ -1639,9 +1744,11 @@ app.post(
             });
 
         }
-
     }
 );
+
+    
+
 
 
 /* =========================================================
