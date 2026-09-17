@@ -1,224 +1,673 @@
 /* =====================================================
-   NASIIB BUSINESS CENTER
-   ADMIN APP.JS
-   Compatible with server.js
+   ADMIN KNOWLEDGE MANAGER
 ===================================================== */
+
+let knowledgeData = [];
+
+let selectedAudio = null;
+let selectedImage = null;
+
+let mediaRecorder = null;
+let audioChunks = [];
+
+const audioInput =
+    document.getElementById("audioInput");
+
+const imageInput =
+    document.getElementById("imageInput");
+
+const cameraInput =
+    document.getElementById("cameraInput");
 
 
 /* =====================================================
-   CONFIG
+   AUTH
 ===================================================== */
 
-const API_BASE = "";
+function getToken() {
 
-const LOGIN_URL = "/api/login";
-const ADMIN_ME_URL = "/api/admin/me";
-const USERS_URL = "/api/admin/users";
-const CHATS_URL = "/api/admin/chats";
-const KNOWLEDGE_URL = "/api/admin/knowledge";
-
-
-/* =====================================================
-   HELPER - GET RESPONSE DATA
-===================================================== */
-
-async function getResponseData(response) {
-
-    const text = await response.text();
-
-    if (!text) {
-        return {};
-    }
-
-    try {
-
-        return JSON.parse(text);
-
-    } catch (error) {
-
-        console.error(
-            "JSON PARSE ERROR:",
-            error
-        );
-
-        return {
-            error: text
-        };
-    }
-}
-
-
-/* =====================================================
-   GET ADMIN TOKEN
-===================================================== */
-
-function getAdminToken() {
-
-    return localStorage.getItem(
-        "adminToken"
+    return (
+        localStorage.getItem("adminToken") ||
+        localStorage.getItem("token") ||
+        ""
     );
 }
 
 
-/* =====================================================
-   AUTH HEADERS
-===================================================== */
+function adminHeaders() {
 
-function getAuthHeaders() {
-
-    const token =
-        getAdminToken();
+    const token = getToken();
 
     return {
-
-        "Authorization":
-            `Bearer ${token}`,
-
-        "Accept":
-            "application/json"
-
+        Authorization: `Bearer ${token}`
     };
 }
 
 
 /* =====================================================
-   API REQUEST HELPER
+   LOAD
 ===================================================== */
 
-async function apiRequest(
-    url,
-    options = {}
-) {
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
 
-    const headers = {
+        await loadKnowledge();
 
-        ...getAuthHeaders(),
+        setupInputs();
 
-        ...(options.headers || {})
-
-    };
+    }
+);
 
 
-    const response =
-        await fetch(
-            url,
-            {
-                ...options,
-                headers
-            }
+/* =====================================================
+   INPUTS
+===================================================== */
+
+function setupInputs() {
+
+    audioInput.addEventListener(
+        "change",
+        event => {
+
+            const file =
+                event.target.files[0];
+
+            if (!file) return;
+
+            selectedAudio = file;
+
+            showAudio(file);
+
+        }
+    );
+
+
+    imageInput.addEventListener(
+        "change",
+        event => {
+
+            const file =
+                event.target.files[0];
+
+            if (!file) return;
+
+            selectedImage = file;
+
+            showImage(file);
+
+        }
+    );
+
+
+    cameraInput.addEventListener(
+        "change",
+        event => {
+
+            const file =
+                event.target.files[0];
+
+            if (!file) return;
+
+            selectedImage = file;
+
+            showImage(file);
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   AUDIO PREVIEW
+===================================================== */
+
+function showAudio(file) {
+
+    const box =
+        document.getElementById(
+            "audioPreview"
         );
 
+    const url =
+        URL.createObjectURL(file);
 
-    const data =
-        await getResponseData(
-            response
+    box.innerHTML = `
+        <audio
+            controls
+            src="${url}">
+        </audio>
+
+        <p>
+            🎙️ ${escapeHtml(file.name)}
+        </p>
+    `;
+}
+
+
+/* =====================================================
+   IMAGE PREVIEW
+===================================================== */
+
+function showImage(file) {
+
+    const box =
+        document.getElementById(
+            "imagePreview"
         );
 
+    const url =
+        URL.createObjectURL(file);
 
-    if (
-        response.status === 401 ||
-        response.status === 403
-    ) {
+    box.innerHTML = `
+        <img src="${url}" alt="Preview">
 
-        localStorage.removeItem(
-            "adminToken"
-        );
+        <p>
+            🖼️ ${escapeHtml(file.name)}
+        </p>
+    `;
+}
 
-        localStorage.removeItem(
-            "adminUser"
-        );
 
+/* =====================================================
+   RECORD AUDIO
+===================================================== */
+
+async function startRecording() {
+
+    if (mediaRecorder) {
+
+        if (
+            mediaRecorder.state ===
+            "recording"
+        ) {
+
+            mediaRecorder.stop();
+
+            return;
+        }
     }
 
 
-    return {
-        response,
-        data
-    };
+    try {
+
+        const stream =
+            await navigator.mediaDevices
+                .getUserMedia({
+                    audio: true
+                });
+
+
+        audioChunks = [];
+
+
+        mediaRecorder =
+            new MediaRecorder(stream);
+
+
+        mediaRecorder.ondataavailable =
+            event => {
+
+                if (
+                    event.data.size > 0
+                ) {
+
+                    audioChunks.push(
+                        event.data
+                    );
+
+                }
+            };
+
+
+        mediaRecorder.onstop =
+            () => {
+
+                const blob =
+                    new Blob(
+                        audioChunks,
+                        {
+                            type:
+                                "audio/webm"
+                        }
+                    );
+
+
+                selectedAudio =
+                    new File(
+                        [blob],
+                        `recording-${Date.now()}.webm`,
+                        {
+                            type:
+                                "audio/webm"
+                        }
+                    );
+
+
+                showAudio(
+                    selectedAudio
+                );
+
+
+                stream
+                    .getTracks()
+                    .forEach(
+                        track =>
+                            track.stop()
+                    );
+
+            };
+
+
+        mediaRecorder.start();
+
+        alert(
+            "🎙️ Codka waa la duubayaa. Mar kale riix si loo joojiyo."
+        );
+
+    } catch (error) {
+
+        alert(
+            "❌ Camera/Microphone lama heli karo."
+        );
+
+        console.error(error);
+
+    }
 }
 
 
 /* =====================================================
-   LOGIN
+   TRANSCRIBE AUDIO
 ===================================================== */
 
-function setupLogin() {
+async function transcribeAudio() {
 
-    const loginForm =
-        document.getElementById(
-            "loginForm"
+    if (!selectedAudio) {
+
+        alert(
+            "❌ Marka hore dooro ama duub cod."
         );
-
-
-    if (!loginForm) {
 
         return;
     }
 
 
-    loginForm.addEventListener(
+    const result =
+        document.getElementById(
+            "transcriptionResult"
+        );
+
+
+    result.textContent =
+        "⏳ Codka ayaa loo beddelayaa qoraal...";
+
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "audio",
+        selectedAudio
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/knowledge/transcribe",
+                {
+                    method: "POST",
+                    headers:
+                        adminHeaders(),
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Transcription failed"
+            );
+
+        }
+
+
+        result.textContent =
+            data.text || "";
+
+
+        if (data.text) {
+
+            const content =
+                document.getElementById(
+                    "content"
+                );
+
+            if (!content.value.trim()) {
+
+                content.value =
+                    data.text;
+
+            } else {
+
+                content.value +=
+                    "\n\n" +
+                    data.text;
+
+            }
+        }
+
+    } catch (error) {
+
+        result.textContent =
+            "❌ " + error.message;
+
+    }
+}
+
+
+/* =====================================================
+   IMAGE INTERPRETATION
+===================================================== */
+
+async function interpretImage() {
+
+    if (!selectedImage) {
+
+        alert(
+            "❌ Marka hore dooro sawir."
+        );
+
+        return;
+    }
+
+
+    const result =
+        document.getElementById(
+            "imageResult"
+        );
+
+
+    result.textContent =
+        "⏳ AI ayaa sawirka fasiraya...";
+
+
+    const formData =
+        new FormData();
+
+    formData.append(
+        "image",
+        selectedImage
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/knowledge/interpret-image",
+                {
+                    method: "POST",
+                    headers:
+                        adminHeaders(),
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Image interpretation failed"
+            );
+
+        }
+
+
+        result.textContent =
+            data.text || "";
+
+
+        if (data.text) {
+
+            const content =
+                document.getElementById(
+                    "content"
+                );
+
+            if (!content.value.trim()) {
+
+                content.value =
+                    data.text;
+
+            }
+
+        }
+
+    } catch (error) {
+
+        result.textContent =
+            "❌ " + error.message;
+
+    }
+}
+
+
+/* =====================================================
+   AUDIO + IMAGE
+===================================================== */
+
+async function interpretAll() {
+
+    if (
+        !selectedAudio &&
+        !selectedImage
+    ) {
+
+        alert(
+            "❌ Geli cod ama sawir."
+        );
+
+        return;
+    }
+
+
+    const result =
+        document.getElementById(
+            "combinedResult"
+        );
+
+
+    result.textContent =
+        "⏳ AI ayaa xogta isku fasiraya...";
+
+
+    const formData =
+        new FormData();
+
+
+    if (selectedAudio) {
+
+        formData.append(
+            "audio",
+            selectedAudio
+        );
+
+    }
+
+
+    if (selectedImage) {
+
+        formData.append(
+            "image",
+            selectedImage
+        );
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/admin/knowledge/interpret-all",
+                {
+                    method: "POST",
+                    headers:
+                        adminHeaders(),
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Interpretation failed"
+            );
+
+        }
+
+
+        result.textContent =
+            data.text || "";
+
+
+        if (data.text) {
+
+            const content =
+                document.getElementById(
+                    "content"
+                );
+
+
+            if (!content.value.trim()) {
+
+                content.value =
+                    data.text;
+
+            } else {
+
+                content.value +=
+                    "\n\n" +
+                    data.text;
+
+            }
+
+        }
+
+    } catch (error) {
+
+        result.textContent =
+            "❌ " + error.message;
+
+    }
+}
+
+
+/* =====================================================
+   SAVE KNOWLEDGE
+===================================================== */
+
+document
+    .getElementById(
+        "knowledgeForm"
+    )
+    .addEventListener(
         "submit",
-        async function(event) {
+        async event => {
 
             event.preventDefault();
 
 
-            const emailInput =
-                document.getElementById(
-                    "email"
-                );
+            const title =
+                document
+                    .getElementById(
+                        "title"
+                    )
+                    .value
+                    .trim();
 
 
-            const passwordInput =
-                document.getElementById(
-                    "password"
-                );
-
-
-            const email =
-                emailInput
-                    ? emailInput.value.trim()
-                    : "";
-
-
-            const password =
-                passwordInput
-                    ? passwordInput.value
-                    : "";
+            const content =
+                document
+                    .getElementById(
+                        "content"
+                    )
+                    .value
+                    .trim();
 
 
             if (
-                !email ||
-                !password
+                !title &&
+                !content &&
+                !selectedAudio &&
+                !selectedImage
             ) {
 
                 alert(
-                    "Fadlan geli email iyo password."
+                    "❌ Xog geli marka hore."
                 );
 
                 return;
             }
 
 
-            const submitButton =
-                loginForm.querySelector(
-                    'button[type="submit"]'
+            const formData =
+                new FormData();
+
+
+            formData.append(
+                "title",
+                title
+            );
+
+
+            formData.append(
+                "content",
+                content
+            );
+
+
+            if (selectedAudio) {
+
+                formData.append(
+                    "audio",
+                    selectedAudio
                 );
 
-
-            const oldButtonText =
-                submitButton
-                    ? submitButton.textContent
-                    : "";
+            }
 
 
-            if (submitButton) {
+            if (selectedImage) {
 
-                submitButton.disabled =
-                    true;
+                formData.append(
+                    "image",
+                    selectedImage
+                );
 
-                submitButton.textContent =
-                    "⏳ Login...";
             }
 
 
@@ -226,904 +675,55 @@ function setupLogin() {
 
                 const response =
                     await fetch(
-                        LOGIN_URL,
+                        "/api/admin/knowledge",
                         {
-                            method:
-                                "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json",
-
-                                "Accept":
-                                    "application/json"
-                            },
-
+                            method: "POST",
+                            headers:
+                                adminHeaders(),
                             body:
-                                JSON.stringify({
-                                    email,
-                                    password
-                                })
+                                formData
                         }
                     );
 
 
                 const data =
-                    await getResponseData(
-                        response
-                    );
-
-
-                console.log(
-                    "LOGIN RESPONSE:",
-                    response.status,
-                    data
-                );
+                    await response.json();
 
 
                 if (!response.ok) {
 
-                    alert(
-                        data.error || `Login error: ${response.status}`
+                    throw new Error(
+                        data.error ||
+                        "Save failed"
                     );
 
-                    return;
                 }
-
-
-                if (!data.token) {
-
-                    alert(
-                        "Token-ka Admin lama helin."
-                    );
-
-                    return;
-                }
-
-
-                if (!data.user) {
-
-                    alert(
-                        "Macluumaadka Admin lama helin."
-                    );
-
-                    return;
-                }
-
-
-                if (
-                    data.user.role !==
-                    "admin"
-                ) {
-
-                    alert(
-                        "Account-kan Admin ma aha."
-                    );
-
-                    return;
-                }
-
-
-                /* SAVE TOKEN */
-
-                localStorage.setItem(
-                    "adminToken",
-                    data.token
-                );
-
-
-                localStorage.setItem(
-                    "adminUser",
-                    JSON.stringify(
-                        data.user
-                    )
-                );
-
-
-                /* GO DASHBOARD */
-
-                window.location.href =
-                    "/admin/dashboard.html";
-
-
-            } catch (error) {
-
-                console.error(
-                    "ADMIN LOGIN ERROR:",
-                    error
-                );
 
 
                 alert(
-                    "Server error: " +
-                    (
-                        error.message ||
-                        "Server-ka lama heli karo."
-                    )
+                    "✅ Knowledge Database-ka waa lagu daray."
                 );
 
 
-            } finally {
+                resetForm();
 
-                if (submitButton) {
+                await loadKnowledge();
 
-                    submitButton.disabled =
-                        false;
+                showSection(
+                    "knowledge"
+                );
 
-                    submitButton.textContent =
-                        oldButtonText ||
-                        "Login";
-                }
+            } catch (error) {
+
+                alert(
+                    "❌ " +
+                    error.message
+                );
 
             }
 
         }
     );
-}
-
-
-/* =====================================================
-   VERIFY ADMIN
-===================================================== */
-
-async function verifyAdmin() {
-
-    const token =
-        getAdminToken();
-
-
-    if (!token) {
-
-        return false;
-    }
-
-
-    try {
-
-        const result =
-            await apiRequest(
-                ADMIN_ME_URL
-            );
-
-
-        const response =
-            result.response;
-
-
-        const data =
-            result.data;
-
-
-        if (!response.ok) {
-
-            console.error(
-                "ADMIN VERIFY FAILED:",
-                response.status,
-                data
-            );
-
-            return false;
-        }
-
-
-        if (
-            !data.user ||
-            data.user.role !==
-            "admin"
-        ) {
-
-            console.error(
-                "User-ku Admin ma aha."
-            );
-
-            return false;
-        }
-
-
-        /* UPDATE SAVED USER */
-
-        localStorage.setItem(
-            "adminUser",
-            JSON.stringify(
-                data.user
-            )
-        );
-
-
-        return true;
-
-
-    } catch (error) {
-
-        console.error(
-            "ADMIN VERIFY ERROR:",
-            error
-        );
-
-        return false;
-    }
-}
-
-
-/* =====================================================
-   REDIRECT TO LOGIN
-===================================================== */
-
-function redirectToLogin() {
-
-    localStorage.removeItem(
-        "adminToken"
-    );
-
-    localStorage.removeItem(
-        "adminUser"
-    );
-
-
-    window.location.href =
-        "/admin/";
-}
-
-
-/* =====================================================
-   LOAD USERS
-===================================================== */
-
-async function loadUsers() {
-
-    const container =
-        document.getElementById(
-            "users"
-        );
-
-
-    if (!container) {
-
-        return;
-    }
-
-
-    container.innerHTML =
-        `
-        <tr>
-            <td colspan="6">
-                ⏳ Users ayaa la soo gelinayaa...
-            </td>
-        </tr>
-        `;
-
-
-    try {
-
-        const result =
-            await apiRequest(
-                USERS_URL
-            );
-
-
-        const response =
-            result.response;
-
-
-        const data =
-            result.data;
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                `Users error: ${response.status}`
-            );
-        }
-
-
-        const users =
-            Array.isArray(
-                data.users
-            )
-            ?
-            data.users
-            :
-            [];
-
-
-        if (
-            users.length === 0
-        ) {
-
-            container.innerHTML =
-                `
-                <tr>
-                    <td colspan="6">
-                        👤 Wax user ah lama helin.
-                    </td>
-                </tr>
-                `;
-
-            return;
-        }
-
-
-        container.innerHTML =
-            users
-            .map(
-                user => {
-
-                    const userId =
-                        Number(
-                            user.id
-                        );
-
-
-                    const role =
-                        String(
-                            user.role ||
-                            "user"
-                        );
-
-
-                    return `
-                    <tr>
-
-                        <td>
-                            ${userId}
-                        </td>
-
-                        <td>
-                            ${escapeHTML(
-                                user.name
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHTML(
-                                user.email
-                            )}
-                        </td>
-
-                        <td>
-                            ${
-                                role === "admin"
-                                ?
-                                "👑 Admin"
-                                :
-                                "👤 User"
-                            }
-                        </td>
-
-                        <td>
-                            ${
-                                Number(
-                                    user.chat_count
-                                ) || 0
-                            }
-                        </td>
-
-                        <td>
-
-                            ${
-                                role !== "admin"
-                                ?
-                                `
-                                <button
-                                    type="button"
-                                    onclick="deleteUserChats(${userId})"
-                                >
-                                    🗑️ Chats
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onclick="deleteUser(${userId})"
-                                >
-                                    ❌ User
-                                </button>
-                                `
-                                :
-                                `
-                                <span>
-                                    🔐 Protected
-                                </span>
-                                `
-                            }
-
-                        </td>
-
-                    </tr>
-                    `;
-                }
-            )
-            .join("");
-
-
-    } catch (error) {
-
-        console.error(
-            "LOAD USERS ERROR:",
-            error
-        );
-
-
-        container.innerHTML =
-            `
-            <tr>
-                <td colspan="6">
-                    ❌ Users lama soo qaadi karin.
-                    <br>
-                    <small>
-                        ${escapeHTML(
-                            error.message
-                        )}
-                    </small>
-                </td>
-            </tr>
-            `;
-    }
-}
-
-
-/* =====================================================
-   LOAD CHATS
-===================================================== */
-
-async function loadChats() {
-
-    const container =
-        document.getElementById(
-            "chats"
-        );
-
-
-    if (!container) {
-
-        return;
-    }
-
-
-    container.innerHTML =
-        `
-        <p>
-            ⏳ Chat history ayaa la soo gelinayaa...
-        </p>
-        `;
-
-
-    try {
-
-        const result =
-            await apiRequest(
-                CHATS_URL
-            );
-
-
-        const response =
-            result.response;
-
-
-        const data =
-            result.data;
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                data.error ||
-                `Chats error: ${response.status}`
-            );
-        }
-
-
-        const chats =
-            Array.isArray(
-                data.chats
-            )
-            ?
-            data.chats
-            :
-            [];
-
-
-        if (
-            chats.length === 0
-        ) {
-
-            container.innerHTML =
-                `
-                <p>
-                    💬 Chat history waa madhan yahay.
-                </p>
-                `;
-
-            return;
-        }
-
-
-        container.innerHTML =
-            chats
-            .map(
-                chat => {
-
-                    const image =
-                        chat.image
-                        ?
-                        `
-                        <div class="chat-image-wrapper">
-
-                            <img
-                                src="${escapeAttribute(
-                                    chat.image
-                                )}"
-                                class="chat-image"
-                                alt="User image"
-                                loading="lazy"
-                            >
-
-                        </div>
-                        `
-                        :
-                        "";
-
-
-                    return `
-                    <div class="chat-card">
-
-                        <div class="chat-user">
-
-                            👤
-                            <b>
-                                ${escapeHTML(
-                                    chat.name ||
-                                    "Anonymous"
-                                )}
-                            </b>
-
-                            <br>
-
-                            <small>
-                                ${escapeHTML(
-                                    chat.email ||
-                                    "anonymous"
-                                )}
-                            </small>
-
-                        </div>
-
-
-                        <div class="chat-message">
-
-                            <b>
-                                Su'aal:
-                            </b>
-
-                            <p>
-                                ${escapeHTML(
-                                    chat.message ||
-                                    ""
-                                )}
-                            </p>
-
-                        </div>
-
-
-                        ${image}
-
-
-                        <div class="chat-response">
-
-                            <b>
-                                🤖 AI:
-                            </b>
-
-                            <p>
-                                ${escapeHTML(
-                                    chat.response ||
-                                    ""
-                                )}
-                            </p>
-
-                        </div>
-
-
-                        <small>
-                            📅
-                            ${formatDate(
-                                chat.created_at
-                            )}
-                        </small>
-
-
-                        <hr>
-
-                    </div>
-                    `;
-                }
-            )
-            .join("");
-
-
-    } catch (error) {
-
-        console.error(
-            "LOAD CHATS ERROR:",
-            error
-        );
-
-
-        container.innerHTML =
-            `
-            <p>
-                ❌ Chats lama soo qaadi karin.
-                <br>
-                <small>
-                    ${escapeHTML(
-                        error.message
-                    )}
-                </small>
-            </p>
-            `;
-    }
-}
-
-
-/* =====================================================
-   DELETE ALL CHATS
-===================================================== */
-
-async function deleteAllChats() {
-
-    const confirmed =
-        confirm(
-            "⚠️ Ma hubtaa inaad tirtirayso DHAMMAAN chat-yada?"
-        );
-
-
-    if (!confirmed) {
-
-        return;
-    }
-
-
-    try {
-
-        const result =
-            await apiRequest(
-                CHATS_URL,
-                {
-                    method:
-                        "DELETE"
-                }
-            );
-
-
-        const response =
-            result.response;
-
-
-        const data =
-            result.data;
-
-
-        if (!response.ok) {
-
-            alert(
-                data.error ||
-                "Chats lama tirtiri karin."
-            );
-
-            return;
-        }
-
-
-        alert(
-            data.message ||
-            "Dhammaan chats waa la tirtiray."
-        );
-
-
-        await loadChats();
-
-        await loadUsers();
-
-
-    } catch (error) {
-
-        console.error(
-            "DELETE ALL CHATS ERROR:",
-            error
-        );
-
-
-        alert(
-            "Server error: " +
-            error.message
-        );
-    }
-}
-
-
-/* =====================================================
-   DELETE USER CHATS
-===================================================== */
-
-async function deleteUserChats(
-    userId
-) {
-
-    const id =
-        Number(userId);
-
-
-    if (!Number.isInteger(id)) {
-
-        alert(
-            "User ID sax ah lama helin."
-        );
-
-        return;
-    }
-
-
-    const confirmed =
-        confirm(
-            "Ma hubtaa inaad tirtirayso dhammaan chats-ka user-kan?"
-        );
-
-
-    if (!confirmed) {
-
-        return;
-    }
-
-
-    try {
-
-        const result =
-            await apiRequest(
-                `/api/admin/users/${id}/chats`,
-                {
-                    method:
-                        "DELETE"
-                }
-            );
-
-
-        const response =
-            result.response;
-
-
-        const data =
-            result.data;
-
-
-        if (!response.ok) {
-
-            alert(
-                data.error ||
-                "User chats lama tirtiri karin."
-            );
-
-            return;
-        }
-
-
-        alert(
-            data.message ||
-            "User chats waa la tirtiray."
-        );
-
-
-        await loadUsers();
-
-        await loadChats();
-
-
-    } catch (error) {
-
-        console.error(
-            "DELETE USER CHATS ERROR:",
-            error
-        );
-
-
-        alert(
-            "Server error: " +
-            error.message
-        );
-    }
-}
-
-
-/* =====================================================
-   DELETE USER
-===================================================== */
-
-async function deleteUser(
-    userId
-) {
-
-    const id =
-        Number(userId);
-
-
-    if (!Number.isInteger(id)) {
-
-        alert(
-            "User ID sax ah lama helin."
-        );
-
-        return;
-    }
-
-
-    const confirmed =
-        confirm(
-            "⚠️ Ma hubtaa inaad tirtirayso user-kan iyo xogtiisa?"
-        );
-
-
-    if (!confirmed) {
-
-        return;
-    }
-
-
-    try {
-
-        const result =
-            await apiRequest(
-                `/api/admin/users/${id}`,
-                {
-                    method:
-                        "DELETE"
-                }
-            );
-
-
-        const response =
-            result.response;
-
-
-        const data =
-            result.data;
-
-
-        if (!response.ok) {
-
-            alert(
-                data.error ||
-                "User lama tirtiri karin."
-            );
-
-            return;
-        }
-
-
-        alert(
-            data.message ||
-            "User waa la tirtiray."
-        );
-
-
-        await loadUsers();
-
-        await loadChats();
-
-
-    } catch (error) {
-
-        console.error(
-            "DELETE USER ERROR:",
-            error
-        );
-
-
-        alert(
-            "Server error: " +
-            error.message
-        );
-    }
-}
 
 
 /* =====================================================
@@ -1132,195 +732,286 @@ async function deleteUser(
 
 async function loadKnowledge() {
 
-    const container =
+    const list =
         document.getElementById(
             "knowledgeList"
         );
 
 
-    if (!container) {
-
-        return;
-    }
-
-
-    container.innerHTML =
-        `
-        <p>
-            ⏳ Knowledge ayaa la soo gelinayaa...
-        </p>
-        `;
-
-
     try {
 
-        const result =
-            await apiRequest(
-                KNOWLEDGE_URL
+        const response =
+            await fetch(
+                "/api/admin/knowledge",
+                {
+                    headers:
+                        adminHeaders()
+                }
             );
 
 
-        const response =
-            result.response;
-
-
         const data =
-            result.data;
+            await response.json();
 
 
         if (!response.ok) {
 
             throw new Error(
                 data.error ||
-                `Knowledge error: ${response.status}`
+                "Failed"
             );
+
         }
 
 
-        const knowledge =
-            Array.isArray(
-                data.knowledge
-            )
-            ?
-            data.knowledge
-            :
-            [];
+        knowledgeData =
+            data;
 
 
-        if (
-            knowledge.length === 0
-        ) {
+        renderKnowledge(
+            knowledgeData
+        );
 
-            container.innerHTML =
-                `
-                <p>
-                    🧠 Knowledge wali lama gelin.
-                </p>
-                `;
-
-            return;
-        }
-
-
-        container.innerHTML =
-            knowledge
-            .map(
-                item => {
-
-                    return `
-                    <div class="knowledge-card">
-
-                        <h3>
-                            🧠
-                            ${escapeHTML(
-                                item.title
-                            )}
-                        </h3>
-
-                        <p>
-                            ${escapeHTML(
-                                item.content
-                            )}
-                        </p>
-
-                        <small>
-                            📅
-                            ${formatDate(
-                                item.created_at
-                            )}
-                        </small>
-
-                        <br><br>
-
-                        <button
-                            type="button"
-                            onclick="deleteKnowledge(${Number(
-                                item.id
-                            )})"
-                        >
-                            🗑️ Delete
-                        </button>
-
-                        <hr>
-
-                    </div>
-                    `;
-                }
-            )
-            .join("");
-
+        updateStats();
 
     } catch (error) {
 
-        console.error(
-            "LOAD KNOWLEDGE ERROR:",
-            error
-        );
+        list.innerHTML = `
+            <div class="knowledge-item">
+                ❌ ${escapeHtml(error.message)}
+            </div>
+        `;
 
-
-        container.innerHTML =
-            `
-            <p>
-                ❌ Knowledge lama soo qaadi karin.
-                <br>
-                <small>
-                    ${escapeHTML(
-                        error.message
-                    )}
-                </small>
-            </p>
-            `;
     }
 }
 
 
 /* =====================================================
-   ADD KNOWLEDGE
+   RENDER
 ===================================================== */
 
-async function addKnowledge() {
+function renderKnowledge(items) {
 
-    const titleInput =
+    const list =
         document.getElementById(
-            "knowledgeTitle"
+            "knowledgeList"
         );
 
 
-    const contentInput =
-        document.getElementById(
-            "knowledgeContent"
-        );
+    if (!items.length) {
 
-
-    if (
-        !titleInput ||
-        !contentInput
-    ) {
-
-        alert(
-            "Knowledge inputs lama helin."
-        );
+        list.innerHTML = `
+            <div class="knowledge-item">
+                📭 Database-ku wali waa madhan yahay.
+            </div>
+        `;
 
         return;
     }
 
 
-    const title =
-        titleInput.value.trim();
+    list.innerHTML =
+        items
+            .map(item => {
+
+                let media = "";
 
 
-    const content =
-        contentInput.value.trim();
+                if (item.image_url) {
 
+                    media += `
+                        <div class="knowledge-media">
+                            <img
+                                src="${item.image_url}"
+                                alt="Knowledge image"
+                            >
+                        </div>
+                    `;
+
+                }
+
+
+                if (item.audio_url) {
+
+                    media += `
+                        <div class="knowledge-media">
+                            <audio
+                                controls
+                                src="${item.audio_url}">
+                            </audio>
+                        </div>
+                    `;
+
+                }
+
+
+                return `
+                    <article
+                        class="knowledge-item"
+                        data-search="
+                            ${escapeHtml(
+                                item.title || ""
+                            )}
+                            ${escapeHtml(
+                                item.content || ""
+                            )}
+                        "
+                    >
+
+                        <div class="knowledge-header">
+
+                            <div>
+
+                                <h3>
+                                    ${escapeHtml(
+                                        item.title ||
+                                        "Knowledge"
+                                    )}
+                                </h3>
+
+                                <div class="knowledge-date">
+                                    ${escapeHtml(
+                                        item.created_at ||
+                                        ""
+                                    )}
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="knowledge-content">
+                            ${escapeHtml(
+                                item.content || ""
+                            )}
+                        </div>
+
+
+                        ${media}
+
+
+                        <div class="item-actions">
+
+                            <button
+                                class="edit-btn"
+                                onclick="editKnowledge(
+                                    ${item.id}
+                                )"
+                            >
+                                ✏️ Edit
+                            </button>
+
+                            <button
+                                class="delete-btn"
+                                onclick="deleteKnowledge(
+                                    ${item.id}
+                                )"
+                            >
+                                🗑️ Delete
+                            </button>
+
+                        </div>
+
+                    </article>
+                `;
+
+            })
+            .join("");
+}
+
+
+/* =====================================================
+   SEARCH
+===================================================== */
+
+function searchKnowledge() {
+
+    const query =
+        document
+            .getElementById(
+                "searchInput"
+            )
+            .value
+            .toLowerCase()
+            .trim();
+
+
+    const filtered =
+        knowledgeData.filter(
+            item => {
+
+                const text =
+                    (
+                        item.title ||
+                        ""
+                    ) +
+                    " " +
+                    (
+                        item.content ||
+                        ""
+                    );
+
+                return text
+                    .toLowerCase()
+                    .includes(query);
+
+            }
+        );
+
+
+    renderKnowledge(
+        filtered
+    );
+}
+
+
+/* =====================================================
+   STATS
+===================================================== */
+
+function updateStats() {
+
+    document
+        .getElementById(
+            "totalKnowledge"
+        )
+        .textContent =
+            knowledgeData.length;
+
+
+    document
+        .getElementById(
+            "totalAudio"
+        )
+        .textContent =
+            knowledgeData.filter(
+                x => x.audio_url
+            ).length;
+
+
+    document
+        .getElementById(
+            "totalImages"
+        )
+        .textContent =
+            knowledgeData.filter(
+                x => x.image_url
+            ).length;
+}
+
+
+/* =====================================================
+   DELETE
+===================================================== */
+
+async function deleteKnowledge(id) {
 
     if (
-        !title ||
-        !content
+        !confirm(
+            "Ma hubtaa inaad tirtirayso xogtan?"
+        )
     ) {
-
-        alert(
-            "Fadlan geli Cinwaan iyo Knowledge."
-        );
 
         return;
     }
@@ -1328,14 +1019,142 @@ async function addKnowledge() {
 
     try {
 
-        const result =
-            await apiRequest(
-                KNOWLEDGE_URL,
+        const response =
+            await fetch(
+                `/api/admin/knowledge/${id}`,
                 {
-                    method:
-                        "POST",
+                    method: "DELETE",
+                    headers:
+                        adminHeaders()
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Delete failed"
+            );
+
+        }
+
+
+        await loadKnowledge();
+
+    } catch (error) {
+
+        alert(
+            "❌ " +
+            error.message
+        );
+
+    }
+}
+
+
+/* =====================================================
+   EDIT
+===================================================== */
+
+function editKnowledge(id) {
+
+    const item =
+        knowledgeData.find(
+            x => x.id === id
+        );
+
+
+    if (!item) return;
+
+
+    document
+        .getElementById(
+            "editId"
+        )
+        .value =
+            item.id;
+
+
+    document
+        .getElementById(
+            "editTitle"
+        )
+        .value =
+            item.title || "";
+
+
+    document
+        .getElementById(
+            "editContent"
+        )
+        .value =
+            item.content || "";
+
+
+    document
+        .getElementById(
+            "editModal"
+        )
+        .classList
+        .remove("hidden");
+}
+
+
+function closeEdit() {
+
+    document
+        .getElementById(
+            "editModal"
+        )
+        .classList
+        .add("hidden");
+}
+
+
+async function saveEdit() {
+
+    const id =
+        document
+            .getElementById(
+                "editId"
+            )
+            .value;
+
+
+    const title =
+        document
+            .getElementById(
+                "editTitle"
+            )
+            .value
+            .trim();
+
+
+    const content =
+        document
+            .getElementById(
+                "editContent"
+            )
+            .value
+            .trim();
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/admin/knowledge/${id}`,
+                {
+                    method: "PUT",
 
                     headers: {
+                        ...adminHeaders(),
+
                         "Content-Type":
                             "application/json"
                     },
@@ -1349,149 +1168,150 @@ async function addKnowledge() {
             );
 
 
-        const response =
-            result.response;
-
-
         const data =
-            result.data;
+            await response.json();
 
 
         if (!response.ok) {
 
-            alert(
+            throw new Error(
                 data.error ||
-                "Knowledge lama kaydin."
+                "Edit failed"
             );
 
-            return;
         }
 
 
-        alert(
-            data.message ||
-            "Knowledge waa la kaydiyay."
-        );
-
-
-        titleInput.value =
-            "";
-
-
-        contentInput.value =
-            "";
-
+        closeEdit();
 
         await loadKnowledge();
 
-
     } catch (error) {
 
-        console.error(
-            "ADD KNOWLEDGE ERROR:",
-            error
-        );
-
-
         alert(
-            "Server error: " +
+            "❌ " +
             error.message
         );
+
     }
 }
 
 
 /* =====================================================
-   DELETE KNOWLEDGE
+   RESET
 ===================================================== */
 
-async function deleteKnowledge(
-    id
-) {
+function resetForm() {
 
-    const knowledgeId =
-        Number(id);
-
-
-    if (
-        !Number.isInteger(
-            knowledgeId
+    document
+        .getElementById(
+            "knowledgeForm"
         )
-    ) {
+        .reset();
 
-        alert(
-            "Knowledge ID sax ah lama helin."
-        );
 
-        return;
+    selectedAudio = null;
+
+    selectedImage = null;
+
+
+    document
+        .getElementById(
+            "audioPreview"
+        )
+        .innerHTML = "";
+
+
+    document
+        .getElementById(
+            "imagePreview"
+        )
+        .innerHTML = "";
+
+
+    document
+        .getElementById(
+            "transcriptionResult"
+        )
+        .textContent = "";
+
+
+    document
+        .getElementById(
+            "imageResult"
+        )
+        .textContent = "";
+
+
+    document
+        .getElementById(
+            "combinedResult"
+        )
+        .textContent = "";
+}
+
+
+/* =====================================================
+   SECTIONS
+===================================================== */
+
+function showSection(section) {
+
+    document
+        .getElementById(
+            "knowledgeSection"
+        )
+        .classList
+        .add("hidden");
+
+
+    document
+        .getElementById(
+            "addSection"
+        )
+        .classList
+        .add("hidden");
+
+
+    if (section === "knowledge") {
+
+        document
+            .getElementById(
+                "knowledgeSection"
+            )
+            .classList
+            .remove("hidden");
+
     }
 
 
-    const confirmed =
-        confirm(
-            "Ma hubtaa inaad tirtirayso Knowledge-kan?"
-        );
+    if (section === "add") {
 
+        document
+            .getElementById(
+                "addSection"
+            )
+            .classList
+            .remove("hidden");
 
-    if (!confirmed) {
-
-        return;
     }
 
-
-    try {
-
-        const result =
-            await apiRequest(
-                `${KNOWLEDGE_URL}/${knowledgeId}`,
-                {
-                    method:
-                        "DELETE"
-                }
-            );
+}
 
 
-        const response =
-            result.response;
+/* =====================================================
+   SIDEBAR
+===================================================== */
 
+function toggleSidebar() {
 
-        const data =
-            result.data;
+    document
+        .querySelector(
+            ".sidebar"
+        )
+        .classList
+        .toggle("open");
 
-
-        if (!response.ok) {
-
-            alert(
-                data.error ||
-                "Knowledge lama tirtiri karin."
-            );
-
-            return;
-        }
-
-
-        alert(
-            data.message ||
-            "Knowledge waa la tirtiray."
-        );
-
-
-        await loadKnowledge();
-
-
-    } catch (error) {
-
-        console.error(
-            "DELETE KNOWLEDGE ERROR:",
-            error
-        );
-
-
-        alert(
-            "Server error: " +
-            error.message
-        );
-    }
 }
 
 
@@ -1499,29 +1319,15 @@ async function deleteKnowledge(
    LOGOUT
 ===================================================== */
 
-function logout() {
-
-    const confirmed =
-        confirm(
-            "Ma hubtaa inaad Admin-ka ka baxayso?"
-        );
-
-
-    if (!confirmed) {
-
-        return;
-    }
-
+function adminLogout() {
 
     localStorage.removeItem(
         "adminToken"
     );
 
-
     localStorage.removeItem(
-        "adminUser"
+        "token"
     );
-
 
     window.location.href =
         "/admin/";
@@ -1529,90 +1335,15 @@ function logout() {
 
 
 /* =====================================================
-   FORMAT DATE
+   ESCAPE HTML
 ===================================================== */
 
-function formatDate(
-    date
-) {
+function escapeHtml(value) {
 
-    if (!date) {
-
-        return "";
-    }
-
-
-    try {
-
-        return new Date(
-            date
-        ).toLocaleString(
-            "so-SO"
-        );
-
-    } catch (error) {
-
-        return String(date);
-    }
-}
-
-
-/* =====================================================
-   SECURITY - ESCAPE HTML
-===================================================== */
-
-function escapeHTML(
-    text
-) {
-
-    if (
-        text === null ||
-        text === undefined
-    ) {
-
-        return "";
-    }
-
-
-    const div =
-        document.createElement(
-            "div"
-        );
-
-
-    div.textContent =
-        String(text);
-
-
-    return div.innerHTML;
-}
-
-
-/* =====================================================
-   SECURITY - ESCAPE ATTRIBUTE
-===================================================== */
-
-function escapeAttribute(
-    text
-) {
-
-    if (
-        text === null ||
-        text === undefined
-    ) {
-
-        return "";
-    }
-
-
-    return String(text)
+    return String(value || "")
         .replace(
             /&/g,
             "&amp;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
         )
         .replace(
             /</g,
@@ -1621,183 +1352,13 @@ function escapeAttribute(
         .replace(
             />/g,
             "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
         );
 }
-
-
-/* =====================================================
-   SHOW ADMIN NAME
-===================================================== */
-
-function showAdminName() {
-
-    const adminUser =
-        localStorage.getItem(
-            "adminUser"
-        );
-
-
-    if (!adminUser) {
-
-        return;
-    }
-
-
-    try {
-
-        const user =
-            JSON.parse(
-                adminUser
-            );
-
-
-        const elements =
-            document.querySelectorAll(
-                "#adminName, .admin-name"
-            );
-
-
-        elements.forEach(
-            element => {
-
-                element.textContent =
-                    user.name ||
-                    "Administrator";
-
-            }
-        );
-
-
-    } catch (error) {
-
-        console.warn(
-            "Admin user data error:",
-            error
-        );
-    }
-}
-
-
-/* =====================================================
-   DASHBOARD INITIALIZATION
-===================================================== */
-
-async function initializeDashboard() {
-
-    const token =
-        getAdminToken();
-
-
-    if (!token) {
-
-        redirectToLogin();
-
-        return;
-    }
-
-
-    console.log(
-        "🔐 Checking Admin..."
-    );
-
-
-    const isAdmin =
-        await verifyAdmin();
-
-
-    if (!isAdmin) {
-
-        alert(
-            "Admin login-ka wuu dhacay ama ma saxna. Fadlan mar kale gal."
-        );
-
-
-        redirectToLogin();
-
-        return;
-    }
-
-
-    console.log(
-        "✅ Admin verified"
-    );
-
-
-    showAdminName();
-
-
-    /* LOAD ALL ADMIN DATA */
-
-    await Promise.all([
-        loadUsers(),
-        loadChats(),
-        loadKnowledge()
-    ]);
-
-
-    console.log(
-        "✅ Admin Dashboard loaded"
-    );
-}
-
-
-/* =====================================================
-   GLOBAL FUNCTIONS
-   Required for HTML onclick=""
-===================================================== */
-
-window.deleteAllChats =
-    deleteAllChats;
-
-window.deleteUserChats =
-    deleteUserChats;
-
-window.deleteUser =
-    deleteUser;
-
-window.addKnowledge =
-    addKnowledge;
-
-window.deleteKnowledge =
-    deleteKnowledge;
-
-window.logout =
-    logout;
-
-window.loadUsers =
-    loadUsers;
-
-window.loadChats =
-    loadChats;
-
-window.loadKnowledge =
-    loadKnowledge;
-
-
-/* =====================================================
-   START
-===================================================== */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function() {
-
-        /* LOGIN PAGE */
-
-        setupLogin();
-
-
-        /* DASHBOARD PAGE */
-
-        if (
-            window.location.pathname.includes(
-                "dashboard.html"
-            )
-        ) {
-
-            initializeDashboard();
-
-        }
-
-    }
-);
