@@ -987,27 +987,26 @@ app.post(
 
 
 /* =========================================================
-   ADMIN ME
+   ADMIN TOKEN VERIFICATION
 ========================================================= */
 
 app.get(
     "/api/admin/me",
     adminMiddleware,
-    async (req, res) => {
+    (req, res) => {
 
         res.json({
+            success: true,
 
-            success:
-                true,
-
-            user:
-                req.admin
-
+            user: {
+                id: req.admin.id,
+                email: req.admin.email,
+                role: req.admin.role
+            }
         });
 
     }
 );
-
 
 /* =========================================================
    GET KNOWLEDGE
