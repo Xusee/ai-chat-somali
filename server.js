@@ -1,6 +1,6 @@
 /* =========================================================
    NASIIB BUSINESS CENTER
-   COMPLETE SERVER
+   COMPLETE CLEAN SERVER.JS
 ========================================================= */
 
 require("dotenv").config();
@@ -16,7 +16,6 @@ const multer = require("multer");
 const sqlite3 = require("sqlite3").verbose();
 const OpenAI = require("openai");
 
-
 /* =========================================================
    CONFIG
 ========================================================= */
@@ -24,17 +23,17 @@ const OpenAI = require("openai");
 const app = express();
 
 const PORT =
-    process.env.PORT || 3000;
+    Number(process.env.PORT) || 3000;
 
 const JWT_SECRET =
     process.env.JWT_SECRET ||
-    "BADAL_SECRET_KAN_PRODUCTION";
+    "CHANGE_THIS_SECRET";
 
 const OPENROUTER_API_KEY =
-    process.env.OPENROUTER_API_KEY;
+    process.env.OPENROUTER_API_KEY || "";
 
 const OPENAI_API_KEY =
-    process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY || "";
 
 const AI_MODEL =
     process.env.AI_MODEL ||
@@ -44,39 +43,32 @@ const APP_URL =
     process.env.APP_URL ||
     `http://localhost:${PORT}`;
 
+const ADMIN_EMAIL =
+    process.env.ADMIN_EMAIL ||
+    "admin@nasiib.com";
+
+const ADMIN_PASSWORD =
+    process.env.ADMIN_PASSWORD ||
+    "123456";
 
 /* =========================================================
    DIRECTORIES
 ========================================================= */
 
 const PUBLIC_DIR =
-    path.join(
-        __dirname,
-        "public"
-    );
+    path.join(__dirname, "public");
 
 const DATABASE_DIR =
-    path.join(
-        __dirname,
-        "database"
-    );
+    path.join(__dirname, "database");
 
 const UPLOADS_DIR =
-    path.join(
-        __dirname,
-        "uploads"
-    );
+    path.join(__dirname, "uploads");
 
 const KNOWLEDGE_UPLOAD_DIR =
     path.join(
         UPLOADS_DIR,
         "knowledge"
     );
-
-
-/* =========================================================
-   CREATE DIRECTORIES
-========================================================= */
 
 [
     DATABASE_DIR,
@@ -85,44 +77,34 @@ const KNOWLEDGE_UPLOAD_DIR =
 ].forEach(dir => {
 
     if (!fs.existsSync(dir)) {
-
         fs.mkdirSync(
             dir,
             {
                 recursive: true
             }
         );
-
     }
 
 });
 
-
 /* =========================================================
-   MIDDLEWARE
+   EXPRESS
 ========================================================= */
 
-app.use(
-    cors()
-);
+app.use(cors());
 
 app.use(
     express.json({
-        limit: "20mb"
+        limit: "25mb"
     })
 );
 
 app.use(
     express.urlencoded({
         extended: true,
-        limit: "20mb"
+        limit: "25mb"
     })
 );
-
-
-/* =========================================================
-   STATIC FILES
-========================================================= */
 
 app.use(
     express.static(
@@ -137,9 +119,8 @@ app.use(
     )
 );
 
-
 /* =========================================================
-   DATABASE
+   SQLITE DATABASE
 ========================================================= */
 
 const DB_FILE =
@@ -156,22 +137,20 @@ const db =
             if (error) {
 
                 console.error(
-                    "❌ Database error:",
+                    "❌ DATABASE ERROR:",
                     error
                 );
 
                 process.exit(1);
-
             }
 
             console.log(
-                "🗄️ Database:",
+                "🗄️ SQLite connected:",
                 DB_FILE
             );
 
         }
     );
-
 
 /* =========================================================
    DATABASE HELPERS
@@ -183,7 +162,10 @@ function dbRun(
 ) {
 
     return new Promise(
-        (resolve, reject) => {
+        (
+            resolve,
+            reject
+        ) => {
 
             db.run(
                 sql,
@@ -191,15 +173,16 @@ function dbRun(
                 function(error) {
 
                     if (error) {
-
                         reject(error);
-
                         return;
                     }
 
                     resolve({
-                        id: this.lastID,
-                        changes: this.changes
+                        id:
+                            this.lastID,
+
+                        changes:
+                            this.changes
                     });
 
                 }
@@ -217,17 +200,21 @@ function dbGet(
 ) {
 
     return new Promise(
-        (resolve, reject) => {
+        (
+            resolve,
+            reject
+        ) => {
 
             db.get(
                 sql,
                 params,
-                (error, row) => {
+                (
+                    error,
+                    row
+                ) => {
 
                     if (error) {
-
                         reject(error);
-
                         return;
                     }
 
@@ -248,17 +235,21 @@ function dbAll(
 ) {
 
     return new Promise(
-        (resolve, reject) => {
+        (
+            resolve,
+            reject
+        ) => {
 
             db.all(
                 sql,
                 params,
-                (error, rows) => {
+                (
+                    error,
+                    rows
+                ) => {
 
                     if (error) {
-
                         reject(error);
-
                         return;
                     }
 
@@ -274,9 +265,8 @@ function dbAll(
 
 }
 
-
 /* =========================================================
-   CREATE TABLES
+   INITIALIZE DATABASE
 ========================================================= */
 
 async function initializeDatabase() {
@@ -284,16 +274,27 @@ async function initializeDatabase() {
     await dbRun(`
         CREATE TABLE IF NOT EXISTS users (
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id
+            INTEGER
+            PRIMARY KEY
+            AUTOINCREMENT,
 
-            email TEXT UNIQUE NOT NULL,
+            email
+            TEXT
+            UNIQUE
+            NOT NULL,
 
-            password TEXT NOT NULL,
+            password
+            TEXT
+            NOT NULL,
 
-            role TEXT DEFAULT 'user',
+            role
+            TEXT
+            DEFAULT 'user',
 
-            created_at DATETIME
-                DEFAULT CURRENT_TIMESTAMP
+            created_at
+            DATETIME
+            DEFAULT CURRENT_TIMESTAMP
 
         )
     `);
@@ -302,20 +303,29 @@ async function initializeDatabase() {
     await dbRun(`
         CREATE TABLE IF NOT EXISTS chats (
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id
+            INTEGER
+            PRIMARY KEY
+            AUTOINCREMENT,
 
-            client_id TEXT,
+            client_id
+            TEXT,
 
-            user_id INTEGER,
+            user_id
+            INTEGER,
 
-            message TEXT,
+            message
+            TEXT,
 
-            image TEXT,
+            image
+            TEXT,
 
-            response TEXT,
+            response
+            TEXT,
 
-            created_at DATETIME
-                DEFAULT CURRENT_TIMESTAMP
+            created_at
+            DATETIME
+            DEFAULT CURRENT_TIMESTAMP
 
         )
     `);
@@ -324,42 +334,46 @@ async function initializeDatabase() {
     await dbRun(`
         CREATE TABLE IF NOT EXISTS knowledge (
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id
+            INTEGER
+            PRIMARY KEY
+            AUTOINCREMENT,
 
-            title TEXT,
+            title
+            TEXT,
 
-            content TEXT,
+            content
+            TEXT,
 
-            audio_url TEXT,
+            audio_url
+            TEXT,
 
-            image_url TEXT,
+            image_url
+            TEXT,
 
-            created_at DATETIME
-                DEFAULT CURRENT_TIMESTAMP,
+            created_at
+            DATETIME
+            DEFAULT CURRENT_TIMESTAMP,
 
-            updated_at DATETIME
-                DEFAULT CURRENT_TIMESTAMP
+            updated_at
+            DATETIME
+            DEFAULT CURRENT_TIMESTAMP
 
         )
     `);
 
 }
 
-
 /* =========================================================
-   ADMIN ACCOUNT
+   DEFAULT ADMIN
 ========================================================= */
 
 async function createDefaultAdmin() {
 
     const email =
-        process.env.ADMIN_EMAIL ||
-        "admin@nasiib.com";
-
-    const password =
-        process.env.ADMIN_PASSWORD ||
-        "123456";
-
+        ADMIN_EMAIL
+            .trim()
+            .toLowerCase();
 
     const existing =
         await dbGet(
@@ -371,20 +385,15 @@ async function createDefaultAdmin() {
             [email]
         );
 
-
     if (existing) {
-
         return;
-
     }
 
-
-    const hashedPassword =
+    const passwordHash =
         await bcrypt.hash(
-            password,
+            ADMIN_PASSWORD,
             10
         );
-
 
     await dbRun(
         `
@@ -398,10 +407,9 @@ async function createDefaultAdmin() {
         `,
         [
             email,
-            hashedPassword
+            passwordHash
         ]
     );
-
 
     console.log(
         "👑 Default admin created:",
@@ -410,14 +418,15 @@ async function createDefaultAdmin() {
 
 }
 
-
 /* =========================================================
    OPENROUTER
 ========================================================= */
 
 let openrouter = null;
 
-if (OPENROUTER_API_KEY) {
+if (
+    OPENROUTER_API_KEY
+) {
 
     openrouter =
         new OpenAI({
@@ -443,19 +452,20 @@ if (OPENROUTER_API_KEY) {
 } else {
 
     console.warn(
-        "⚠️ OPENROUTER_API_KEY missing."
+        "⚠️ OPENROUTER_API_KEY lama dejin."
     );
 
 }
 
-
 /* =========================================================
-   OPENAI - TRANSCRIPTION
+   OPENAI
 ========================================================= */
 
 let openai = null;
 
-if (OPENAI_API_KEY) {
+if (
+    OPENAI_API_KEY
+) {
 
     openai =
         new OpenAI({
@@ -463,11 +473,16 @@ if (OPENAI_API_KEY) {
                 OPENAI_API_KEY
         });
 
+} else {
+
+    console.warn(
+        "⚠️ OPENAI_API_KEY lama dejin."
+    );
+
 }
 
-
 /* =========================================================
-   MULTER - KNOWLEDGE UPLOAD
+   MULTER STORAGE
 ========================================================= */
 
 const knowledgeStorage =
@@ -487,7 +502,6 @@ const knowledgeStorage =
 
             },
 
-
         filename:
             function(
                 req,
@@ -495,23 +509,25 @@ const knowledgeStorage =
                 cb
             ) {
 
-                const ext =
-                    path.extname(
-                        file.originalname
-                    );
-
-                const safeExt =
-                    ext
+                const extension =
+                    path
+                        .extname(
+                            file.originalname ||
+                            ""
+                        )
                         .replace(
                             /[^a-zA-Z0-9.]/g,
                             ""
                         );
 
                 const filename =
-                    `knowledge-${Date.now()}-${crypto
+                    "knowledge-" +
+                    Date.now() +
+                    "-" +
+                    crypto
                         .randomBytes(6)
-                        .toString("hex")}${safeExt}`;
-
+                        .toString("hex") +
+                    extension;
 
                 cb(
                     null,
@@ -543,11 +559,15 @@ const knowledgeUpload =
                 cb
             ) {
 
+                const type =
+                    file.mimetype ||
+                    "";
+
                 if (
-                    file.mimetype.startsWith(
+                    type.startsWith(
                         "image/"
                     ) ||
-                    file.mimetype.startsWith(
+                    type.startsWith(
                         "audio/"
                     )
                 ) {
@@ -557,65 +577,14 @@ const knowledgeUpload =
                         true
                     );
 
-                } else {
-
-                    cb(
-                        new Error(
-                            "Kaliya sawir ama cod ayaa la oggol yahay."
-                        )
-                    );
-
+                    return;
                 }
 
-            }
-
-    });
-
-
-/* =========================================================
-   MULTER - SINGLE IMAGE MEMORY
-========================================================= */
-
-const matchImageUpload =
-    multer({
-
-        storage:
-            multer.memoryStorage(),
-
-        limits: {
-
-            fileSize:
-                5 * 1024 * 1024
-
-        },
-
-        fileFilter:
-            function(
-                req,
-                file,
-                cb
-            ) {
-
-                if (
-                    file.mimetype.startsWith(
-                        "image/"
+                cb(
+                    new Error(
+                        "Kaliya sawir ama cod ayaa la oggol yahay."
                     )
-                ) {
-
-                    cb(
-                        null,
-                        true
-                    );
-
-                } else {
-
-                    cb(
-                        new Error(
-                            "Fadlan sawir keliya geli."
-                        )
-                    );
-
-                }
+                );
 
             }
 
@@ -623,7 +592,7 @@ const matchImageUpload =
 
 
 /* =========================================================
-   MULTER - AUDIO
+   AUDIO MEMORY UPLOAD
 ========================================================= */
 
 const audioUpload =
@@ -637,29 +606,97 @@ const audioUpload =
             fileSize:
                 25 * 1024 * 1024
 
-        }
+        },
+
+        fileFilter:
+            function(
+                req,
+                file,
+                cb
+            ) {
+
+                if (
+                    (
+                        file.mimetype ||
+                        ""
+                    ).startsWith(
+                        "audio/"
+                    )
+                ) {
+
+                    cb(
+                        null,
+                        true
+                    );
+
+                    return;
+                }
+
+                cb(
+                    new Error(
+                        "Fadlan cod geli."
+                    )
+                );
+
+            }
 
     });
 
 
 /* =========================================================
-   IMAGE HASH
+   IMAGE MEMORY UPLOAD
 ========================================================= */
 
-function getImageHash(
-    buffer
-) {
+const imageUpload =
+    multer({
 
-    return crypto
-        .createHash("sha256")
-        .update(buffer)
-        .digest("hex");
+        storage:
+            multer.memoryStorage(),
 
-}
+        limits: {
+
+            fileSize:
+                10 * 1024 * 1024
+
+        },
+
+        fileFilter:
+            function(
+                req,
+                file,
+                cb
+            ) {
+
+                if (
+                    (
+                        file.mimetype ||
+                        ""
+                    ).startsWith(
+                        "image/"
+                    )
+                ) {
+
+                    cb(
+                        null,
+                        true
+                    );
+
+                    return;
+                }
+
+                cb(
+                    new Error(
+                        "Fadlan sawir geli."
+                    )
+                );
+
+            }
+
+    });
 
 
 /* =========================================================
-   JWT
+   HELPERS
 ========================================================= */
 
 function createToken(
@@ -677,7 +714,6 @@ function createToken(
 
             role:
                 user.role
-
         },
 
         JWT_SECRET,
@@ -692,8 +728,67 @@ function createToken(
 }
 
 
+function getImageHash(
+    buffer
+) {
+
+    return crypto
+        .createHash(
+            "sha256"
+        )
+        .update(buffer)
+        .digest("hex");
+
+}
+
+
+function deleteUploadedFile(
+    url
+) {
+
+    if (!url) {
+        return;
+    }
+
+    const filename =
+        path.basename(
+            url
+        );
+
+    const filePath =
+        path.join(
+            KNOWLEDGE_UPLOAD_DIR,
+            filename
+        );
+
+    if (
+        fs.existsSync(
+            filePath
+        )
+    ) {
+
+        try {
+
+            fs.unlinkSync(
+                filePath
+            );
+
+        } catch (error) {
+
+            console.error(
+                "FILE DELETE ERROR:",
+                error.message
+            );
+
+        }
+
+    }
+
+}
+
+
 /* =========================================================
-   ADMIN AUTH MIDDLEWARE
+   ADMIN MIDDLEWARE
 ========================================================= */
 
 async function adminMiddleware(
@@ -704,41 +799,38 @@ async function adminMiddleware(
 
     try {
 
-        const header =
-            req.headers.authorization;
-
+        const auth =
+            req.headers
+                .authorization ||
+            "";
 
         if (
-            !header ||
-            !header.startsWith(
+            !auth.startsWith(
                 "Bearer "
             )
         ) {
 
-            return res.status(
-                401
-            ).json({
+            return res
+                .status(401)
+                .json({
 
-                error:
-                    "Admin login required."
+                    error:
+                        "Admin login required."
 
-            });
+                });
 
         }
 
-
         const token =
-            header.split(
-                " "
-            )[1];
-
+            auth.substring(
+                7
+            );
 
         const decoded =
             jwt.verify(
                 token,
                 JWT_SECRET
             );
-
 
         const user =
             await dbGet(
@@ -750,43 +842,43 @@ async function adminMiddleware(
                 FROM users
                 WHERE id = ?
                 `,
-                [decoded.id]
+                [
+                    decoded.id
+                ]
             );
-
 
         if (
             !user ||
-            user.role !== "admin"
+            user.role !==
+                "admin"
         ) {
 
-            return res.status(
-                403
-            ).json({
+            return res
+                .status(403)
+                .json({
 
-                error:
-                    "Admin access only."
+                    error:
+                        "Admin access only."
 
-            });
+                });
 
         }
 
-
         req.admin =
             user;
-
 
         next();
 
     } catch (error) {
 
-        return res.status(
-            401
-        ).json({
+        return res
+            .status(401)
+            .json({
 
-            error:
-                "Token-ka admin-ka waa khalad ama dhacay."
+                error:
+                    "Admin token waa khalad ama wuu dhacay."
 
-        });
+            });
 
     }
 
@@ -799,14 +891,16 @@ async function adminMiddleware(
 
 app.get(
     "/api/health",
-    async (req, res) => {
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
             await dbGet(
                 "SELECT 1 AS ok"
             );
-
 
             res.json({
 
@@ -817,7 +911,12 @@ app.get(
                     "sqlite",
 
                 ai:
-                    OPENROUTER_API_KEY
+                    openrouter
+                        ? "ready"
+                        : "missing",
+
+                transcription:
+                    openai
                         ? "ready"
                         : "missing",
 
@@ -828,17 +927,17 @@ app.get(
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                status:
-                    "error",
+                    status:
+                        "error",
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -852,7 +951,10 @@ app.get(
 
 app.post(
     "/api/login",
-    async (req, res) => {
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -861,9 +963,8 @@ app.post(
                     req.body.email ||
                     ""
                 )
-                .trim()
-                .toLowerCase();
-
+                    .trim()
+                    .toLowerCase();
 
             const password =
                 String(
@@ -871,23 +972,21 @@ app.post(
                     ""
                 );
 
-
             if (
                 !email ||
                 !password
             ) {
 
-                return res.status(
-                    400
-                ).json({
+                return res
+                    .status(400)
+                    .json({
 
-                    error:
-                        "Email iyo password geli."
+                        error:
+                            "Email iyo password geli."
 
-                });
+                    });
 
             }
-
 
             const user =
                 await dbGet(
@@ -896,23 +995,23 @@ app.post(
                     FROM users
                     WHERE email = ?
                     `,
-                    [email]
+                    [
+                        email
+                    ]
                 );
-
 
             if (!user) {
 
-                return res.status(
-                    401
-                ).json({
+                return res
+                    .status(401)
+                    .json({
 
-                    error:
-                        "Email ama password waa khalad."
+                        error:
+                            "Email ama password waa khalad."
 
-                });
+                    });
 
             }
-
 
             const valid =
                 await bcrypt.compare(
@@ -920,26 +1019,39 @@ app.post(
                     user.password
                 );
 
-
             if (!valid) {
 
-                return res.status(
-                    401
-                ).json({
+                return res
+                    .status(401)
+                    .json({
 
-                    error:
-                        "Email ama password waa khalad."
+                        error:
+                            "Email ama password waa khalad."
 
-                });
+                    });
 
             }
 
+            if (
+                user.role !==
+                "admin"
+            ) {
+
+                return res
+                    .status(403)
+                    .json({
+
+                        error:
+                            "Akoonkan admin ma aha."
+
+                    });
+
+            }
 
             const token =
                 createToken(
                     user
                 );
-
 
             res.json({
 
@@ -970,15 +1082,14 @@ app.post(
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    error:
+                        "Login error."
 
-                error:
-                    "Login error."
-
-            });
+                });
 
         }
 
@@ -987,26 +1098,40 @@ app.post(
 
 
 /* =========================================================
-   ADMIN TOKEN VERIFICATION
+   ADMIN ME
 ========================================================= */
 
 app.get(
     "/api/admin/me",
     adminMiddleware,
-    (req, res) => {
+    (
+        req,
+        res
+    ) => {
 
         res.json({
-            success: true,
+
+            success:
+                true,
 
             user: {
-                id: req.admin.id,
-                email: req.admin.email,
-                role: req.admin.role
+
+                id:
+                    req.admin.id,
+
+                email:
+                    req.admin.email,
+
+                role:
+                    req.admin.role
+
             }
+
         });
 
     }
 );
+
 
 /* =========================================================
    GET KNOWLEDGE
@@ -1015,7 +1140,10 @@ app.get(
 app.get(
     "/api/admin/knowledge",
     adminMiddleware,
-    async (req, res) => {
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -1035,7 +1163,6 @@ app.get(
                     `
                 );
 
-
             res.json(
                 rows
             );
@@ -1043,18 +1170,18 @@ app.get(
         } catch (error) {
 
             console.error(
+                "GET KNOWLEDGE ERROR:",
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    error:
+                        error.message
 
-                error:
-                    "Knowledge lama soo qaadi karin."
-
-            });
+                });
 
         }
 
@@ -1069,7 +1196,10 @@ app.get(
 app.get(
     "/api/admin/knowledge/search",
     adminMiddleware,
-    async (req, res) => {
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -1077,9 +1207,7 @@ app.get(
                 String(
                     req.query.q ||
                     ""
-                )
-                .trim();
-
+                ).trim();
 
             const rows =
                 await dbAll(
@@ -1097,21 +1225,20 @@ app.get(
                     ]
                 );
 
-
             res.json(
                 rows
             );
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -1126,23 +1253,31 @@ app.get(
 app.post(
     "/api/admin/knowledge",
     adminMiddleware,
-    knowledgeUpload.fields([
-        {
-            name:
-                "audio",
 
-            maxCount:
-                1
-        },
-        {
-            name:
-                "image",
+    knowledgeUpload.fields(
+        [
+            {
+                name:
+                    "audio",
 
-            maxCount:
-                1
-        }
-    ]),
-    async (req, res) => {
+                maxCount:
+                    1
+            },
+
+            {
+                name:
+                    "image",
+
+                maxCount:
+                    1
+            }
+        ]
+    ),
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -1150,73 +1285,49 @@ app.post(
                 String(
                     req.body.title ||
                     ""
-                )
-                .trim();
-
+                ).trim();
 
             const content =
                 String(
                     req.body.content ||
                     ""
-                )
-                .trim();
+                ).trim();
 
+            const audio =
+                req.files?.audio?.[0] ||
+                null;
 
-            const audioFile =
-                req.files &&
-                req.files.audio
-                    ? req.files.audio[0]
-                    : null;
-
-
-            const imageFile =
-                req.files &&
-                req.files.image
-                    ? req.files.image[0]
-                    : null;
-
+            const image =
+                req.files?.image?.[0] ||
+                null;
 
             if (
                 !title &&
                 !content &&
-                !audioFile &&
-                !imageFile
+                !audio &&
+                !image
             ) {
 
-                return res.status(
-                    400
-                ).json({
+                return res
+                    .status(400)
+                    .json({
 
-                    error:
-                        "Xog geli marka hore."
+                        error:
+                            "Xog geli marka hore."
 
-                });
-
-            }
-
-
-            let audioUrl =
-                null;
-
-            let imageUrl =
-                null;
-
-
-            if (audioFile) {
-
-                audioUrl =
-                    `/uploads/knowledge/${audioFile.filename}`;
+                    });
 
             }
 
+            const audioUrl =
+                audio
+                    ? `/uploads/knowledge/${audio.filename}`
+                    : null;
 
-            if (imageFile) {
-
-                imageUrl =
-                    `/uploads/knowledge/${imageFile.filename}`;
-
-            }
-
+            const imageUrl =
+                image
+                    ? `/uploads/knowledge/${image.filename}`
+                    : null;
 
             const result =
                 await dbRun(
@@ -1238,7 +1349,6 @@ app.post(
                     ]
                 );
 
-
             const saved =
                 await dbGet(
                     `
@@ -1246,9 +1356,10 @@ app.post(
                     FROM knowledge
                     WHERE id = ?
                     `,
-                    [result.id]
+                    [
+                        result.id
+                    ]
                 );
-
 
             res.json({
 
@@ -1270,15 +1381,14 @@ app.post(
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    error:
+                        error.message
 
-                error:
-                    error.message
-
-            });
+                });
 
         }
 
@@ -1293,7 +1403,10 @@ app.post(
 app.put(
     "/api/admin/knowledge/:id",
     adminMiddleware,
-    async (req, res) => {
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -1302,33 +1415,44 @@ app.put(
                     req.params.id
                 );
 
+            if (
+                !Number.isInteger(
+                    id
+                )
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        error:
+                            "ID khalad ah."
+
+                    });
+
+            }
 
             const title =
                 String(
                     req.body.title ||
                     ""
-                )
-                .trim();
-
+                ).trim();
 
             const content =
                 String(
                     req.body.content ||
                     ""
-                )
-                .trim();
-
+                ).trim();
 
             const result =
                 await dbRun(
                     `
                     UPDATE knowledge
-
                     SET
                         title = ?,
                         content = ?,
-                        updated_at = CURRENT_TIMESTAMP
-
+                        updated_at =
+                            CURRENT_TIMESTAMP
                     WHERE id = ?
                     `,
                     [
@@ -1338,22 +1462,21 @@ app.put(
                     ]
                 );
 
-
             if (
-                result.changes === 0
+                result.changes ===
+                0
             ) {
 
-                return res.status(
-                    404
-                ).json({
+                return res
+                    .status(404)
+                    .json({
 
-                    error:
-                        "Knowledge lama helin."
+                        error:
+                            "Knowledge lama helin."
 
-                });
+                    });
 
             }
-
 
             const updated =
                 await dbGet(
@@ -1362,9 +1485,10 @@ app.put(
                     FROM knowledge
                     WHERE id = ?
                     `,
-                    [id]
+                    [
+                        id
+                    ]
                 );
-
 
             res.json({
 
@@ -1378,14 +1502,14 @@ app.put(
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -1400,7 +1524,10 @@ app.put(
 app.delete(
     "/api/admin/knowledge/:id",
     adminMiddleware,
-    async (req, res) => {
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -1409,7 +1536,6 @@ app.delete(
                     req.params.id
                 );
 
-
             const item =
                 await dbGet(
                     `
@@ -1417,98 +1543,41 @@ app.delete(
                     FROM knowledge
                     WHERE id = ?
                     `,
-                    [id]
+                    [
+                        id
+                    ]
                 );
-
 
             if (!item) {
 
-                return res.status(
-                    404
-                ).json({
+                return res
+                    .status(404)
+                    .json({
 
-                    error:
-                        "Knowledge lama helin."
+                        error:
+                            "Knowledge lama helin."
 
-                });
+                    });
 
             }
-
 
             await dbRun(
                 `
                 DELETE FROM knowledge
                 WHERE id = ?
                 `,
-                [id]
+                [
+                    id
+                ]
             );
 
-
-            /* Delete image file */
-
-            if (
+            deleteUploadedFile(
                 item.image_url
-            ) {
+            );
 
-                const filename =
-                    path.basename(
-                        item.image_url
-                    );
-
-                const file =
-                    path.join(
-                        KNOWLEDGE_UPLOAD_DIR,
-                        filename
-                    );
-
-
-                if (
-                    fs.existsSync(
-                        file
-                    )
-                ) {
-
-                    fs.unlinkSync(
-                        file
-                    );
-
-                }
-
-            }
-
-
-            /* Delete audio file */
-
-            if (
+            deleteUploadedFile(
                 item.audio_url
-            ) {
-
-                const filename =
-                    path.basename(
-                        item.audio_url
-                    );
-
-                const file =
-                    path.join(
-                        KNOWLEDGE_UPLOAD_DIR,
-                        filename
-                    );
-
-
-                if (
-                    fs.existsSync(
-                        file
-                    )
-                ) {
-
-                    fs.unlinkSync(
-                        file
-                    );
-
-                }
-
-            }
-
+            );
 
             res.json({
 
@@ -1527,15 +1596,14 @@ app.delete(
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    error:
+                        error.message
 
-                error:
-                    error.message
-
-            });
+                });
 
         }
 
@@ -1544,175 +1612,91 @@ app.delete(
 
 
 /* =========================================================
-   TRANSCRIBE AUDIO
+   ADMIN AUDIO TRANSCRIPTION
+   IMPORTANT:
+   - Uses OpenAI
+   - Uses audioUpload
+   - NO undefined upload variable
+   - NO duplicate /transcribe route
 ========================================================= */
 
 app.post(
     "/api/admin/knowledge/transcribe",
+
     adminMiddleware,
-    audioUpload.single("audio"),
-    async (req, res) => {
+
+    audioUpload.single(
+        "audio"
+    ),
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
-            if (!OPENROUTER_API_KEY) {
-                return res.status(500).json({
-                    success: false,
-                    error: "OPENROUTER_API_KEY lama helin."
-                });
+            if (!openai) {
+
+                return res
+                    .status(500)
+                    .json({
+
+                        success:
+                            false,
+
+                        error:
+                            "OPENAI_API_KEY lama dejin."
+
+                    });
+
             }
 
             if (!req.file) {
-                return res.status(400).json({
-                    success: false,
-                    error: "Fadlan cod geli."
-                });
-            }
 
-            const base64Audio =
-                req.file.buffer.toString("base64");
+                return res
+                    .status(400)
+                    .json({
 
-            const mimeType =
-                req.file.mimetype || "audio/webm";
+                        success:
+                            false,
 
-            const format =
-                mimeType.includes("webm")
-                    ? "webm"
-                    : mimeType.includes("mpeg")
-                    ? "mp3"
-                    : mimeType.includes("wav")
-                    ? "wav"
-                    : mimeType.includes("mp4")
-                    ? "mp4"
-                    : "webm";
+                        error:
+                            "Fadlan cod geli."
 
-
-            const response =
-                await fetch(
-                    "https://openrouter.ai/api/v1/audio/transcriptions",
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Authorization":
-                                `Bearer ${OPENROUTER_API_KEY}`,
-
-                            "Content-Type":
-                                "application/json",
-
-                            "HTTP-Referer":
-                                APP_URL,
-
-                            "X-Title":
-                                "NASIIB BUSINESS CENTER"
-                        },
-
-                        body: JSON.stringify({
-
-                            model:
-                                "openai/whisper-1",
-
-                            input_audio: {
-                                data:
-                                    base64Audio,
-
-                                format:
-                                    format
-                            }
-
-                        })
-                    }
-                );
-
-
-            const data =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                console.error(
-                    "OPENROUTER TRANSCRIPTION ERROR:",
-                    data
-                );
-
-                return res.status(
-                    response.status
-                ).json({
-
-                    success: false,
-
-                    error:
-                        data?.error?.message ||
-                        "Codka lama turjumi karin."
-
-                });
+                    });
 
             }
 
-
-            res.json({
-
-                success: true,
-
-                text:
-                    data.text || ""
-
-            });
-
-
-        } catch (error) {
-
-            console.error(
-                "TRANSCRIPTION ERROR:",
-                error
-            );
-
-            res.status(500).json({
-
-                success: false,
-
-                error:
-                    error.message ||
-                    "Transcription error."
-
-            });
-
-        }
-
-    }
-);
-
-app.post(
-    "/transcribe",
-    upload.single("audio"),
-    async (req, res) => {
-        try {
             const audioFile =
                 new File(
                     [
                         req.file.buffer
                     ],
+
                     req.file.originalname ||
-                    "audio.webm",
+                        "audio.webm",
+
                     {
                         type:
-                            req.file.mimetype
+                            req.file.mimetype ||
+                            "audio/webm"
                     }
                 );
 
-
             const transcription =
-                await openai.audio.transcriptions.create({
+                await openai
+                    .audio
+                    .transcriptions
+                    .create({
 
-                    file:
-                        audioFile,
+                        file:
+                            audioFile,
 
-                    model:
-                        "gpt-4o-transcribe"
+                        model:
+                            "gpt-4o-transcribe"
 
-                });
-
+                    });
 
             res.json({
 
@@ -1728,336 +1712,89 @@ app.post(
         } catch (error) {
 
             console.error(
-                "TRANSCRIBE ERROR:",
+                "❌ AUDIO TRANSCRIPTION ERROR:",
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    success:
+                        false,
 
-                error:
-                    error.message ||
-                    "Audio transcription failed."
+                    error:
+                        error.message ||
+                        "Audio transcription failed."
 
-            });
+                });
 
         }
+
     }
 );
 
-    
-
-
 
 /* =========================================================
-   INTERPRET IMAGE
+   ADMIN IMAGE INTERPRETATION
 ========================================================= */
 
 app.post(
     "/api/admin/knowledge/interpret-image",
+
     adminMiddleware,
-    matchImageUpload.single("image"),
-    async (req, res) => {
+
+    imageUpload.single(
+        "image"
+    ),
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
             if (!req.file) {
 
-                return res.status(
-                    400
-                ).json({
+                return res
+                    .status(400)
+                    .json({
 
-                    error:
-                        "Sawir geli."
+                        error:
+                            "Sawir geli."
 
-                });
+                    });
 
             }
-
 
             if (!openrouter) {
 
-                return res.status(
-                    500
-                ).json({
-
-                    error:
-                        "OPENROUTER_API_KEY lama dejin."
-
-                });
-
-            }
-
-
-            const base64 =
-                req.file.buffer.toString(
-                    "base64"
-                );
-
-
-            const dataUrl =
-                `data:${req.file.mimetype};base64,${base64}`;
-
-
-            const completion =
-                await openrouter.chat.completions.create({
-
-                    model:
-                        AI_MODEL,
-
-                    messages: [
-
-                        {
-                            role:
-                                "system",
-
-                            content:
-                                `
-Waxaad tahay AI Somali ah.
-Sawirka si taxaddar leh u fasir.
-Jawaabta ku qor Af-Soomaali.
-Ha sameyn xog aan sawirka laga arki karin.
-`
-                        },
-
-                        {
-                            role:
-                                "user",
-
-                            content: [
-
-                                {
-                                    type:
-                                        "text",
-
-                                    text:
-                                        "Sawirkan fasir oo sharax waxa ku jira."
-                                },
-
-                                {
-                                    type:
-                                        "image_url",
-
-                                    image_url: {
-
-                                        url:
-                                            dataUrl
-
-                                    }
-
-                                }
-
-                            ]
-
-                        }
-
-                    ]
-
-                });
-
-
-            const text =
-                completion
-                    .choices?.[0]
-                    ?.message
-                    ?.content ||
-                "AI jawaab kama soo celin."
-
-
-            res.json({
-
-                success:
-                    true,
-
-                text:
-                    text
-
-            });
-
-        } catch (error) {
-
-            console.error(
-                "IMAGE AI ERROR:",
-                error
-            );
-
-
-            res.status(
-                500
-            ).json({
-
-                error:
-                    error.message
-
-            });
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   AUDIO + IMAGE INTERPRETATION
-========================================================= */
-
-app.post(
-    "/api/admin/knowledge/interpret-all",
-    adminMiddleware,
-    knowledgeUpload.fields([
-        {
-            name:
-                "audio",
-
-            maxCount:
-                1
-        },
-
-        {
-            name:
-                "image",
-
-            maxCount:
-                1
-        }
-    ]),
-    async (req, res) => {
-
-        try {
-
-            const audio =
-                req.files &&
-                req.files.audio
-                    ? req.files.audio[0]
-                    : null;
-
-
-            const image =
-                req.files &&
-                req.files.image
-                    ? req.files.image[0]
-                    : null;
-
-
-            if (
-                !audio &&
-                !image
-            ) {
-
-                return res.status(
-                    400
-                ).json({
-
-                    error:
-                        "Cod ama sawir geli."
-
-                });
-
-            }
-
-
-            let audioText =
-                "";
-
-
-            /* -----------------------------------------
-               AUDIO → TEXT
-            ------------------------------------------ */
-
-            if (audio) {
-
-                if (!openai) {
-
-                    return res.status(
-                        500
-                    ).json({
-
-                        error:
-                            "OPENAI_API_KEY lama dejin. Audio transcription lama samayn karo."
-
-                    });
-
-                }
-
-
-                const audioFile =
-                    new File(
-                        [
-                            fs.readFileSync(
-                                audio.path
-                            )
-                        ],
-                        audio.originalname,
-                        {
-                            type:
-                                audio.mimetype
-                        }
-                    );
-
-
-                const transcription =
-                    await openai.audio.transcriptions.create({
-
-                        file:
-                            audioFile,
-
-                        model:
-                            "gpt-4o-transcribe"
-
-                    });
-
-
-                audioText =
-                    transcription.text ||
-                    "";
-
-            }
-
-
-            /* -----------------------------------------
-               IMAGE → AI
-            ------------------------------------------ */
-
-            let imageText =
-                "";
-
-
-            if (image) {
-
-                if (!openrouter) {
-
-                    return res.status(
-                        500
-                    ).json({
+                return res
+                    .status(500)
+                    .json({
 
                         error:
                             "OPENROUTER_API_KEY lama dejin."
 
                     });
 
-                }
+            }
 
-
-                const imageBuffer =
-                    fs.readFileSync(
-                        image.path
-                    );
-
-
-                const base64 =
-                    imageBuffer.toString(
+            const base64 =
+                req.file.buffer
+                    .toString(
                         "base64"
                     );
 
+            const dataUrl =
+                `data:${req.file.mimetype};base64,${base64}`;
 
-                const dataUrl =
-                    `data:${image.mimetype};base64,${base64}`;
-
-
-                const completion =
-                    await openrouter.chat.completions.create({
+            const completion =
+                await openrouter
+                    .chat
+                    .completions
+                    .create({
 
                         model:
                             AI_MODEL,
@@ -2071,26 +1808,34 @@ app.post(
                                 content:
                                     `
 Waxaad tahay AI Somali ah.
+
 Fasir sawirka si taxaddar leh.
+
 Jawaabta ku qor Af-Soomaali.
+
+Ha samayn xog aan sawirka laga arki karin.
 `
                             },
 
                             {
+
                                 role:
                                     "user",
 
                                 content: [
 
                                     {
+
                                         type:
                                             "text",
 
                                         text:
                                             "Sawirkan sharax."
+
                                     },
 
                                     {
+
                                         type:
                                             "image_url",
 
@@ -2111,12 +1856,279 @@ Jawaabta ku qor Af-Soomaali.
 
                     });
 
+            const text =
+                completion
+                    .choices?.[0]
+                    ?.message?.content ||
+                "AI jawaab kama soo celin.";
+
+            res.json({
+
+                success:
+                    true,
+
+                text
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "IMAGE INTERPRET ERROR:",
+                error
+            );
+
+            res
+                .status(500)
+                .json({
+
+                    error:
+                        error.message ||
+                        "Sawirka lama fasiri karin."
+
+                });
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   AUDIO + IMAGE INTERPRETATION
+========================================================= */
+
+app.post(
+    "/api/admin/knowledge/interpret-all",
+
+    adminMiddleware,
+
+    knowledgeUpload.fields(
+        [
+            {
+                name:
+                    "audio",
+
+                maxCount:
+                    1
+            },
+
+            {
+                name:
+                    "image",
+
+                maxCount:
+                    1
+            }
+        ]
+    ),
+
+    async (
+        req,
+        res
+    ) => {
+
+        let audio = null;
+        let image = null;
+
+        try {
+
+            audio =
+                req.files?.audio?.[0] ||
+                null;
+
+            image =
+                req.files?.image?.[0] ||
+                null;
+
+            if (
+                !audio &&
+                !image
+            ) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        error:
+                            "Cod ama sawir geli."
+
+                    });
+
+            }
+
+            let audioText =
+                "";
+
+            let imageText =
+                "";
+
+
+            /* -----------------------------------------
+               AUDIO
+            ----------------------------------------- */
+
+            if (audio) {
+
+                if (!openai) {
+
+                    return res
+                        .status(500)
+                        .json({
+
+                            error:
+                                "OPENAI_API_KEY lama dejin."
+
+                        });
+
+                }
+
+                const audioBuffer =
+                    fs.readFileSync(
+                        audio.path
+                    );
+
+                const audioFile =
+                    new File(
+
+                        [
+                            audioBuffer
+                        ],
+
+                        audio.originalname ||
+                            "audio.webm",
+
+                        {
+                            type:
+                                audio.mimetype ||
+                                "audio/webm"
+                        }
+
+                    );
+
+                const transcription =
+                    await openai
+                        .audio
+                        .transcriptions
+                        .create({
+
+                            file:
+                                audioFile,
+
+                            model:
+                                "gpt-4o-transcribe"
+
+                        });
+
+                audioText =
+                    transcription.text ||
+                    "";
+
+            }
+
+
+            /* -----------------------------------------
+               IMAGE
+            ----------------------------------------- */
+
+            if (image) {
+
+                if (!openrouter) {
+
+                    return res
+                        .status(500)
+                        .json({
+
+                            error:
+                                "OPENROUTER_API_KEY lama dejin."
+
+                        });
+
+                }
+
+                const imageBuffer =
+                    fs.readFileSync(
+                        image.path
+                    );
+
+                const base64 =
+                    imageBuffer
+                        .toString(
+                            "base64"
+                        );
+
+                const dataUrl =
+                    `data:${image.mimetype};base64,${base64}`;
+
+                const completion =
+                    await openrouter
+                        .chat
+                        .completions
+                        .create({
+
+                            model:
+                                AI_MODEL,
+
+                            messages: [
+
+                                {
+
+                                    role:
+                                        "system",
+
+                                    content:
+                                        `
+Waxaad tahay AI Af-Soomaali ah.
+
+Fasir sawirka si taxaddar leh.
+
+Jawaabta ku qor Af-Soomaali.
+`
+                                },
+
+                                {
+
+                                    role:
+                                        "user",
+
+                                    content: [
+
+                                        {
+
+                                            type:
+                                                "text",
+
+                                            text:
+                                                "Sawirkan sharax."
+
+                                        },
+
+                                        {
+
+                                            type:
+                                                "image_url",
+
+                                            image_url: {
+
+                                                url:
+                                                    dataUrl
+
+                                            }
+
+                                        }
+
+                                    ]
+
+                                }
+
+                            ]
+
+                        });
 
                 imageText =
                     completion
                         .choices?.[0]
-                        ?.message
-                        ?.content ||
+                        ?.message?.content ||
                     "";
 
             }
@@ -2124,12 +2136,14 @@ Jawaabta ku qor Af-Soomaali.
 
             /* -----------------------------------------
                COMBINE
-            ------------------------------------------ */
+            ----------------------------------------- */
 
             const parts = [];
 
 
-            if (audioText) {
+            if (
+                audioText
+            ) {
 
                 parts.push(
                     `🎙️ Qoraalka codka:\n${audioText}`
@@ -2138,7 +2152,9 @@ Jawaabta ku qor Af-Soomaali.
             }
 
 
-            if (imageText) {
+            if (
+                imageText
+            ) {
 
                 parts.push(
                     `🖼️ Fasiraadda sawirka:\n${imageText}`
@@ -2154,8 +2170,8 @@ Jawaabta ku qor Af-Soomaali.
 
 
             /* -----------------------------------------
-               OPTIONAL AI COMBINATION
-            ------------------------------------------ */
+               AI COMBINATION
+            ----------------------------------------- */
 
             if (
                 openrouter &&
@@ -2163,46 +2179,51 @@ Jawaabta ku qor Af-Soomaali.
             ) {
 
                 const combined =
-                    await openrouter.chat.completions.create({
+                    await openrouter
+                        .chat
+                        .completions
+                        .create({
 
-                        model:
-                            AI_MODEL,
+                            model:
+                                AI_MODEL,
 
-                        messages: [
+                            messages: [
 
-                            {
-                                role:
-                                    "system",
+                                {
 
-                                content:
-                                    `
+                                    role:
+                                        "system",
+
+                                    content:
+                                        `
 Waxaad tahay AI Af-Soomaali ah.
+
 Isku dar xogta codka iyo sawirka.
+
 Jawaab kooban oo cad ku qor Af-Soomaali.
 `
-                            },
+                                },
 
-                            {
-                                role:
-                                    "user",
+                                {
 
-                                content:
-                                    parts.join(
-                                        "\n\n"
-                                    )
+                                    role:
+                                        "user",
 
-                            }
+                                    content:
+                                        parts.join(
+                                            "\n\n"
+                                        )
 
-                        ]
+                                }
 
-                    });
+                            ]
 
+                        });
 
                 finalText =
                     combined
                         .choices?.[0]
-                        ?.message
-                        ?.content ||
+                        ?.message?.content ||
                     finalText;
 
             }
@@ -2225,15 +2246,56 @@ Jawaab kooban oo cad ku qor Af-Soomaali.
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    error:
+                        error.message ||
+                        "Codka iyo sawirka lama fasiri karin."
 
-                error:
-                    error.message
+                });
 
-            });
+        } finally {
+
+            /* -----------------------------------------
+               DELETE TEMPORARY FILES
+            ----------------------------------------- */
+
+            if (
+                audio?.path &&
+                fs.existsSync(
+                    audio.path
+                )
+            ) {
+
+                try {
+
+                    fs.unlinkSync(
+                        audio.path
+                    );
+
+                } catch {}
+
+            }
+
+
+            if (
+                image?.path &&
+                fs.existsSync(
+                    image.path
+                )
+            ) {
+
+                try {
+
+                    fs.unlinkSync(
+                        image.path
+                    );
+
+                } catch {}
+
+            }
 
         }
 
@@ -2247,54 +2309,41 @@ Jawaab kooban oo cad ku qor Af-Soomaali.
 
 app.post(
     "/api/match-image",
-    matchImageUpload.single("image"),
-    async (req, res) => {
+
+    imageUpload.single(
+        "image"
+    ),
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
-            /* -----------------------------------------
-               CHECK FILE
-            ------------------------------------------ */
-
             if (!req.file) {
 
-                return res.status(
-                    400
-                ).json({
+                return res
+                    .status(400)
+                    .json({
 
-                    success:
-                        false,
+                        success:
+                            false,
 
-                    found:
-                        false,
+                        found:
+                            false,
 
-                    error:
-                        "❌ Fadlan sawir geli."
+                        error:
+                            "❌ Fadlan sawir geli."
 
-                });
+                    });
 
             }
-
-
-            /* -----------------------------------------
-               USER IMAGE HASH
-            ------------------------------------------ */
 
             const userImageHash =
                 getImageHash(
                     req.file.buffer
                 );
-
-
-            console.log(
-                "🔎 Searching image hash:",
-                userImageHash
-            );
-
-
-            /* -----------------------------------------
-               GET KNOWLEDGE
-            ------------------------------------------ */
 
             const knowledge =
                 await dbAll(
@@ -2307,72 +2356,56 @@ app.post(
                         audio_url,
                         created_at
                     FROM knowledge
-
                     WHERE
                         image_url IS NOT NULL
                         AND image_url != ''
-
                     ORDER BY id DESC
                     `
                 );
-
 
             let matched =
                 null;
 
 
-            /* -----------------------------------------
-               EXACT FILE MATCH
-            ------------------------------------------ */
-
             for (
-                const item of knowledge
+                const item
+                of knowledge
             ) {
 
                 if (
                     !item.image_url
                 ) {
-
                     continue;
-
                 }
-
 
                 const filename =
                     path.basename(
                         item.image_url
                     );
 
-
-                const databaseImagePath =
+                const imagePath =
                     path.join(
                         KNOWLEDGE_UPLOAD_DIR,
                         filename
                     );
 
-
                 if (
                     !fs.existsSync(
-                        databaseImagePath
+                        imagePath
                     )
                 ) {
-
                     continue;
-
                 }
 
-
-                const databaseBuffer =
+                const buffer =
                     fs.readFileSync(
-                        databaseImagePath
+                        imagePath
                     );
-
 
                 const databaseHash =
                     getImageHash(
-                        databaseBuffer
+                        buffer
                     );
-
 
                 if (
                     databaseHash ===
@@ -2389,46 +2422,27 @@ app.post(
             }
 
 
-            /* -----------------------------------------
-               NOT FOUND
-            ------------------------------------------ */
-
             if (!matched) {
 
-                console.log(
-                    "❌ Image not found in Database."
-                );
+                return res
+                    .status(404)
+                    .json({
 
+                        success:
+                            false,
 
-                return res.status(
-                    404
-                ).json({
+                        found:
+                            false,
 
-                    success:
-                        false,
+                        error:
+                            "❌ Sawirkan Database-ka lagama helin."
 
-                    found:
-                        false,
-
-                    error:
-                        "❌ Sawirkan Database-ka lagama helin."
-
-                });
+                    });
 
             }
 
 
-            /* -----------------------------------------
-               FOUND
-            ------------------------------------------ */
-
-            console.log(
-                "✅ Image matched Knowledge ID:",
-                matched.id
-            );
-
-
-            return res.json({
+            res.json({
 
                 success:
                     true,
@@ -2475,21 +2489,20 @@ app.post(
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    success:
+                        false,
 
-                success:
-                    false,
+                    found:
+                        false,
 
-                found:
-                    false,
+                    error:
+                        "❌ Khalad ayaa ka dhacay raadinta sawirka."
 
-                error:
-                    "❌ Khalad ayaa ka dhacay raadinta sawirka."
-
-            });
+                });
 
         }
 
@@ -2503,7 +2516,11 @@ app.post(
 
 app.post(
     "/chat",
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -2511,21 +2528,17 @@ app.post(
                 String(
                     req.body.message ||
                     ""
-                )
-                .trim();
-
+                ).trim();
 
             const image =
                 req.body.image ||
                 null;
 
-
             const clientId =
                 String(
                     req.body.clientId ||
                     ""
-                )
-                .trim();
+                ).trim();
 
 
             if (
@@ -2533,35 +2546,35 @@ app.post(
                 !image
             ) {
 
-                return res.status(
-                    400
-                ).json({
+                return res
+                    .status(400)
+                    .json({
 
-                    error:
-                        "Qoraal ama sawir geli."
+                        error:
+                            "Qoraal ama sawir geli."
 
-                });
+                    });
 
             }
 
 
             if (!openrouter) {
 
-                return res.status(
-                    500
-                ).json({
+                return res
+                    .status(500)
+                    .json({
 
-                    error:
-                        "OPENROUTER_API_KEY lama dejin."
+                        error:
+                            "OPENROUTER_API_KEY lama dejin."
 
-                });
+                    });
 
             }
 
 
             /* -----------------------------------------
                KNOWLEDGE
-            ------------------------------------------ */
+            ----------------------------------------- */
 
             const knowledge =
                 await dbAll(
@@ -2578,17 +2591,10 @@ app.post(
                 );
 
 
-            let knowledgeText =
-                "";
-
-
-            if (
-                knowledge.length
-            ) {
-
-                knowledgeText =
-                    knowledge
-                        .map(item => {
+            const knowledgeText =
+                knowledge
+                    .map(
+                        item => {
 
                             return `
 ID: ${item.id}
@@ -2598,17 +2604,16 @@ Image: ${item.image_url || ""}
 Audio: ${item.audio_url || ""}
 `;
 
-                        })
-                        .join(
-                            "\n----------------\n"
-                        );
-
-            }
+                        }
+                    )
+                    .join(
+                        "\n----------------\n"
+                    );
 
 
             /* -----------------------------------------
                SYSTEM
-            ------------------------------------------ */
+            ----------------------------------------- */
 
             const systemPrompt =
                 `
@@ -2616,8 +2621,8 @@ Waxaad tahay AI-ga NASIIB BUSINESS CENTER.
 
 Had iyo jeer ku jawaab Af-Soomaali.
 
-Isticmaal Knowledge Database-ka marka xogta
-su'aasha ku jirta database-ka laga heli karo.
+Isticmaal Knowledge Database-ka marka
+xogta su'aasha ku jirta database-ka laga heli karo.
 
 Ha been abuuran xog.
 
@@ -2633,19 +2638,21 @@ ${knowledgeText}
             const messages = [
 
                 {
+
                     role:
                         "system",
 
                     content:
                         systemPrompt
+
                 }
 
             ];
 
 
             /* -----------------------------------------
-               USER MESSAGE
-            ------------------------------------------ */
+               USER
+            ----------------------------------------- */
 
             if (image) {
 
@@ -2657,15 +2664,18 @@ ${knowledgeText}
                     content: [
 
                         {
+
                             type:
                                 "text",
 
                             text:
                                 message ||
                                 "Fasir sawirkan."
+
                         },
 
                         {
+
                             type:
                                 "image_url",
 
@@ -2699,7 +2709,7 @@ ${knowledgeText}
 
             /* -----------------------------------------
                AI
-            ------------------------------------------ */
+            ----------------------------------------- */
 
             const completion =
                 await openrouter
@@ -2711,7 +2721,6 @@ ${knowledgeText}
                             AI_MODEL,
 
                         messages:
-
                             messages
 
                     });
@@ -2720,14 +2729,13 @@ ${knowledgeText}
             const responseText =
                 completion
                     .choices?.[0]
-                    ?.message
-                    ?.content ||
-                "AI jawaab kama soo celin."
+                    ?.message?.content ||
+                "AI jawaab kama soo celin.";
 
 
             /* -----------------------------------------
                SAVE CHAT
-            ------------------------------------------ */
+            ----------------------------------------- */
 
             await dbRun(
                 `
@@ -2742,14 +2750,13 @@ ${knowledgeText}
                 `,
                 [
                     clientId ||
-                    null,
+                        null,
 
                     message,
 
                     image,
 
                     responseText
-
                 ]
             );
 
@@ -2771,16 +2778,15 @@ ${knowledgeText}
                 error
             );
 
+            res
+                .status(500)
+                .json({
 
-            res.status(
-                500
-            ).json({
+                    error:
+                        error.message ||
+                        "AI request failed."
 
-                error:
-                    error.message ||
-                    "AI request failed."
-
-            });
+                });
 
         }
 
@@ -2789,12 +2795,16 @@ ${knowledgeText}
 
 
 /* =========================================================
-   CHAT HISTORY
+   PUBLIC CHAT HISTORY
 ========================================================= */
 
 app.get(
     "/api/chats",
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -2802,16 +2812,15 @@ app.get(
                 String(
                     req.query.clientId ||
                     ""
-                )
-                .trim();
-
+                ).trim();
 
             if (!clientId) {
 
-                return res.json([]);
+                return res.json(
+                    []
+                );
 
             }
-
 
             const rows =
                 await dbAll(
@@ -2823,18 +2832,13 @@ app.get(
                         response,
                         created_at
                     FROM chats
-
-                    WHERE
-                        client_id = ?
-
-                    ORDER BY
-                        id ASC
+                    WHERE client_id = ?
+                    ORDER BY id ASC
                     `,
                     [
                         clientId
                     ]
                 );
-
 
             res.json(
                 rows
@@ -2842,14 +2846,14 @@ app.get(
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -2858,12 +2862,16 @@ app.get(
 
 
 /* =========================================================
-   DELETE USER CHAT HISTORY
+   DELETE PUBLIC CHAT HISTORY
 ========================================================= */
 
 app.delete(
     "/api/chats",
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -2871,23 +2879,20 @@ app.delete(
                 String(
                     req.body.clientId ||
                     ""
-                )
-                .trim();
-
+                ).trim();
 
             if (!clientId) {
 
-                return res.status(
-                    400
-                ).json({
+                return res
+                    .status(400)
+                    .json({
 
-                    error:
-                        "clientId missing."
+                        error:
+                            "clientId missing."
 
-                });
+                    });
 
             }
-
 
             await dbRun(
                 `
@@ -2898,7 +2903,6 @@ app.delete(
                     clientId
                 ]
             );
-
 
             res.json({
 
@@ -2912,14 +2916,14 @@ app.delete(
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -2928,26 +2932,29 @@ app.delete(
 
 
 /* =========================================================
-   ADMIN - ALL CHATS
+   ADMIN ALL CHATS
 ========================================================= */
 
 app.get(
     "/api/admin/chats",
+
     adminMiddleware,
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
             const rows =
                 await dbAll(
                     `
-                    SELECT
-                        *
+                    SELECT *
                     FROM chats
                     ORDER BY id DESC
                     `
                 );
-
 
             res.json(
                 rows
@@ -2955,14 +2962,14 @@ app.get(
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -2971,13 +2978,18 @@ app.get(
 
 
 /* =========================================================
-   ADMIN - USER CHATS
+   ADMIN USER CHATS
 ========================================================= */
 
 app.get(
     "/api/admin/users/:id/chats",
+
     adminMiddleware,
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -2985,7 +2997,6 @@ app.get(
                 Number(
                     req.params.id
                 );
-
 
             const rows =
                 await dbAll(
@@ -3000,21 +3011,20 @@ app.get(
                     ]
                 );
 
-
             res.json(
                 rows
             );
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -3023,13 +3033,18 @@ app.get(
 
 
 /* =========================================================
-   ADMIN - DELETE ALL CHATS
+   ADMIN DELETE ALL CHATS
 ========================================================= */
 
 app.delete(
     "/api/admin/chats",
+
     adminMiddleware,
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -3038,7 +3053,6 @@ app.delete(
                 DELETE FROM chats
                 `
             );
-
 
             res.json({
 
@@ -3052,14 +3066,14 @@ app.delete(
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -3073,8 +3087,13 @@ app.delete(
 
 app.get(
     "/api/admin/users",
+
     adminMiddleware,
-    async (req, res) => {
+
+    async (
+        req,
+        res
+    ) => {
 
         try {
 
@@ -3091,21 +3110,20 @@ app.get(
                     `
                 );
 
-
             res.json(
                 users
             );
 
         } catch (error) {
 
-            res.status(
-                500
-            ).json({
+            res
+                .status(500)
+                .json({
 
-                error:
-                    error.message
+                    error:
+                        error.message
 
-            });
+                });
 
         }
 
@@ -3119,7 +3137,11 @@ app.get(
 
 app.get(
     "/",
-    (req, res) => {
+
+    (
+        req,
+        res
+    ) => {
 
         res.sendFile(
             path.join(
@@ -3138,7 +3160,11 @@ app.get(
 
 app.get(
     "/admin",
-    (req, res) => {
+
+    (
+        req,
+        res
+    ) => {
 
         res.redirect(
             "/admin/"
@@ -3149,11 +3175,50 @@ app.get(
 
 
 /* =========================================================
+   API 404
+========================================================= */
+
+app.use(
+    (
+        req,
+        res,
+        next
+    ) => {
+
+        if (
+            req.method === "GET" &&
+            req.path.startsWith(
+                "/api/"
+            )
+        ) {
+
+            return res
+                .status(404)
+                .json({
+
+                    error:
+                        "API endpoint not found."
+
+                });
+
+        }
+
+        next();
+
+    }
+);
+
+
+/* =========================================================
    FRONTEND FALLBACK
 ========================================================= */
 
 app.use(
-    (req, res, next) => {
+    (
+        req,
+        res,
+        next
+    ) => {
 
         if (
             req.method !==
@@ -3163,25 +3228,6 @@ app.use(
             return next();
 
         }
-
-
-        if (
-            req.path.startsWith(
-                "/api/"
-            )
-        ) {
-
-            return res.status(
-                404
-            ).json({
-
-                error:
-                    "API endpoint not found."
-
-            });
-
-        }
-
 
         res.sendFile(
             path.join(
@@ -3217,27 +3263,27 @@ app.use(
             multer.MulterError
         ) {
 
-            return res.status(
-                400
-            ).json({
+            return res
+                .status(400)
+                .json({
 
-                error:
-                    `Upload error: ${error.message}`
+                    error:
+                        `Upload error: ${error.message}`
 
-            });
+                });
 
         }
 
 
-        res.status(
-            500
-        ).json({
+        res
+            .status(500)
+            .json({
 
-            error:
-                error.message ||
-                "Internal server error."
+                error:
+                    error.message ||
+                    "Internal server error."
 
-        });
+            });
 
     }
 );
@@ -3257,11 +3303,15 @@ async function startServer() {
 
 
         app.listen(
+
             PORT,
+
             "0.0.0.0",
+
             () => {
 
                 console.log("");
+
                 console.log(
                     "=========================================="
                 );
@@ -3299,14 +3349,25 @@ async function startServer() {
                 );
 
                 console.log(
-                    "🖼️ Image Match: /api/match-image"
+                    "🎙️ Audio: OpenAI"
+                );
+
+                console.log(
+                    "🖼️ Image: OpenRouter"
+                );
+
+                console.log(
+                    "🔎 Image Match: /api/match-image"
                 );
 
                 console.log(
                     "=========================================="
                 );
 
+                console.log("");
+
             }
+
         );
 
     } catch (error) {
@@ -3316,11 +3377,17 @@ async function startServer() {
             error
         );
 
-        process.exit(1);
+        process.exit(
+            1
+        );
 
     }
 
 }
 
+
+/* =========================================================
+   START
+========================================================= */
 
 startServer();
