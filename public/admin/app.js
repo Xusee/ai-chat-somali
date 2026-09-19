@@ -1424,7 +1424,7 @@ async function saveKnowledge(event) {
 
 
         alert(
-            "✅ Knowledge Database-ka waa lagu daray."
+            "✅ KAYDKA  Database-ka waa lagu daray."
         );
 
 
@@ -1488,7 +1488,7 @@ async function loadKnowledge() {
 
             list.innerHTML = `
                 <div class="loading">
-                    ⏳ Knowledge Database ayaa la soo gelinayaa...
+                    ⏳ KAYDKA  Database ayaa la soo gelinayaa...
                 </div>
             `;
 
@@ -1531,7 +1531,7 @@ async function loadKnowledge() {
 
             throw new Error(
                 data.error ||
-                "Knowledge Database lama soo qaadi karin."
+                "KAYDKA Database lama soo qaadi karin."
             );
 
         }
@@ -1616,7 +1616,7 @@ function renderKnowledge(items) {
 
         list.innerHTML = `
             <div class="knowledge-item">
-                📭 Database-ku wali waa madhan yahay.
+                📭 KAYD KA Database-ku wali waa madhan yahay.
             </div>
         `;
 
