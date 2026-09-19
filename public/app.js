@@ -309,7 +309,7 @@
 
     wrapper.innerHTML = `
       <div class="avatar">
-        🤖
+        👳
       </div>
 
       <div class="message-content">
@@ -421,7 +421,7 @@
 
     wrapper.innerHTML = `
       <div class="avatar">
-        🤖
+        👳
       </div>
 
       <div class="message-content">
@@ -526,7 +526,7 @@
 
     wrapper.innerHTML = `
       <div class="avatar">
-        🤖
+        👳
       </div>
 
       <div class="message-content">
@@ -536,7 +536,7 @@
         </div>
 
         <div class="bubble image-not-found">
-          ❌ Sawirkan Database-ka lagama helin.
+          👉🏻 alaabtani mataalo meherada fadlan sawirada ay meheradu soo dhigtay mid kamida soo dooro.
         </div>
 
       </div>
@@ -577,7 +577,7 @@
 
     wrapper.innerHTML = `
       <div class="avatar">
-        🤖
+        👳
       </div>
 
       <div class="message-content">
@@ -1162,7 +1162,7 @@
         data.response ||
         data.answer ||
         data.message ||
-        "AI jawaab kama soo celin.";
+        "NASIIB jawaab kama soo celin.";
 
 
       addAssistantMessage(
@@ -1384,7 +1384,7 @@
           <div class="welcome" id="welcome">
 
             <div class="welcome-icon">
-              🤖
+              👳
             </div>
 
             <h2>
@@ -1437,7 +1437,7 @@
         <div class="welcome" id="welcome">
 
           <div class="welcome-icon">
-            🤖
+            👳
           </div>
 
           <h2>
