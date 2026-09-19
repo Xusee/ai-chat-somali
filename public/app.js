@@ -1,1989 +1,2041 @@
+/* =========================================================
+   NASIIB BUSINESS CENTER
+   PUBLIC APP.JS
+========================================================= */
+
 (() => {
-  "use strict";
 
-  /* =====================================================
-     NASIIB BUSINESS CENTER
-     PUBLIC USER APP
-  ===================================================== */
+    "use strict";
 
-  const API_CHAT = "/chat";
-  const API_MATCH_IMAGE = "/api/match-image";
-  const API_HISTORY = "/api/chats";
-  const API_HEALTH = "/api/health";
+    /* =====================================================
+       API
+    ===================================================== */
 
-  const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+    const API_CHAT =
+        "/chat";
 
-  const $ = (id) => document.getElementById(id);
+    const API_MATCH_IMAGE =
+        "/api/match-image";
 
-  /* =====================================================
-     ELEMENTS
-  ===================================================== */
+    const API_HISTORY =
+        "/api/chats";
 
-  const chatBox = $("chatBox");
-  const chatInner = $("chatInner");
-  const welcome = $("welcome");
+    const API_HEALTH =
+        "/api/health";
 
-  const messageInput = $("messageInput");
-  const sendBtn = $("sendBtn");
 
-  const galleryInput = $("galleryInput");
-  const cameraInput = $("cameraInput");
+    /* =====================================================
+       SETTINGS
+    ===================================================== */
 
-  const previewBox = $("previewBox");
-  const previewImage = $("previewImage");
-  const removeImageBtn = $("removeImageBtn");
+    const MAX_IMAGE_SIZE =
+        10 * 1024 * 1024;
 
-  const errorBox = $("errorBox");
-  const historyList = $("historyList");
 
-  const newChatBtn = $("newChatBtn");
-  const deleteChatBtn = $("deleteChatBtn");
+    /* =====================================================
+       CLIENT ID
+       Public user - Login looma baahna
+    ===================================================== */
 
-  const themeSelect = $("themeSelect");
+    function getClientId() {
 
-  const statusDot = $("statusDot");
-  const statusText = $("statusText");
-
-  const sidebar = $("sidebar");
-  const menuBtn = $("menuBtn");
-  const overlay = $("overlay");
-
-
-  /* =====================================================
-     CHECK ELEMENTS
-  ===================================================== */
-
-  if (
-    !chatBox ||
-    !chatInner ||
-    !messageInput ||
-    !sendBtn ||
-    !galleryInput ||
-    !cameraInput
-  ) {
-    console.error(
-      "❌ NASIIB APP: Qaar ka mid ah HTML elements lama helin."
-    );
-
-    return;
-  }
-
-
-  /* =====================================================
-     CLIENT ID
-     PUBLIC USER
-     LOGIN MA JIRO
-  ===================================================== */
-
-  let clientId =
-    localStorage.getItem("nasiib_client_id");
-
-  if (!clientId) {
-
-    clientId =
-      (
-        window.crypto &&
-        typeof window.crypto.randomUUID === "function"
-      )
-        ? window.crypto.randomUUID()
-        : "client-" +
-          Date.now() +
-          "-" +
-          Math.random()
-            .toString(36)
-            .slice(2);
-
-    localStorage.setItem(
-      "nasiib_client_id",
-      clientId
-    );
-  }
-
-
-  /* =====================================================
-     STATE
-  ===================================================== */
-
-  let currentImage = null;
-  let currentImageName = "";
-
-  let sending = false;
-
-
-  /* =====================================================
-     ESCAPE HTML
-  ===================================================== */
-
-  function escapeHtml(value) {
-
-    return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-
-  /* =====================================================
-     SAFE URL
-  ===================================================== */
-
-  function safeUrl(url) {
-
-    if (!url) {
-      return "";
-    }
-
-    const value =
-      String(url).trim();
-
-    /*
-      Server-kaaga wuxuu soo celiyaa
-      /uploads/knowledge/filename
-    */
-
-    if (value.startsWith("/")) {
-      return value;
-    }
-
-    /*
-      Haddii URL buuxa yahay
-    */
-
-    try {
-
-      const parsed =
-        new URL(
-          value,
-          window.location.origin
-        );
-
-      if (
-        parsed.protocol === "http:" ||
-        parsed.protocol === "https:"
-      ) {
-        return parsed.href;
-      }
-
-    } catch {
-      return "";
-    }
-
-    return "";
-  }
-
-
-  /* =====================================================
-     ERROR
-  ===================================================== */
-
-  function showError(message) {
-
-    if (!errorBox) {
-      return;
-    }
-
-    errorBox.textContent =
-      message || "";
-
-    errorBox.hidden = false;
-  }
-
-
-  function clearError() {
-
-    if (!errorBox) {
-      return;
-    }
-
-    errorBox.textContent = "";
-
-    errorBox.hidden = true;
-  }
-
-
-  /* =====================================================
-     SCROLL
-  ===================================================== */
-
-  function scrollBottom() {
-
-    requestAnimationFrame(() => {
-
-      chatBox.scrollTop =
-        chatBox.scrollHeight;
-
-    });
-  }
-
-
-  /* =====================================================
-     REMOVE WELCOME
-  ===================================================== */
-
-  function removeWelcome() {
-
-    const currentWelcome =
-      $("welcome");
-
-    if (currentWelcome) {
-      currentWelcome.remove();
-    }
-  }
-
-
-  /* =====================================================
-     ADD USER MESSAGE
-  ===================================================== */
-
-  function addUserMessage(
-    text,
-    image
-  ) {
-
-    removeWelcome();
-
-    const wrapper =
-      document.createElement("div");
-
-    wrapper.className =
-      "message user";
-
-    const imageHtml =
-      image
-        ? `
-          <img
-            class="message-image"
-            src="${escapeHtml(image)}"
-            alt="Sawirka User-ka"
-          >
-        `
-        : "";
-
-    wrapper.innerHTML = `
-      <div class="avatar">👤</div>
-
-      <div class="message-content">
-
-        <div class="message-name">
-          Adiga
-        </div>
-
-        <div class="bubble">
-
-          ${imageHtml}
-
-          ${
-            text
-              ? escapeHtml(text)
-              : ""
-          }
-
-        </div>
-
-      </div>
-    `;
-
-    chatInner.appendChild(wrapper);
-
-    scrollBottom();
-  }
-
-
-  /* =====================================================
-     ADD AI TEXT MESSAGE
-  ===================================================== */
-
-  function addAssistantMessage(
-    text
-  ) {
-
-    removeWelcome();
-
-    const wrapper =
-      document.createElement("div");
-
-    wrapper.className =
-      "message assistant";
-
-    wrapper.innerHTML = `
-      <div class="avatar">
-        👳
-      </div>
-
-      <div class="message-content">
-
-        <div class="message-name">
-          AI
-        </div>
-
-        <div class="bubble">
-          ${escapeHtml(text || "")}
-        </div>
-
-      </div>
-    `;
-
-    chatInner.appendChild(wrapper);
-
-    scrollBottom();
-  }
-
-
-  /* =====================================================
-     ADD DATABASE IMAGE RESULT
-  ===================================================== */
-
-  function addDatabaseResult(
-    knowledge
-  ) {
-
-    removeWelcome();
-
-    const wrapper =
-      document.createElement("div");
-
-    wrapper.className =
-      "message assistant database-result";
-
-
-    const title =
-      knowledge?.title || "";
-
-
-    const content =
-      knowledge?.content || "";
-
-
-    const imageUrl =
-      safeUrl(
-        knowledge?.image_url
-      );
-
-
-    const audioUrl =
-      safeUrl(
-        knowledge?.audio_url
-      );
-
-
-    let imageHtml = "";
-
-    if (imageUrl) {
-
-      imageHtml = `
-        <img
-          class="message-image database-image"
-          src="${escapeHtml(imageUrl)}"
-          alt="${escapeHtml(title || "Sawir Database")}"
-        >
-      `;
-
-    }
-
-
-    let audioHtml = "";
-
-    if (audioUrl) {
-
-      audioHtml = `
-        <div class="database-audio">
-
-          <div class="audio-title">
-            🔊 Dhageyso Codka
-          </div>
-
-          <audio
-            class="knowledge-audio"
-            controls
-            preload="metadata"
-            src="${escapeHtml(audioUrl)}"
-          >
-          </audio>
-
-        </div>
-      `;
-
-    }
-
-
-    if (!audioUrl) {
-
-      audioHtml = `
-        <div class="no-audio">
-          🔇 Cod laguma kaydin entry-gan.
-        </div>
-      `;
-
-    }
-
-
-    wrapper.innerHTML = `
-      <div class="avatar">
-        👳
-      </div>
-
-      <div class="message-content">
-
-        <div class="message-name">
-          AI
-        </div>
-
-        <div class="bubble database-bubble">
-
-          <div class="match-success">
-            ✅ Sawirka Database-ka waa laga helay.
-          </div>
-
-          ${
-            title
-              ? `
-                <h3 class="knowledge-title">
-                  ${escapeHtml(title)}
-                </h3>
-              `
-              : ""
-          }
-
-          ${imageHtml}
-
-          ${
-            content
-              ? `
-                <div class="knowledge-content">
-                  ${escapeHtml(content)}
-                </div>
-              `
-              : ""
-          }
-
-          ${audioHtml}
-
-        </div>
-
-      </div>
-    `;
-
-
-    chatInner.appendChild(wrapper);
-
-    scrollBottom();
-
-
-    /*
-      Haddii audio jiro,
-      player-ka diyaari.
-    */
-
-    const audio =
-      wrapper.querySelector(
-        ".knowledge-audio"
-      );
-
-    if (audio) {
-
-      audio.addEventListener(
-        "error",
-        () => {
-
-          const audioBox =
-            wrapper.querySelector(
-              ".database-audio"
+        let clientId =
+            localStorage.getItem(
+                "nasiibClientId"
             );
 
-          if (audioBox) {
+        if (!clientId) {
 
-            audioBox.innerHTML = `
-              <div class="no-audio">
-                ❌ Codka lama ciyaari karin.
-              </div>
+            clientId =
+                "client-" +
+                Date.now() +
+                "-" +
+                Math.random()
+                    .toString(36)
+                    .substring(2, 12);
+
+            localStorage.setItem(
+                "nasiibClientId",
+                clientId
+            );
+
+        }
+
+        return clientId;
+    }
+
+
+    const clientId =
+        getClientId();
+
+
+    /* =====================================================
+       DOM HELPER
+    ===================================================== */
+
+    const $ = (id) =>
+        document.getElementById(id);
+
+
+    function firstElement(
+        ids
+    ) {
+
+        for (
+            const id of ids
+        ) {
+
+            const element =
+                $(id);
+
+            if (element) {
+                return element;
+            }
+
+        }
+
+        return null;
+    }
+
+
+    /* =====================================================
+       DOM ELEMENTS
+    ===================================================== */
+
+    let messageInput =
+        firstElement([
+            "messageInput",
+            "chatInput",
+            "promptInput",
+            "message",
+            "userMessage",
+            "textInput"
+        ]);
+
+
+    let sendButton =
+        firstElement([
+            "sendButton",
+            "sendBtn",
+            "sendMessage",
+            "send"
+        ]);
+
+
+    let galleryButton =
+        firstElement([
+            "galleryButton",
+            "galleryBtn",
+            "gallery"
+        ]);
+
+
+    let cameraButton =
+        firstElement([
+            "cameraButton",
+            "cameraBtn",
+            "camera"
+        ]);
+
+
+    let galleryInput =
+        firstElement([
+            "galleryInput",
+            "galleryFile",
+            "imageInput",
+            "fileInput"
+        ]);
+
+
+    let cameraInput =
+        firstElement([
+            "cameraInput",
+            "cameraFile",
+            "cameraFileInput"
+        ]);
+
+
+    let imagePreview =
+        firstElement([
+            "imagePreview",
+            "previewImage",
+            "selectedImage"
+        ]);
+
+
+    let imagePreviewContainer =
+        firstElement([
+            "imagePreviewContainer",
+            "previewContainer",
+            "imagePreviewBox"
+        ]);
+
+
+    let removeImageButton =
+        firstElement([
+            "removeImageButton",
+            "removeImageBtn",
+            "removeImage"
+        ]);
+
+
+    let messagesContainer =
+        firstElement([
+            "chatMessages",
+            "messages",
+            "chatArea",
+            "chatContainer",
+            "conversation"
+        ]);
+
+
+    let clearChatButton =
+        firstElement([
+            "clearChatButton",
+            "clearChatBtn",
+            "deleteChat",
+            "deleteChats"
+        ]);
+
+
+    let statusElement =
+        firstElement([
+            "statusMessage",
+            "chatStatus",
+            "status"
+        ]);
+
+
+    /* =====================================================
+       STATE
+    ===================================================== */
+
+    let selectedImageFile =
+        null;
+
+
+    let selectedImageData =
+        null;
+
+
+    let isSending =
+        false;
+
+
+    /* =====================================================
+       CREATE MISSING CHAT CONTAINER
+    ===================================================== */
+
+    function ensureMessagesContainer() {
+
+        if (messagesContainer) {
+            return messagesContainer;
+        }
+
+        messagesContainer =
+            document.createElement(
+                "div"
+            );
+
+        messagesContainer.id =
+            "chatMessages";
+
+        messagesContainer.className =
+            "chat-messages";
+
+        document.body.appendChild(
+            messagesContainer
+        );
+
+        return messagesContainer;
+    }
+
+
+    /* =====================================================
+       CREATE MISSING PREVIEW
+    ===================================================== */
+
+    function ensurePreviewContainer() {
+
+        if (imagePreviewContainer) {
+            return imagePreviewContainer;
+        }
+
+        imagePreviewContainer =
+            document.createElement(
+                "div"
+            );
+
+        imagePreviewContainer.id =
+            "imagePreviewContainer";
+
+        imagePreviewContainer.className =
+            "image-preview-container";
+
+        if (messageInput) {
+
+            messageInput
+                .parentElement
+                ?.appendChild(
+                    imagePreviewContainer
+                );
+
+        } else {
+
+            document.body.appendChild(
+                imagePreviewContainer
+            );
+
+        }
+
+        return imagePreviewContainer;
+    }
+
+
+    /* =====================================================
+       CREATE HIDDEN FILE INPUT
+    ===================================================== */
+
+    function createHiddenInput(
+        type
+    ) {
+
+        const input =
+            document.createElement(
+                "input"
+            );
+
+        input.type =
+            "file";
+
+        input.accept =
+            "image/*";
+
+        input.style.display =
+            "none";
+
+
+        if (type === "camera") {
+
+            input.setAttribute(
+                "capture",
+                "environment"
+            );
+
+        }
+
+
+        document.body.appendChild(
+            input
+        );
+
+
+        input.addEventListener(
+            "change",
+            function () {
+
+                handleImageSelected(
+                    this.files?.[0]
+                );
+
+            }
+        );
+
+
+        return input;
+    }
+
+
+    /* =====================================================
+       GALLERY
+    ===================================================== */
+
+    function openGallery() {
+
+        if (!galleryInput) {
+
+            galleryInput =
+                createHiddenInput(
+                    "gallery"
+                );
+
+        }
+
+        galleryInput.value =
+            "";
+
+        galleryInput.click();
+    }
+
+
+    /* =====================================================
+       CAMERA
+    ===================================================== */
+
+    function openCamera() {
+
+        if (!cameraInput) {
+
+            cameraInput =
+                createHiddenInput(
+                    "camera"
+                );
+
+        }
+
+        cameraInput.value =
+            "";
+
+        cameraInput.click();
+    }
+
+
+    /* =====================================================
+       IMAGE SELECTED
+    ===================================================== */
+
+    function handleImageSelected(
+        file
+    ) {
+
+        if (!file) {
+            return;
+        }
+
+
+        if (
+            !file.type.startsWith(
+                "image/"
+            )
+        ) {
+
+            showStatus(
+                "❌ Fadlan sawir dooro.",
+                true
+            );
+
+            return;
+        }
+
+
+        if (
+            file.size >
+            MAX_IMAGE_SIZE
+        ) {
+
+            showStatus(
+                "❌ Sawirku waa ka weyn yahay 10MB.",
+                true
+            );
+
+            return;
+        }
+
+
+        selectedImageFile =
+            file;
+
+
+        const reader =
+            new FileReader();
+
+
+        reader.onload =
+            function (event) {
+
+                selectedImageData =
+                    event.target.result;
+
+                showImagePreview(
+                    selectedImageData
+                );
+
+            };
+
+
+        reader.onerror =
+            function () {
+
+                showStatus(
+                    "❌ Sawirka lama akhrin karin.",
+                    true
+                );
+
+            };
+
+
+        reader.readAsDataURL(
+            file
+        );
+
+    }
+
+
+    /* =====================================================
+       IMAGE PREVIEW
+    ===================================================== */
+
+    function showImagePreview(
+        src
+    ) {
+
+        const container =
+            ensurePreviewContainer();
+
+
+        container.innerHTML =
+            "";
+
+
+        const wrapper =
+            document.createElement(
+                "div"
+            );
+
+        wrapper.className =
+            "selected-image-wrapper";
+
+
+        const img =
+            document.createElement(
+                "img"
+            );
+
+        img.className =
+            "selected-image-preview";
+
+        img.src =
+            src;
+
+        img.alt =
+            "Sawir la doortay";
+
+
+        const remove =
+            document.createElement(
+                "button"
+            );
+
+        remove.type =
+            "button";
+
+        remove.className =
+            "remove-image-button";
+
+        remove.innerHTML =
+            "✕";
+
+        remove.title =
+            "Ka saar sawirka";
+
+
+        remove.addEventListener(
+            "click",
+            removeSelectedImage
+        );
+
+
+        wrapper.appendChild(
+            img
+        );
+
+        wrapper.appendChild(
+            remove
+        );
+
+        container.appendChild(
+            wrapper
+        );
+
+        container.style.display =
+            "block";
+
+    }
+
+
+    /* =====================================================
+       REMOVE IMAGE
+    ===================================================== */
+
+    function removeSelectedImage() {
+
+        selectedImageFile =
+            null;
+
+        selectedImageData =
+            null;
+
+
+        if (
+            galleryInput
+        ) {
+
+            galleryInput.value =
+                "";
+
+        }
+
+
+        if (
+            cameraInput
+        ) {
+
+            cameraInput.value =
+                "";
+
+        }
+
+
+        if (
+            imagePreview
+        ) {
+
+            imagePreview.src =
+                "";
+
+            imagePreview.style.display =
+                "none";
+
+        }
+
+
+        if (
+            imagePreviewContainer
+        ) {
+
+            imagePreviewContainer.innerHTML =
+                "";
+
+            imagePreviewContainer.style.display =
+                "none";
+
+        }
+
+
+        showStatus(
+            "Sawirka waa laga saaray.",
+            false
+        );
+
+    }
+
+
+    /* =====================================================
+       STATUS
+    ===================================================== */
+
+    function showStatus(
+        message,
+        isError = false
+    ) {
+
+        if (!statusElement) {
+            return;
+        }
+
+        statusElement.textContent =
+            message;
+
+        statusElement.classList.toggle(
+            "error",
+            Boolean(isError)
+        );
+
+    }
+
+
+    /* =====================================================
+       ESCAPE HTML
+    ===================================================== */
+
+    function escapeHTML(
+        value
+    ) {
+
+        return String(
+            value ?? ""
+        )
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+            .replace(
+                /</g,
+                "&lt;"
+            )
+            .replace(
+                />/g,
+                "&gt;"
+            )
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#039;"
+            );
+
+    }
+
+
+    /* =====================================================
+       FORMAT TEXT
+    ===================================================== */
+
+    function formatText(
+        text
+    ) {
+
+        return escapeHTML(
+            text
+        )
+            .replace(
+                /\n/g,
+                "<br>"
+            );
+
+    }
+
+
+    /* =====================================================
+       SCROLL
+    ===================================================== */
+
+    function scrollToBottom() {
+
+        const container =
+            ensureMessagesContainer();
+
+        container.scrollTop =
+            container.scrollHeight;
+
+    }
+
+
+    /* =====================================================
+       ADD USER MESSAGE
+    ===================================================== */
+
+    function addUserMessage(
+        text,
+        image
+    ) {
+
+        const container =
+            ensureMessagesContainer();
+
+
+        const message =
+            document.createElement(
+                "div"
+            );
+
+        message.className =
+            "chat-message user-message";
+
+
+        let html =
+            `<div class="message-role">Adiga</div>`;
+
+
+        if (text) {
+
+            html +=
+                `<div class="message-text">${formatText(text)}</div>`;
+
+        }
+
+
+        if (image) {
+
+            html +=
+                `
+                <div class="message-image">
+                    <img
+                        src="${image}"
+                        alt="Sawirka isticmaalaha"
+                    >
+                </div>
+                `;
+
+        }
+
+
+        message.innerHTML =
+            html;
+
+
+        container.appendChild(
+            message
+        );
+
+
+        scrollToBottom();
+
+    }
+
+
+    /* =====================================================
+       ADD AI MESSAGE
+    ===================================================== */
+
+    function addAIMessage(
+        text
+    ) {
+
+        const container =
+            ensureMessagesContainer();
+
+
+        const message =
+            document.createElement(
+                "div"
+            );
+
+        message.className =
+            "chat-message ai-message";
+
+
+        message.innerHTML =
+            `
+            <div class="message-role">
+                NASIIB AI
+            </div>
+
+            <div class="message-text">
+                ${formatText(text)}
+            </div>
             `;
 
-          }
 
-        }
-      );
-
-    }
-  }
-
-
-  /* =====================================================
-     ADD IMAGE NOT FOUND
-  ===================================================== */
-
-  function addImageNotFoundMessage() {
-
-    removeWelcome();
-
-    const wrapper =
-      document.createElement("div");
-
-    wrapper.className =
-      "message assistant";
-
-
-    wrapper.innerHTML = `
-      <div class="avatar">
-        👳
-      </div>
-
-      <div class="message-content">
-
-        <div class="message-name">
-          AI
-        </div>
-
-        <div class="bubble image-not-found">
-          👉🏻 alaabtani mataalo meherada fadlan sawirada ay meheradu soo dhigtay mid kamida soo dooro.
-        </div>
-
-      </div>
-    `;
-
-
-    chatInner.appendChild(wrapper);
-
-    scrollBottom();
-  }
-
-
-  /* =====================================================
-     TYPING
-  ===================================================== */
-
-  function addTyping() {
-
-    removeWelcome();
-
-    const old =
-      $("typingMessage");
-
-    if (old) {
-      old.remove();
-    }
-
-
-    const wrapper =
-      document.createElement("div");
-
-    wrapper.className =
-      "message assistant";
-
-    wrapper.id =
-      "typingMessage";
-
-
-    wrapper.innerHTML = `
-      <div class="avatar">
-        👳
-      </div>
-
-      <div class="message-content">
-
-        <div class="message-name">
-          AI
-        </div>
-
-        <div class="typing">
-          Wuu qorayaa
-          <span>●</span>
-          <span>●</span>
-          <span>●</span>
-        </div>
-
-      </div>
-    `;
-
-
-    chatInner.appendChild(wrapper);
-
-    scrollBottom();
-  }
-
-
-  function removeTyping() {
-
-    const typing =
-      $("typingMessage");
-
-    if (typing) {
-      typing.remove();
-    }
-  }
-
-
-  /* =====================================================
-     IMAGE PREVIEW
-  ===================================================== */
-
-  function setImage(file) {
-
-    clearError();
-
-    if (!file) {
-      return;
-    }
-
-
-    if (
-      !file.type ||
-      !file.type.startsWith("image/")
-    ) {
-
-      showError(
-        "❌ Fadlan dooro sawir."
-      );
-
-      return;
-    }
-
-
-    if (
-      file.size >
-      MAX_IMAGE_SIZE
-    ) {
-
-      showError(
-        "❌ Sawirku waa inuu ka yaraadaa 5MB."
-      );
-
-      return;
-    }
-
-
-    const reader =
-      new FileReader();
-
-
-    reader.onload =
-      () => {
-
-        currentImage =
-          reader.result;
-
-        currentImageName =
-          file.name ||
-          "image";
-
-
-        if (previewImage) {
-
-          previewImage.src =
-            currentImage;
-
-        }
-
-
-        if (previewBox) {
-
-          previewBox.classList.add(
-            "show"
-          );
-
-        }
-
-      };
-
-
-    reader.onerror =
-      () => {
-
-        showError(
-          "❌ Sawirka lama akhrin karin."
-        );
-
-      };
-
-
-    reader.readAsDataURL(file);
-  }
-
-
-  /* =====================================================
-     REMOVE IMAGE
-  ===================================================== */
-
-  function removeImage() {
-
-    currentImage = null;
-
-    currentImageName = "";
-
-
-    if (previewImage) {
-
-      previewImage.removeAttribute(
-        "src"
-      );
-
-    }
-
-
-    if (previewBox) {
-
-      previewBox.classList.remove(
-        "show"
-      );
-
-    }
-
-
-    galleryInput.value = "";
-
-    cameraInput.value = "";
-  }
-
-
-  /* =====================================================
-     AUTO RESIZE TEXTAREA
-  ===================================================== */
-
-  function autoResize() {
-
-    messageInput.style.height =
-      "auto";
-
-    messageInput.style.height =
-      Math.min(
-        messageInput.scrollHeight,
-        150
-      ) + "px";
-  }
-
-
-  /* =====================================================
-     SENDING STATE
-  ===================================================== */
-
-  function setSending(
-    value
-  ) {
-
-    sending =
-      value;
-
-
-    sendBtn.disabled =
-      value;
-
-    messageInput.disabled =
-      value;
-
-    galleryInput.disabled =
-      value;
-
-    cameraInput.disabled =
-      value;
-
-  }
-
-
-  /* =====================================================
-     DATA URL → BLOB
-  ===================================================== */
-
-  function dataUrlToBlob(
-    dataUrl
-  ) {
-
-    const parts =
-      String(dataUrl)
-        .split(",");
-
-
-    if (parts.length !== 2) {
-
-      throw new Error(
-        "Sawirka format-kiisu sax ma aha."
-      );
-
-    }
-
-
-    const header =
-      parts[0];
-
-    const data =
-      parts[1];
-
-
-    const match =
-      header.match(
-        /data:(.*?);base64/
-      );
-
-
-    const mimeType =
-      match
-        ? match[1]
-        : "image/jpeg";
-
-
-    const binary =
-      atob(data);
-
-
-    const length =
-      binary.length;
-
-
-    const bytes =
-      new Uint8Array(
-        length
-      );
-
-
-    for (
-      let i = 0;
-      i < length;
-      i++
-    ) {
-
-      bytes[i] =
-        binary.charCodeAt(i);
-
-    }
-
-
-    return new Blob(
-      [bytes],
-      {
-        type: mimeType
-      }
-    );
-
-  }
-
-
-  /* =====================================================
-     IMAGE → DATABASE MATCH
-  ===================================================== */
-
-  async function matchImageInDatabase(
-    imageDataUrl
-  ) {
-
-    if (!imageDataUrl) {
-
-      throw new Error(
-        "Sawir lama helin."
-      );
-
-    }
-
-
-    const blob =
-      dataUrlToBlob(
-        imageDataUrl
-      );
-
-
-    const formData =
-      new FormData();
-
-
-    formData.append(
-      "image",
-      blob,
-      currentImageName ||
-      "user-image.jpg"
-    );
-
-
-    const response =
-      await fetch(
-        API_MATCH_IMAGE,
-        {
-          method: "POST",
-          body: formData,
-          cache: "no-store"
-        }
-      );
-
-
-    const data =
-      await response
-        .json()
-        .catch(
-          () => ({})
+        container.appendChild(
+            message
         );
 
 
-    /*
-      404 = sawirka lama helin
-    */
-
-    if (
-      response.status === 404
-    ) {
-
-      return {
-        found: false,
-        data
-      };
+        scrollToBottom();
 
     }
 
 
-    if (!response.ok) {
+    /* =====================================================
+       LOADING MESSAGE
+    ===================================================== */
 
-      throw new Error(
-        data.error ||
-        data.message ||
-        `Image Match Error: ${response.status}`
-      );
+    function addLoadingMessage() {
 
-    }
+        const container =
+            ensureMessagesContainer();
 
 
-    return {
-      found:
-        data.found === true,
-
-      data
-    };
-
-  }
-
-
-  /* =====================================================
-     SEND NORMAL TEXT CHAT
-  ===================================================== */
-
-  async function sendTextChat(
-    message
-  ) {
-
-    const response =
-      await fetch(
-        API_CHAT,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body:
-            JSON.stringify({
-              message:
-                message,
-
-              image:
-                null,
-
-              clientId:
-                clientId
-            })
-        }
-      );
-
-
-    const data =
-      await response
-        .json()
-        .catch(
-          () => ({})
-        );
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        data.error ||
-        data.message ||
-        `Server Error: ${response.status}`
-      );
-
-    }
-
-
-    return data;
-  }
-
-
-  /* =====================================================
-     MAIN SEND
-  ===================================================== */
-
-  async function sendMessage() {
-
-    if (sending) {
-      return;
-    }
-
-
-    const message =
-      messageInput.value.trim();
-
-
-    if (
-      !message &&
-      !currentImage
-    ) {
-
-      showError(
-        "❌ Qor fariin ama dooro sawir."
-      );
-
-      messageInput.focus();
-
-      return;
-    }
-
-
-    clearError();
-
-
-    const sentText =
-      message;
-
-
-    const sentImage =
-      currentImage;
-
-
-    const sentImageName =
-      currentImageName;
-
-
-    /*
-      User message muuqaalka
-    */
-
-    addUserMessage(
-      sentText,
-      sentImage
-    );
-
-
-    /*
-      Input nadiifi
-    */
-
-    messageInput.value = "";
-
-    autoResize();
-
-
-    setSending(true);
-
-    addTyping();
-
-
-    try {
-
-      /* =================================================
-         1. SAWIR HADDII JIRO
-         ================================================= */
-
-      if (sentImage) {
-
-        /*
-          Marka hore Database-ka raadso.
-
-          MUHIIM:
-          /chat looma dirayo sawirka.
-        */
-
-        currentImageName =
-          sentImageName;
-
-
-        const result =
-          await matchImageInDatabase(
-            sentImage
-          );
-
-
-        removeTyping();
-
-
-        /* ===============================================
-           MATCH FOUND
-        =============================================== */
-
-        if (
-          result.found === true &&
-          result.data?.knowledge
-        ) {
-
-          addDatabaseResult(
-            result.data.knowledge
-          );
-
-
-          /*
-            Sawirka hadda la isticmaalay
-            ka saar composer-ka.
-          */
-
-          removeImage();
-
-
-          await loadHistory();
-
-
-          return;
-        }
-
-
-        /* ===============================================
-           IMAGE NOT FOUND
-        =============================================== */
-
-        addImageNotFoundMessage();
-
-        removeImage();
-
-        await loadHistory();
-
-        return;
-      }
-
-
-      /* =================================================
-         2. TEXT ONLY
-         ================================================= */
-
-      const data =
-        await sendTextChat(
-          sentText
-        );
-
-
-      removeTyping();
-
-
-      const aiResponse =
-        data.response ||
-        data.answer ||
-        data.message ||
-        "NASIIB jawaab kama soo celin.";
-
-
-      addAssistantMessage(
-        aiResponse
-      );
-
-
-      await loadHistory();
-
-
-    } catch (error) {
-
-      console.error(
-        "❌ SEND ERROR:",
-        error
-      );
-
-
-      removeTyping();
-
-
-      addAssistantMessage(
-        "❌ Khalad ayaa dhacay: " +
-        (
-          error.message ||
-          "Server lama heli karo."
-        )
-      );
-
-    } finally {
-
-      /*
-        Composer-ka nadiifi.
-      */
-
-      removeImage();
-
-
-      setSending(false);
-
-      messageInput.focus();
-
-      scrollBottom();
-    }
-
-  }
-
-
-  /* =====================================================
-     LOAD CHAT HISTORY
-  ===================================================== */
-
-  async function loadHistory() {
-
-    try {
-
-      const response =
-        await fetch(
-          `${API_HISTORY}?clientId=${encodeURIComponent(clientId)}`,
-          {
-            cache: "no-store"
-          }
-        );
-
-
-      if (!response.ok) {
-        return;
-      }
-
-
-      const data =
-        await response
-          .json()
-          .catch(
-            () => []
-          );
-
-
-      const chats =
-        Array.isArray(data)
-          ? data
-          : Array.isArray(data.chats)
-            ? data.chats
-            : [];
-
-
-      if (!historyList) {
-        return;
-      }
-
-
-      historyList.innerHTML =
-        "";
-
-
-      if (!chats.length) {
-
-        historyList.innerHTML =
-          `
-            <div class="history-item">
-              Chat-yadii hore halkan ayay ka muuqanayaan.
-            </div>
-          `;
-
-        return;
-      }
-
-
-      chats
-        .slice()
-        .reverse()
-        .forEach(
-          (chat) => {
-
-            const item =
-              document.createElement(
+        const message =
+            document.createElement(
                 "div"
-              );
-
-
-            item.className =
-              "history-item";
-
-
-            const text =
-              chat.message ||
-              chat.response ||
-              "Chat";
-
-
-            item.textContent =
-              String(text)
-                .replace(/\s+/g, " ")
-                .slice(0, 70);
-
-
-            historyList.appendChild(
-              item
             );
 
-          }
-        );
+        message.className =
+            "chat-message ai-message loading-message";
 
 
-    } catch (error) {
-
-      console.warn(
-        "⚠️ History lama soo qaadin:",
-        error
-      );
-
-    }
-
-  }
-
-
-  /* =====================================================
-     DELETE ALL CHATS
-  ===================================================== */
-
-  async function deleteAllChats() {
-
-    const ok =
-      window.confirm(
-        "Ma hubtaa inaad tirtirayso dhammaan taariikhda Chat-ka?"
-      );
-
-
-    if (!ok) {
-      return;
-    }
-
-
-    clearError();
-
-
-    try {
-
-      const response =
-        await fetch(
-          API_HISTORY,
-          {
-            method: "DELETE",
-
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-
-            body:
-              JSON.stringify({
-                clientId:
-                  clientId
-              })
-          }
-        );
-
-
-      const data =
-        await response
-          .json()
-          .catch(
-            () => ({})
-          );
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          data.error ||
-          "Chat-ka lama tirtirin."
-        );
-
-      }
-
-
-      chatInner.innerHTML =
-        `
-          <div class="welcome" id="welcome">
-
-            <div class="welcome-icon">
-              👳
+        message.innerHTML =
+            `
+            <div class="message-role">
+                NASIIB AI
             </div>
 
-            <h2>
-              Chat cusub
-            </h2>
-
-            <p>
-              Qor fariintaada si aad ula hadasho AI.
-            </p>
-
-          </div>
-        `;
-
-
-      if (historyList) {
-
-        historyList.innerHTML =
-          `
-            <div class="history-item">
-              Chat-yadii hore halkan ayay ka muuqanayaan.
+            <div class="message-text">
+                ⏳ Waan shaqaynayaa...
             </div>
-          `;
-
-      }
+            `;
 
 
-      messageInput.focus();
+        container.appendChild(
+            message
+        );
 
 
-    } catch (error) {
+        scrollToBottom();
 
-      showError(
-        error.message ||
-        "Chat-ka lama tirtirin."
-      );
+
+        return message;
 
     }
 
-  }
 
+    /* =====================================================
+       DATABASE IMAGE RESULT
+    ===================================================== */
 
-  /* =====================================================
-     NEW CHAT
-  ===================================================== */
-
-  function newChat() {
-
-    chatInner.innerHTML =
-      `
-        <div class="welcome" id="welcome">
-
-          <div class="welcome-icon">
-            👳
-          </div>
-
-          <h2>
-            Chat cusub
-          </h2>
-
-          <p>
-            Qor fariintaada si aad ula hadasho AI.
-          </p>
-
-        </div>
-      `;
-
-
-    clearError();
-
-    removeImage();
-
-    messageInput.value = "";
-
-    autoResize();
-
-    messageInput.focus();
-
-    closeSidebar();
-
-  }
-
-
-  /* =====================================================
-     SERVER HEALTH
-  ===================================================== */
-
-  async function checkHealth() {
-
-    try {
-
-      const response =
-        await fetch(
-          API_HEALTH,
-          {
-            cache: "no-store"
-          }
-        );
-
-
-      if (!response.ok) {
-        throw new Error();
-      }
-
-
-      if (statusDot) {
-
-        statusDot.classList.add(
-          "online"
-        );
-
-        statusDot.classList.remove(
-          "offline"
-        );
-
-      }
-
-
-      if (statusText) {
-
-        statusText.textContent =
-          "Online";
-
-      }
-
-
-    } catch {
-
-      if (statusDot) {
-
-        statusDot.classList.add(
-          "offline"
-        );
-
-        statusDot.classList.remove(
-          "online"
-        );
-
-      }
-
-
-      if (statusText) {
-
-        statusText.textContent =
-          "Offline";
-
-      }
-
-    }
-
-  }
-
-
-  /* =====================================================
-     THEME
-  ===================================================== */
-
-  function applyTheme(
-    theme
-  ) {
-
-    let selected =
-      theme;
-
-
-    if (
-      selected === "system"
+    function addDatabaseResult(
+        data
     ) {
 
-      selected =
-        window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches
-          ? "dark"
-          : "light";
+        const container =
+            ensureMessagesContainer();
+
+
+        const message =
+            document.createElement(
+                "div"
+            );
+
+        message.className =
+            "chat-message database-message";
+
+
+        const title =
+            data.title ||
+            data.knowledge?.title ||
+            "Database";
+
+
+        const content =
+            data.content ||
+            data.knowledge?.content ||
+            "";
+
+
+        const imageUrl =
+            data.image_url ||
+            data.knowledge?.image_url ||
+            "";
+
+
+        const audioUrl =
+            data.audio_url ||
+            data.knowledge?.audio_url ||
+            "";
+
+
+        let html =
+            `
+            <div class="message-role">
+                📚 Database
+            </div>
+
+            <div class="database-result">
+            `;
+
+
+        if (title) {
+
+            html +=
+                `
+                <h3>
+                    ${escapeHTML(title)}
+                </h3>
+                `;
+
+        }
+
+
+        if (content) {
+
+            html +=
+                `
+                <div class="database-content">
+                    ${formatText(content)}
+                </div>
+                `;
+
+        }
+
+
+        if (imageUrl) {
+
+            html +=
+                `
+                <div class="database-image">
+                    <img
+                        src="${escapeHTML(imageUrl)}"
+                        alt="${escapeHTML(title)}"
+                        loading="lazy"
+                    >
+                </div>
+                `;
+
+        }
+
+
+        if (audioUrl) {
+
+            html +=
+                `
+                <div class="database-audio">
+
+                    <div class="audio-title">
+                        🔊 ▶️ Dhageyso Codka
+                    </div>
+
+                    <audio
+                        controls
+                        preload="none"
+                        src="${escapeHTML(audioUrl)}"
+                    >
+                    </audio>
+
+                </div>
+                `;
+
+        }
+
+
+        html +=
+            `
+            </div>
+            `;
+
+
+        message.innerHTML =
+            html;
+
+
+        container.appendChild(
+            message
+        );
+
+
+        scrollToBottom();
 
     }
 
 
-    document.body.classList.toggle(
-      "dark",
-      selected === "dark"
-    );
+    /* =====================================================
+       IMAGE NOT FOUND
+    ===================================================== */
 
-  }
+    function addImageNotFound() {
 
-
-  function saveTheme(
-    theme
-  ) {
-
-    localStorage.setItem(
-      "nasiib_theme",
-      theme
-    );
+        const container =
+            ensureMessagesContainer();
 
 
-    if (themeSelect) {
+        const message =
+            document.createElement(
+                "div"
+            );
 
-      themeSelect.value =
-        theme;
+        message.className =
+            "chat-message error-message";
+
+
+        message.innerHTML =
+            `
+            <div class="message-role">
+                📚 Database
+            </div>
+
+            <div class="message-text">
+                ❌ Sawirkan Database-ka lagama helin.
+            </div>
+            `;
+
+
+        container.appendChild(
+            message
+        );
+
+
+        scrollToBottom();
 
     }
 
 
-    applyTheme(theme);
+    /* =====================================================
+       MATCH IMAGE
+    ===================================================== */
 
-  }
+    async function matchImage(
+        file
+    ) {
 
+        if (!file) {
 
-  function initTheme() {
+            return {
+                success: false,
+                found: false
+            };
 
-    if (!themeSelect) {
-      return;
-    }
-
-
-    const saved =
-      localStorage.getItem(
-        "nasiib_theme"
-      ) ||
-      "system";
-
-
-    themeSelect.value =
-      saved;
+        }
 
 
-    applyTheme(
-      saved
-    );
+        const formData =
+            new FormData();
 
 
-    const media =
-      window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      );
+        formData.append(
+            "image",
+            file
+        );
 
 
-    media.addEventListener?.(
-      "change",
-      () => {
+        const response =
+            await fetch(
+                API_MATCH_IMAGE,
+                {
+                    method:
+                        "POST",
+
+                    body:
+                        formData
+                }
+            );
+
+
+        let data = null;
+
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch {
+
+            data = {
+                success: false
+            };
+
+        }
+
 
         if (
-          (
-            localStorage.getItem(
-              "nasiib_theme"
-            ) ||
-            "system"
-          ) === "system"
+            response.ok &&
+            data?.found
         ) {
 
-          applyTheme(
-            "system"
-          );
+            return data;
 
         }
 
-      }
-    );
 
-  }
+        if (
+            response.status ===
+            404
+        ) {
 
+            return {
 
-  /* =====================================================
-     MOBILE SIDEBAR
-  ===================================================== */
+                success:
+                    false,
 
-  function openSidebar() {
+                found:
+                    false,
 
-    if (sidebar) {
+                message:
+                    "❌ Sawirkan Database-ka lagama helin."
 
-      sidebar.classList.add(
-        "open"
-      );
+            };
 
-    }
-
-
-    if (overlay) {
-
-      overlay.classList.add(
-        "show"
-      );
-
-    }
-
-  }
-
-
-  function closeSidebar() {
-
-    if (sidebar) {
-
-      sidebar.classList.remove(
-        "open"
-      );
-
-    }
-
-
-    if (overlay) {
-
-      overlay.classList.remove(
-        "show"
-      );
-
-    }
-
-  }
-
-
-  /* =====================================================
-     DATABASE RESULT CSS
-  ===================================================== */
-
-  function addDatabaseStyles() {
-
-    if (
-      document.getElementById(
-        "nasiib-database-audio-style"
-      )
-    ) {
-
-      return;
-    }
-
-
-    const style =
-      document.createElement(
-        "style"
-      );
-
-
-    style.id =
-      "nasiib-database-audio-style";
-
-
-    style.textContent = `
-
-      .database-bubble {
-        overflow: hidden;
-      }
-
-      .match-success {
-        font-weight: 700;
-        margin-bottom: 12px;
-      }
-
-      .knowledge-title {
-        margin: 0 0 10px;
-        font-size: 20px;
-        line-height: 1.35;
-      }
-
-      .knowledge-content {
-        white-space: pre-wrap;
-        line-height: 1.7;
-        margin-bottom: 14px;
-      }
-
-      .database-image {
-        max-width: min(500px, 100%);
-        max-height: 430px;
-        width: auto;
-        object-fit: contain;
-        display: block;
-        margin: 10px 0 15px;
-        border-radius: 12px;
-      }
-
-      .database-audio {
-        margin-top: 14px;
-        padding: 12px;
-        border-radius: 12px;
-        background: var(--surface-2);
-        border: 1px solid var(--border);
-      }
-
-      .audio-title {
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-
-      .knowledge-audio {
-        display: block;
-        width: 100%;
-        max-width: 500px;
-        height: 42px;
-      }
-
-      .no-audio {
-        margin-top: 12px;
-        padding: 10px;
-        border-radius: 10px;
-        background: var(--surface-2);
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .image-not-found {
-        border-color: #dc3545;
-      }
-
-      @media (max-width: 760px) {
-
-        .knowledge-title {
-          font-size: 18px;
         }
 
-        .knowledge-content {
-          font-size: 14px;
-        }
 
-        .database-image {
-          max-height: 330px;
-        }
-
-        .database-audio {
-          padding: 10px;
-        }
-
-        .knowledge-audio {
-          height: 40px;
-        }
-
-      }
-
-    `;
-
-
-    document.head.appendChild(
-      style
-    );
-
-  }
-
-
-  /* =====================================================
-     EVENTS
-  ===================================================== */
-
-  galleryInput.addEventListener(
-    "change",
-    (event) => {
-
-      setImage(
-        event.target.files?.[0]
-      );
-
-    }
-  );
-
-
-  cameraInput.addEventListener(
-    "change",
-    (event) => {
-
-      setImage(
-        event.target.files?.[0]
-      );
-
-    }
-  );
-
-
-  if (removeImageBtn) {
-
-    removeImageBtn.addEventListener(
-      "click",
-      removeImage
-    );
-
-  }
-
-
-  sendBtn.addEventListener(
-    "click",
-    sendMessage
-  );
-
-
-  if (newChatBtn) {
-
-    newChatBtn.addEventListener(
-      "click",
-      newChat
-    );
-
-  }
-
-
-  if (deleteChatBtn) {
-
-    deleteChatBtn.addEventListener(
-      "click",
-      deleteAllChats
-    );
-
-  }
-
-
-  if (menuBtn) {
-
-    menuBtn.addEventListener(
-      "click",
-      openSidebar
-    );
-
-  }
-
-
-  if (overlay) {
-
-    overlay.addEventListener(
-      "click",
-      closeSidebar
-    );
-
-  }
-
-
-  if (themeSelect) {
-
-    themeSelect.addEventListener(
-      "change",
-      (event) => {
-
-        saveTheme(
-          event.target.value
+        throw new Error(
+            data?.error ||
+            "Sawirka lama hubin karin."
         );
 
-      }
-    );
-
-  }
+    }
 
 
-  messageInput.addEventListener(
-    "input",
-    autoResize
-  );
+    /* =====================================================
+       SEND TO CHAT API
+    ===================================================== */
+
+    async function sendToChat(
+        text,
+        image
+    ) {
+
+        const response =
+            await fetch(
+                API_CHAT,
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            client_id:
+                                clientId,
+
+                            message:
+                                text,
+
+                            image:
+                                image || ""
+
+                        })
+
+                }
+            );
 
 
-  messageInput.addEventListener(
-    "keydown",
-    (event) => {
+        let data = null;
 
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey
-      ) {
 
-        event.preventDefault();
+        try {
 
-        sendMessage();
+            data =
+                await response.json();
 
-      }
+        } catch {
+
+            data = null;
+
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.error ||
+                "Chat request ayaa fashilmay."
+            );
+
+        }
+
+
+        return data;
 
     }
-  );
 
 
-  document
-    .querySelector(
-      ".admin-link"
-    )
-    ?.addEventListener(
-      "click",
-      closeSidebar
-    );
+    /* =====================================================
+       SEND MESSAGE
+    ===================================================== */
+
+    async function sendMessage() {
+
+        if (isSending) {
+            return;
+        }
 
 
-  /* =====================================================
-     INITIALIZE
-  ===================================================== */
-
-  addDatabaseStyles();
-
-  initTheme();
-
-  autoResize();
-
-  loadHistory();
-
-  checkHealth();
+        const text =
+            messageInput
+                ? messageInput.value.trim()
+                : "";
 
 
-  /* =====================================================
-     HEALTH CHECK
-  ===================================================== */
-
-  setInterval(
-    checkHealth,
-    30000
-  );
+        const image =
+            selectedImageData;
 
 
-  console.log(
-    "✅ NASIIB BUSINESS CENTER public/app.js loaded."
-  );
+        if (!text && !image) {
+
+            showStatus(
+                "Qor fariin ama dooro sawir.",
+                true
+            );
+
+            return;
+        }
+
+
+        isSending =
+            true;
+
+
+        if (sendButton) {
+
+            sendButton.disabled =
+                true;
+
+        }
+
+
+        addUserMessage(
+            text,
+            image
+        );
+
+
+        if (messageInput) {
+
+            messageInput.value =
+                "";
+
+        }
+
+
+        showStatus(
+            "⏳ Waan hubinayaa...",
+            false
+        );
+
+
+        try {
+
+            /*
+             * ==========================================
+             * IMAGE ONLY
+             * ==========================================
+             */
+
+            if (
+                image &&
+                !text
+            ) {
+
+                const result =
+                    await matchImage(
+                        selectedImageFile
+                    );
+
+
+                if (
+                    result.found
+                ) {
+
+                    addDatabaseResult(
+                        result
+                    );
+
+                    showStatus(
+                        "✅ Sawirka Database-ka waa laga helay.",
+                        false
+                    );
+
+                } else {
+
+                    addImageNotFound();
+
+                    showStatus(
+                        "❌ Sawirkan Database-ka lagama helin.",
+                        true
+                    );
+
+                }
+
+
+                removeSelectedImage();
+
+
+                return;
+            }
+
+
+            /*
+             * ==========================================
+             * TEXT + IMAGE
+             * ==========================================
+             */
+
+            if (
+                image &&
+                text
+            ) {
+
+                let matchResult =
+                    null;
+
+
+                try {
+
+                    matchResult =
+                        await matchImage(
+                            selectedImageFile
+                        );
+
+                } catch (
+                    imageError
+                ) {
+
+                    console.warn(
+                        "Image match error:",
+                        imageError
+                    );
+
+                }
+
+
+                if (
+                    matchResult &&
+                    matchResult.found
+                ) {
+
+                    addDatabaseResult(
+                        matchResult
+                    );
+
+                }
+
+
+                const loading =
+                    addLoadingMessage();
+
+
+                const data =
+                    await sendToChat(
+                        text,
+                        image
+                    );
+
+
+                loading.remove();
+
+
+                addAIMessage(
+                    data.response ||
+                    data.message ||
+                    "Jawaab lama helin."
+                );
+
+
+                removeSelectedImage();
+
+
+                showStatus(
+                    "✅ Waa la diray.",
+                    false
+                );
+
+
+                return;
+            }
+
+
+            /*
+             * ==========================================
+             * TEXT ONLY
+             * ==========================================
+             */
+
+            const loading =
+                addLoadingMessage();
+
+
+            const data =
+                await sendToChat(
+                    text,
+                    ""
+                );
+
+
+            loading.remove();
+
+
+            addAIMessage(
+                data.response ||
+                data.message ||
+                "Jawaab lama helin."
+            );
+
+
+            showStatus(
+                "✅ Waa la diray.",
+                false
+            );
+
+        } catch (error) {
+
+            console.error(
+                "SEND ERROR:",
+                error
+            );
+
+
+            addAIMessage(
+                "❌ " +
+                (
+                    error.message ||
+                    "Wax khalad ah ayaa dhacay."
+                )
+            );
+
+
+            showStatus(
+                "❌ " +
+                (
+                    error.message ||
+                    "Fariinta lama diri karin."
+                ),
+                true
+            );
+
+        } finally {
+
+            isSending =
+                false;
+
+
+            if (sendButton) {
+
+                sendButton.disabled =
+                    false;
+
+            }
+
+        }
+
+    }
+
+
+    /* =====================================================
+       LOAD CHAT HISTORY
+    ===================================================== */
+
+    async function loadChatHistory() {
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API_HISTORY}?client_id=${encodeURIComponent(clientId)}`
+                );
+
+
+            if (!response.ok) {
+                return;
+            }
+
+
+            const data =
+                await response.json();
+
+
+            const chats =
+                data.chats ||
+                [];
+
+
+            const container =
+                ensureMessagesContainer();
+
+
+            container.innerHTML =
+                "";
+
+
+            chats.forEach(
+                (chat) => {
+
+                    if (
+                        chat.message ||
+                        chat.image
+                    ) {
+
+                        addUserMessage(
+                            chat.message ||
+                            "",
+                            chat.image ||
+                            null
+                        );
+
+                    }
+
+
+                    if (
+                        chat.response
+                    ) {
+
+                        addAIMessage(
+                            chat.response
+                        );
+
+                    }
+
+                }
+            );
+
+
+            scrollToBottom();
+
+        } catch (error) {
+
+            console.warn(
+                "History error:",
+                error
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       DELETE CHAT HISTORY
+    ===================================================== */
+
+    async function deleteChatHistory() {
+
+        const confirmed =
+            window.confirm(
+                "Ma hubtaa inaad tirtirayso dhammaan Chat History?"
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `${API_HISTORY}?client_id=${encodeURIComponent(clientId)}`,
+                    {
+                        method:
+                            "DELETE"
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data?.error ||
+                    "Chat history lama tirtiri karin."
+                );
+
+            }
+
+
+            const container =
+                ensureMessagesContainer();
+
+
+            container.innerHTML =
+                "";
+
+
+            showStatus(
+                "🗑️ Chat history waa la tirtiray.",
+                false
+            );
+
+        } catch (error) {
+
+            console.error(
+                "DELETE HISTORY ERROR:",
+                error
+            );
+
+
+            showStatus(
+                "❌ " +
+                error.message,
+                true
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       GALLERY CHANGE
+    ===================================================== */
+
+    function bindGalleryInput() {
+
+        if (!galleryInput) {
+            return;
+        }
+
+
+        galleryInput.addEventListener(
+            "change",
+            function () {
+
+                handleImageSelected(
+                    this.files?.[0]
+                );
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
+       CAMERA CHANGE
+    ===================================================== */
+
+    function bindCameraInput() {
+
+        if (!cameraInput) {
+            return;
+        }
+
+
+        cameraInput.addEventListener(
+            "change",
+            function () {
+
+                handleImageSelected(
+                    this.files?.[0]
+                );
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
+       BUTTON EVENTS
+    ===================================================== */
+
+    function bindEvents() {
+
+        if (sendButton) {
+
+            sendButton.addEventListener(
+                "click",
+                sendMessage
+            );
+
+        }
+
+
+        if (galleryButton) {
+
+            galleryButton.addEventListener(
+                "click",
+                function (event) {
+
+                    event.preventDefault();
+
+                    openGallery();
+
+                }
+            );
+
+        }
+
+
+        if (cameraButton) {
+
+            cameraButton.addEventListener(
+                "click",
+                function (event) {
+
+                    event.preventDefault();
+
+                    openCamera();
+
+                }
+            );
+
+        }
+
+
+        if (removeImageButton) {
+
+            removeImageButton.addEventListener(
+                "click",
+                removeSelectedImage
+            );
+
+        }
+
+
+        if (clearChatButton) {
+
+            clearChatButton.addEventListener(
+                "click",
+                deleteChatHistory
+            );
+
+        }
+
+
+        bindGalleryInput();
+
+        bindCameraInput();
+
+
+        /* =================================================
+           ENTER -> SEND
+           SHIFT + ENTER -> NEW LINE
+        ================================================= */
+
+        if (messageInput) {
+
+            messageInput.addEventListener(
+                "keydown",
+                function (event) {
+
+                    if (
+                        event.key ===
+                        "Enter"
+                    ) {
+
+                        if (
+                            event.shiftKey
+                        ) {
+
+                            /*
+                             * Shift + Enter
+                             * = New line
+                             */
+
+                            return;
+                        }
+
+
+                        /*
+                         * Enter
+                         * = Send
+                         */
+
+                        event.preventDefault();
+
+                        sendMessage();
+
+                    }
+
+                }
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       HEALTH CHECK
+    ===================================================== */
+
+    async function checkHealth() {
+
+        try {
+
+            const response =
+                await fetch(
+                    API_HEALTH
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (
+                data.status ===
+                "online"
+            ) {
+
+                showStatus(
+                    "🟢 Server online",
+                    false
+                );
+
+            }
+
+        } catch {
+
+            showStatus(
+                "🔴 Server-ka lama xiriirin.",
+                true
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       INITIALIZE
+    ===================================================== */
+
+    function initialize() {
+
+        /*
+         * DOM-ka dib ayaa loo raadinayaa
+         * haddii script-ku ku jiro HEAD.
+         */
+
+        messageInput =
+            messageInput ||
+            firstElement([
+                "messageInput",
+                "chatInput",
+                "promptInput",
+                "message",
+                "userMessage",
+                "textInput"
+            ]);
+
+
+        sendButton =
+            sendButton ||
+            firstElement([
+                "sendButton",
+                "sendBtn",
+                "sendMessage",
+                "send"
+            ]);
+
+
+        galleryButton =
+            galleryButton ||
+            firstElement([
+                "galleryButton",
+                "galleryBtn",
+                "gallery"
+            ]);
+
+
+        cameraButton =
+            cameraButton ||
+            firstElement([
+                "cameraButton",
+                "cameraBtn",
+                "camera"
+            ]);
+
+
+        galleryInput =
+            galleryInput ||
+            firstElement([
+                "galleryInput",
+                "galleryFile",
+                "imageInput",
+                "fileInput"
+            ]);
+
+
+        cameraInput =
+            cameraInput ||
+            firstElement([
+                "cameraInput",
+                "cameraFile",
+                "cameraFileInput"
+            ]);
+
+
+        imagePreview =
+            imagePreview ||
+            firstElement([
+                "imagePreview",
+                "previewImage",
+                "selectedImage"
+            ]);
+
+
+        imagePreviewContainer =
+            imagePreviewContainer ||
+            firstElement([
+                "imagePreviewContainer",
+                "previewContainer",
+                "imagePreviewBox"
+            ]);
+
+
+        removeImageButton =
+            removeImageButton ||
+            firstElement([
+                "removeImageButton",
+                "removeImageBtn",
+                "removeImage"
+            ]);
+
+
+        messagesContainer =
+            messagesContainer ||
+            firstElement([
+                "chatMessages",
+                "messages",
+                "chatArea",
+                "chatContainer",
+                "conversation"
+            ]);
+
+
+        clearChatButton =
+            clearChatButton ||
+            firstElement([
+                "clearChatButton",
+                "clearChatBtn",
+                "deleteChat",
+                "deleteChats"
+            ]);
+
+
+        statusElement =
+            statusElement ||
+            firstElement([
+                "statusMessage",
+                "chatStatus",
+                "status"
+            ]);
+
+
+        bindEvents();
+
+        loadChatHistory();
+
+        checkHealth();
+
+    }
+
+
+    /* =====================================================
+       DOM READY
+    ===================================================== */
+
+    if (
+        document.readyState ===
+        "loading"
+    ) {
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            initialize
+        );
+
+    } else {
+
+        initialize();
+
+    }
+
+
+    /* =====================================================
+       PUBLIC API
+    ===================================================== */
+
+    window.NasiibApp = {
+
+        sendMessage,
+
+        openGallery,
+
+        openCamera,
+
+        removeSelectedImage,
+
+        loadChatHistory,
+
+        deleteChatHistory,
+
+        matchImage,
+
+        getClientId() {
+
+            return clientId;
+
+        }
+
+    };
+
 
 })();
