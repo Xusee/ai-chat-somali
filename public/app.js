@@ -1565,7 +1565,7 @@
 
       <h2>
         Ku soo dhawoow
-        NASIIB BUSINESS CENTER DR maxamuud (bodhari)
+        NASIIB BUSINESS CENTER 👉🏻DR: maxamuud (bodhari)
       </h2>
 
       <p>
