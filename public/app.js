@@ -1502,13 +1502,14 @@
 
         <h2>
           Ku soo dhawoow
-          NASIIB BUSINESS CENTER <abbr titale="DR maxamuud (bodhari)">DMB</abbr>
+          NASIIB BUSINESS CENTER <abbr titale="DR maxamuud bodhari">DMB</abbr>
         </h2>
 
         <p>
           Weydii su'aal Af Soomaali ah.
           Waxaad diri kartaa qoraal,
-          sawir, <abbr titale="fadlan sawirku ha ahaado inta cad oo kaliya ka jar hadii aad screenshot ku qaaday ka jar hareeraha">fadlan</abbr>.
+          sawir, <abbr titale="fadlan sawirku ha ahaado inta cad oo kaliya ka jar 
+          hadii aad screenshot ku qaaday ka jar hareeraha">fadlan</abbr>.
         </p>
       `;
 
