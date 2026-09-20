@@ -1,15 +1,16 @@
+"use strict";
+
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const fs = require("fs");
 const crypto = require("crypto");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const { Pool } = require("pg");
 const OpenAI = require("openai");
-const sqlite3 = require("sqlite3").verbose();
 const sharp = require("sharp");
 
 const app = express();
@@ -23,6 +24,9 @@ const PORT = Number(process.env.PORT || 3000);
 const APP_URL =
   process.env.APP_URL ||
   `http://localhost:${PORT}`;
+
+const DATABASE_URL =
+  process.env.DATABASE_URL;
 
 const JWT_SECRET =
   process.env.JWT_SECRET ||
@@ -45,50 +49,38 @@ const AI_MODEL =
 
 const VISION_MODEL =
   process.env.VISION_MODEL ||
-  "google/gemini-2.5-flash";
+  "openrouter/free";
 
 const TRANSCRIPTION_MODEL =
   process.env.TRANSCRIPTION_MODEL ||
   "openai/whisper-1";
 
+const PHASH_THRESHOLD =
+  Number(process.env.PHASH_THRESHOLD || 10);
+
+
 /* =====================================================
-   DIRECTORIES
+   CHECK DATABASE
 ===================================================== */
 
-const ROOT = __dirname;
+if (!DATABASE_URL) {
 
-const PUBLIC_DIR =
-  path.join(ROOT, "public");
-
-const UPLOAD_DIR =
-  path.join(ROOT, "uploads");
-
-const KNOWLEDGE_DIR =
-  path.join(UPLOAD_DIR, "knowledge");
-
-const DATABASE_DIR =
-  path.join(ROOT, "database");
-
-const DB_FILE =
-  path.join(
-    DATABASE_DIR,
-    "database.sqlite"
+  console.error("");
+  console.error("❌ DATABASE_URL lama dejin.");
+  console.error(
+    "Render → Environment → DATABASE_URL geli."
   );
+  console.error("");
 
-[
-  PUBLIC_DIR,
-  UPLOAD_DIR,
-  KNOWLEDGE_DIR,
-  DATABASE_DIR
-].forEach((dir) => {
-  fs.mkdirSync(dir, {
-    recursive: true
-  });
-});
+  process.exit(1);
+}
+
 
 /* =====================================================
    EXPRESS
 ===================================================== */
+
+app.set("trust proxy", 1);
 
 app.use(cors());
 
@@ -105,22 +97,42 @@ app.use(
   })
 );
 
-app.use(
-  express.static(PUBLIC_DIR)
-);
 
-app.use(
-  "/uploads",
-  express.static(UPLOAD_DIR)
-);
+/* =====================================================
+   POSTGRESQL
+===================================================== */
+
+const pool = new Pool({
+
+  connectionString:
+    DATABASE_URL,
+
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? {
+          rejectUnauthorized: false
+        }
+      : undefined,
+
+  max: 10,
+
+  idleTimeoutMillis:
+    30000,
+
+  connectionTimeoutMillis:
+    10000
+
+});
+
 
 /* =====================================================
    OPENROUTER
 ===================================================== */
 
-const openrouter =
+const ai =
   OPENROUTER_API_KEY
     ? new OpenAI({
+
         baseURL:
           "https://openrouter.ai/api/v1",
 
@@ -128,582 +140,494 @@ const openrouter =
           OPENROUTER_API_KEY,
 
         defaultHeaders: {
-          "HTTP-Referer": APP_URL,
+
+          "HTTP-Referer":
+            APP_URL,
+
           "X-Title":
             "NASIIB BUSINESS CENTER"
+
         }
+
       })
     : null;
 
+
 if (!OPENROUTER_API_KEY) {
+
   console.warn(
     "⚠️ OPENROUTER_API_KEY lama dejin."
   );
+
 }
+
 
 /* =====================================================
-   SQLITE
+   MULTER
 ===================================================== */
 
-const db =
-  new sqlite3.Database(DB_FILE);
+const upload =
+  multer({
 
-function run(sql, params = []) {
-  return new Promise(
-    (resolve, reject) => {
-      db.run(
-        sql,
-        params,
-        function (error) {
-          if (error) {
-            reject(error);
-          } else {
-            resolve({
-              id: this.lastID,
-              changes: this.changes
-            });
-          }
-        }
-      );
-    }
-  );
-}
+    storage:
+      multer.memoryStorage(),
 
-function get(sql, params = []) {
-  return new Promise(
-    (resolve, reject) => {
-      db.get(
-        sql,
-        params,
-        (error, row) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(
-              row || null
-            );
-          }
-        }
-      );
-    }
-  );
-}
+    limits: {
 
-function all(sql, params = []) {
-  return new Promise(
-    (resolve, reject) => {
-      db.all(
-        sql,
-        params,
-        (error, rows) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(
-              rows || []
-            );
-          }
-        }
-      );
+      fileSize:
+        25 * 1024 * 1024
+
     }
-  );
-}
+
+  });
+
 
 /* =====================================================
-   HASH
+   IMAGE UPLOAD
 ===================================================== */
 
-function sha256(buffer) {
+const imageUpload =
+  multer({
+
+    storage:
+      multer.memoryStorage(),
+
+    limits: {
+
+      fileSize:
+        8 * 1024 * 1024
+
+    },
+
+    fileFilter(
+      req,
+      file,
+      cb
+    ) {
+
+      if (
+        file.mimetype &&
+        file.mimetype.startsWith(
+          "image/"
+        )
+      ) {
+
+        return cb(
+          null,
+          true
+        );
+
+      }
+
+      cb(
+        new Error(
+          "Kaliya sawir ayaa la oggol yahay."
+        )
+      );
+
+    }
+
+  });
+
+
+/* =====================================================
+   KNOWLEDGE UPLOAD
+===================================================== */
+
+const knowledgeUpload =
+  multer({
+
+    storage:
+      multer.memoryStorage(),
+
+    limits: {
+
+      fileSize:
+        25 * 1024 * 1024
+
+    },
+
+    fileFilter(
+      req,
+      file,
+      cb
+    ) {
+
+      const allowed =
+        file.mimetype?.startsWith(
+          "image/"
+        ) ||
+        file.mimetype?.startsWith(
+          "audio/"
+        );
+
+      if (allowed) {
+
+        return cb(
+          null,
+          true
+        );
+
+      }
+
+      cb(
+        new Error(
+          "Kaliya sawir ama cod ayaa la oggol yahay."
+        )
+      );
+
+    }
+
+  });
+
+
+/* =====================================================
+   DATABASE HELPERS
+===================================================== */
+
+async function query(
+  sql,
+  params = []
+) {
+
+  return pool.query(
+    sql,
+    params
+  );
+
+}
+
+
+async function get(
+  sql,
+  params = []
+) {
+
+  const result =
+    await pool.query(
+      sql,
+      params
+    );
+
+  return (
+    result.rows[0] ||
+    null
+  );
+
+}
+
+
+async function all(
+  sql,
+  params = []
+) {
+
+  const result =
+    await pool.query(
+      sql,
+      params
+    );
+
+  return result.rows;
+
+}
+
+
+/* =====================================================
+   SHA-256
+===================================================== */
+
+function sha256(
+  buffer
+) {
+
   return crypto
     .createHash("sha256")
     .update(buffer)
     .digest("hex");
+
 }
 
+
 /* =====================================================
-   HEER 2
-   PERCEPTUAL IMAGE HASH
+   SIMILAR IMAGE HASH
+   64-bit dHash
 ===================================================== */
 
-async function makePHash(buffer) {
+async function pHash(
+  buffer
+) {
+
   const result =
     await sharp(buffer)
-      .rotate()
-      .resize(32, 32, {
-        fit: "fill"
-      })
+
+      .resize(
+        9,
+        8,
+        {
+          fit: "fill"
+        }
+      )
+
       .grayscale()
+
       .raw()
+
       .toBuffer({
-        resolveWithObject: true
+        resolveWithObject:
+          true
       });
+
 
   const data =
     result.data;
 
-  let total = 0;
-
-  for (const pixel of data) {
-    total += pixel;
-  }
-
-  const average =
-    total / data.length;
 
   let bits = "";
 
-  for (const pixel of data) {
-    bits +=
-      pixel >= average
-        ? "1"
-        : "0";
-  }
-
-  const bytes = [];
 
   for (
-    let i = 0;
-    i < bits.length;
-    i += 8
+    let y = 0;
+    y < 8;
+    y++
   ) {
-    bytes.push(
-      parseInt(
-        bits.slice(i, i + 8),
-        2
-      )
-    );
+
+    for (
+      let x = 0;
+      x < 8;
+      x++
+    ) {
+
+      const left =
+        data[
+          y * 9 + x
+        ];
+
+      const right =
+        data[
+          y * 9 + x + 1
+        ];
+
+
+      bits +=
+        left < right
+          ? "1"
+          : "0";
+
+    }
+
   }
 
-  return Buffer
-    .from(bytes)
-    .toString("hex");
+
+  return BigInt(
+    "0b" + bits
+  )
+    .toString(16)
+    .padStart(
+      16,
+      "0"
+    );
+
 }
+
 
 /* =====================================================
    HAMMING DISTANCE
 ===================================================== */
 
 function hammingDistance(
-  hashA,
-  hashB
+  a,
+  b
 ) {
-  if (
-    !hashA ||
-    !hashB ||
-    hashA.length !== hashB.length
-  ) {
-    return Infinity;
+
+  if (!a || !b) {
+
+    return 999;
+
   }
 
-  const A =
-    Buffer.from(
-      hashA,
-      "hex"
-    );
-
-  const B =
-    Buffer.from(
-      hashB,
-      "hex"
-    );
-
-  let distance = 0;
-
-  for (
-    let i = 0;
-    i < A.length;
-    i++
-  ) {
-    let value =
-      A[i] ^ B[i];
-
-    while (value) {
-      distance +=
-        value & 1;
-
-      value >>= 1;
-    }
-  }
-
-  return distance;
-}
-
-/*
-   0   = isku mid
-   yar = aad isugu dhow
-   weyn = kala duwan
-*/
-
-const PHASH_THRESHOLD =
-  Number(
-    process.env.PHASH_THRESHOLD ||
-      170
-  );
-
-/* =====================================================
-   FILE HELPERS
-===================================================== */
-
-function safeFileName(value) {
-  return path.basename(
-    value || ""
-  );
-}
-
-function uploadUrl(
-  filename
-) {
-  return (
-    "/uploads/knowledge/" +
-    encodeURIComponent(
-      filename
-    )
-  );
-}
-
-function deleteFileByUrl(
-  url
-) {
-  if (!url) return;
 
   try {
-    const filename =
-      safeFileName(url);
 
-    if (!filename) return;
-
-    const filePath =
-      path.join(
-        KNOWLEDGE_DIR,
-        filename
+    let value =
+      BigInt(
+        "0x" + a
+      ) ^
+      BigInt(
+        "0x" + b
       );
 
-    if (
-      fs.existsSync(filePath)
+
+    let count = 0;
+
+
+    while (
+      value > 0n
     ) {
-      fs.unlinkSync(
-        filePath
-      );
+
+      value &=
+        value - 1n;
+
+      count++;
+
     }
-  } catch (error) {
-    console.warn(
-      "File delete error:",
-      error.message
-    );
+
+
+    return count;
+
+  } catch {
+
+    return 999;
+
   }
+
 }
 
-/* =====================================================
-   MULTER
-===================================================== */
-
-const knowledgeStorage =
-  multer.diskStorage({
-    destination:
-      (_req, _file, cb) => {
-        cb(
-          null,
-          KNOWLEDGE_DIR
-        );
-      },
-
-    filename:
-      (_req, file, cb) => {
-        const ext =
-          path.extname(
-            file.originalname ||
-              ""
-          )
-            .toLowerCase()
-            .replace(
-              /[^a-z0-9.]/g,
-              ""
-            ) || ".bin";
-
-        const filename =
-          `knowledge-${Date.now()}-${crypto
-            .randomBytes(5)
-            .toString("hex")}${ext}`;
-
-        cb(
-          null,
-          filename
-        );
-      }
-  });
-
-const knowledgeUpload =
-  multer({
-    storage:
-      knowledgeStorage,
-
-    limits: {
-      fileSize:
-        25 * 1024 * 1024
-    },
-
-    fileFilter:
-      (_req, file, cb) => {
-        if (
-          file.mimetype.startsWith(
-            "image/"
-          ) ||
-          file.mimetype.startsWith(
-            "audio/"
-          )
-        ) {
-          cb(null, true);
-        } else {
-          cb(
-            new Error(
-              "Kaliya sawir ama cod ayaa la oggol yahay."
-            )
-          );
-        }
-      }
-  });
-
-const imageUpload =
-  multer({
-    storage:
-      multer.memoryStorage(),
-
-    limits: {
-      fileSize:
-        10 * 1024 * 1024
-    },
-
-    fileFilter:
-      (_req, file, cb) => {
-        if (
-          file.mimetype.startsWith(
-            "image/"
-          )
-        ) {
-          cb(null, true);
-        } else {
-          cb(
-            new Error(
-              "Fadlan sawir geli."
-            )
-          );
-        }
-      }
-  });
-
-const audioUpload =
-  multer({
-    storage:
-      multer.memoryStorage(),
-
-    limits: {
-      fileSize:
-        25 * 1024 * 1024
-    },
-
-    fileFilter:
-      (_req, file, cb) => {
-        if (
-          file.mimetype.startsWith(
-            "audio/"
-          )
-        ) {
-          cb(null, true);
-        } else {
-          cb(
-            new Error(
-              "Fadlan cod geli."
-            )
-          );
-        }
-      }
-  });
 
 /* =====================================================
-   DATABASE INIT
+   DATABASE INITIALIZATION
 ===================================================== */
 
-async function initDatabase() {
+async function initializeDatabase() {
 
-  await run(`
+  await query(`
+
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+      id BIGSERIAL PRIMARY KEY,
+
       email TEXT UNIQUE NOT NULL,
+
       password TEXT NOT NULL,
-      role TEXT DEFAULT 'user',
-      created_at DATETIME
-        DEFAULT CURRENT_TIMESTAMP
+
+      role TEXT NOT NULL
+        DEFAULT 'user',
+
+      created_at
+        TIMESTAMPTZ NOT NULL
+        DEFAULT NOW()
+
     )
+
   `);
 
-  await run(`
-    CREATE TABLE IF NOT EXISTS chats (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      client_id TEXT NOT NULL,
-      user_id INTEGER,
-      message TEXT,
-      image TEXT,
-      image_url TEXT,
-      response TEXT,
-      created_at DATETIME
-        DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
 
-  await run(`
+  await query(`
+
     CREATE TABLE IF NOT EXISTS knowledge (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT,
-      content TEXT,
+
+      id BIGSERIAL PRIMARY KEY,
+
+      title TEXT NOT NULL
+        DEFAULT '',
+
+      content TEXT NOT NULL
+        DEFAULT '',
+
       image_url TEXT,
+
       audio_url TEXT,
+
       image_hash TEXT,
+
       image_phash TEXT,
-      created_at DATETIME
-        DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME
-        DEFAULT CURRENT_TIMESTAMP
+
+      image_data BYTEA,
+
+      image_mime TEXT,
+
+      audio_data BYTEA,
+
+      audio_mime TEXT,
+
+      created_at
+        TIMESTAMPTZ NOT NULL
+        DEFAULT NOW(),
+
+      updated_at
+        TIMESTAMPTZ NOT NULL
+        DEFAULT NOW()
+
     )
+
   `);
 
-  /* ===================================================
-     MIGRATIONS
-  =================================================== */
 
-  const chatColumns =
-    await all(
-      "PRAGMA table_info(chats)"
-    );
+  await query(`
 
-  if (
-    !chatColumns.some(
-      (column) =>
-        column.name ===
-        "image_url"
+    CREATE TABLE IF NOT EXISTS chats (
+
+      id BIGSERIAL PRIMARY KEY,
+
+      client_id TEXT,
+
+      user_id BIGINT
+        REFERENCES users(id)
+        ON DELETE SET NULL,
+
+      message TEXT,
+
+      image_data BYTEA,
+
+      image_mime TEXT,
+
+      response TEXT,
+
+      created_at
+        TIMESTAMPTZ NOT NULL
+        DEFAULT NOW()
+
     )
-  ) {
-    await run(
-      "ALTER TABLE chats ADD COLUMN image_url TEXT"
-    );
-  }
 
-  const knowledgeColumns =
-    await all(
-      "PRAGMA table_info(knowledge)"
-    );
+  `);
 
-  if (
-    !knowledgeColumns.some(
-      (column) =>
-        column.name ===
-        "image_hash"
-    )
-  ) {
-    await run(
-      "ALTER TABLE knowledge ADD COLUMN image_hash TEXT"
-    );
-  }
 
-  if (
-    !knowledgeColumns.some(
-      (column) =>
-        column.name ===
-        "image_phash"
-    )
-  ) {
-    await run(
-      "ALTER TABLE knowledge ADD COLUMN image_phash TEXT"
-    );
-  }
+  await query(`
 
-  await run(`
     CREATE INDEX IF NOT EXISTS
     idx_knowledge_image_hash
+
     ON knowledge(image_hash)
+
   `);
 
-  await run(`
+
+  await query(`
+
     CREATE INDEX IF NOT EXISTS
     idx_knowledge_image_phash
+
     ON knowledge(image_phash)
+
   `);
 
-  /* ===================================================
-     BACKFILL HASHES
-  =================================================== */
 
-  const images =
-    await all(`
-      SELECT
-        id,
-        image_url,
-        image_hash,
-        image_phash
-      FROM knowledge
-      WHERE image_url IS NOT NULL
-        AND image_url != ''
-    `);
+  await query(`
 
-  for (
-    const row of images
-  ) {
-    try {
-      const filename =
-        safeFileName(
-          row.image_url
-        );
+    CREATE INDEX IF NOT EXISTS
+    idx_knowledge_created_at
 
-      const filePath =
-        path.join(
-          KNOWLEDGE_DIR,
-          filename
-        );
+    ON knowledge(created_at DESC)
 
-      if (
-        !fs.existsSync(
-          filePath
-        )
-      ) {
-        continue;
-      }
+  `);
 
-      const buffer =
-        fs.readFileSync(
-          filePath
-        );
 
-      const exactHash =
-        row.image_hash ||
-        sha256(buffer);
+  await query(`
 
-      const perceptualHash =
-        row.image_phash ||
-        await makePHash(
-          buffer
-        );
+    CREATE INDEX IF NOT EXISTS
+    idx_chats_client_id
 
-      await run(
-        `
-        UPDATE knowledge
-        SET
-          image_hash = ?,
-          image_phash = ?
-        WHERE id = ?
-        `,
-        [
-          exactHash,
-          perceptualHash,
-          row.id
-        ]
-      );
-    } catch (error) {
-      console.warn(
-        "Hash error:",
-        error.message
-      );
-    }
-  }
+    ON chats(client_id)
+
+  `);
+
+
+  console.log(
+    "✅ PostgreSQL tables diyaar."
+  );
+
 }
+
 
 /* =====================================================
    DEFAULT ADMIN
@@ -716,72 +640,137 @@ async function createDefaultAdmin() {
       `
       SELECT id
       FROM users
-      WHERE email = ?
+      WHERE email = $1
       `,
-      [ADMIN_EMAIL]
+      [
+        ADMIN_EMAIL
+      ]
     );
 
+
   if (existing) {
+
     return;
+
   }
+
 
   const passwordHash =
     await bcrypt.hash(
       ADMIN_PASSWORD,
-      10
+      12
     );
 
-  await run(
+
+  await query(
+
     `
-    INSERT INTO users (
+    INSERT INTO users
+    (
       email,
       password,
       role
     )
-    VALUES (?, ?, 'admin')
+
+    VALUES
+    (
+      $1,
+      $2,
+      'admin'
+    )
     `,
+
     [
       ADMIN_EMAIL,
       passwordHash
     ]
+
   );
+
 
   console.log(
-    `👨‍💼 Admin created: ${ADMIN_EMAIL}`
+    `👑 Default admin created: ${ADMIN_EMAIL}`
   );
+
 }
 
+
 /* =====================================================
-   JWT ADMIN MIDDLEWARE
+   JWT
 ===================================================== */
 
-async function requireAdmin(
+function signAdminToken(
+  user
+) {
+
+  return jwt.sign(
+
+    {
+
+      id:
+        user.id,
+
+      email:
+        user.email,
+
+      role:
+        user.role
+
+    },
+
+    JWT_SECRET,
+
+    {
+      expiresIn:
+        "7d"
+    }
+
+  );
+
+}
+
+
+/* =====================================================
+   ADMIN MIDDLEWARE
+===================================================== */
+
+function adminMiddleware(
   req,
   res,
   next
 ) {
+
   try {
 
-    const authorization =
+    const header =
       req.headers.authorization ||
       "";
 
+
     if (
-      !authorization.startsWith(
+      !header.startsWith(
         "Bearer "
       )
     ) {
+
       return res
         .status(401)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             "Admin login ayaa loo baahan yahay."
+
         });
+
     }
 
+
     const token =
-      authorization.slice(7);
+      header.slice(7);
+
 
     const decoded =
       jwt.verify(
@@ -789,176 +778,274 @@ async function requireAdmin(
         JWT_SECRET
       );
 
-    const adminUser =
-      await get(
-        `
-        SELECT
-          id,
-          email,
-          role
-        FROM users
-        WHERE id = ?
-        `,
-        [decoded.id]
-      );
 
     if (
-      !adminUser ||
-      adminUser.role !==
-        "admin"
+      decoded.role !==
+      "admin"
     ) {
+
       return res
         .status(403)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
-            "Admin access denied."
+            "Admin kaliya ayaa geli kara."
+
         });
+
     }
 
+
     req.admin =
-      adminUser;
+      decoded;
+
 
     next();
 
-  } catch (error) {
+  } catch {
 
     return res
       .status(401)
       .json({
-        success: false,
+
+        success:
+          false,
+
         error:
-          "JWT token-ka Admin-ka waa khalad ama wuu dhacay."
+          "Token-ka admin-ka waa khaldan yahay ama wuu dhacay."
+
       });
+
   }
+
 }
 
+
 /* =====================================================
-   API HEALTH
+   KNOWLEDGE FORMAT
+===================================================== */
+
+function rowToKnowledge(
+  row
+) {
+
+  if (!row) {
+
+    return null;
+
+  }
+
+
+  return {
+
+    id:
+      row.id,
+
+    title:
+      row.title || "",
+
+    content:
+      row.content || "",
+
+    image_url:
+      row.image_url || null,
+
+    audio_url:
+      row.audio_url || null,
+
+    image_hash:
+      row.image_hash || null,
+
+    image_phash:
+      row.image_phash || null,
+
+    created_at:
+      row.created_at,
+
+    updated_at:
+      row.updated_at
+
+  };
+
+}
+
+
+/* =====================================================
+   HEALTH
 ===================================================== */
 
 app.get(
   "/api/health",
-  async (_req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
-      await get(
+      await query(
         "SELECT 1"
       );
 
+
       res.json({
-        success: true,
-        online: true,
-        app:
-          "NASIIB BUSINESS CENTER",
 
-        publicUser: true,
+        success:
+          true,
 
-        loginRequiredForChat:
-          false,
+        status:
+          "ok",
 
-        sqlite: true,
+        database:
+          "postgresql",
 
-        openrouter:
+        database_connected:
+          true,
+
+        ai_configured:
           Boolean(
             OPENROUTER_API_KEY
           ),
 
-        aiModel:
+        ai_model:
           AI_MODEL,
 
-        visionModel:
+        vision_model:
           VISION_MODEL,
 
-        exactMatch:
-          true,
-
-        similarMatch:
-          true,
-
-        visionOCR:
-          true,
-
-        phashThreshold:
+        phash_threshold:
           PHASH_THRESHOLD
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       res
-        .status(500)
+        .status(503)
         .json({
-          success: false,
-          sqlite: false,
+
+          success:
+            false,
+
+          status:
+            "error",
+
+          database:
+            "postgresql",
+
+          database_connected:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
 
+
 /* =====================================================
    ADMIN LOGIN
-   PUBLIC CHAT LOGIN UMA BAAHNA
 ===================================================== */
 
 app.post(
   "/api/login",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       const email =
         String(
           req.body.email ||
-            ""
+          ""
         )
-          .trim()
-          .toLowerCase();
+        .trim()
+        .toLowerCase();
+
 
       const password =
         String(
           req.body.password ||
-            ""
+          ""
         );
+
 
       if (
         !email ||
         !password
       ) {
+
         return res
           .status(400)
           .json({
-            success: false,
+
+            success:
+              false,
+
             error:
               "Email iyo password geli."
+
           });
+
       }
+
 
       const user =
         await get(
+
           `
-          SELECT *
+          SELECT
+            id,
+            email,
+            password,
+            role
+
           FROM users
-          WHERE email = ?
+
+          WHERE
+            LOWER(email)
+            =
+            LOWER($1)
           `,
-          [email]
+
+          [
+            email
+          ]
+
         );
+
 
       if (
         !user ||
         user.role !==
-          "admin"
+        "admin"
       ) {
+
         return res
           .status(401)
           .json({
-            success: false,
+
+            success:
+              false,
+
             error:
               "Email ama password waa khalad."
+
           });
+
       }
+
 
       const valid =
         await bcrypt.compare(
@@ -966,56 +1053,79 @@ app.post(
           user.password
         );
 
+
       if (!valid) {
+
         return res
           .status(401)
           .json({
-            success: false,
+
+            success:
+              false,
+
             error:
               "Email ama password waa khalad."
+
           });
+
       }
 
+
       const token =
-        jwt.sign(
-          {
-            id: user.id,
-            email:
-              user.email,
-            role:
-              user.role
-          },
-          JWT_SECRET,
-          {
-            expiresIn:
-              "7d"
-          }
+        signAdminToken(
+          user
         );
 
+
       res.json({
-        success: true,
+
+        success:
+          true,
+
         token,
+
         user: {
-          id: user.id,
+
+          id:
+            user.id,
+
           email:
             user.email,
+
           role:
             user.role
+
         }
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "LOGIN ERROR:",
+        error
+      );
+
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
+
 
 /* =====================================================
    ADMIN ME
@@ -1023,267 +1133,593 @@ app.post(
 
 app.get(
   "/api/admin/me",
-  requireAdmin,
-  (req, res) => {
+  adminMiddleware,
+  async (
+    req,
+    res
+  ) => {
 
     res.json({
-      success: true,
+
+      success:
+        true,
+
       user:
         req.admin
+
     });
+
   }
 );
 
+
 /* =====================================================
-   ADMIN KNOWLEDGE GET
+   GET KNOWLEDGE
 ===================================================== */
 
 app.get(
   "/api/admin/knowledge",
-  requireAdmin,
-  async (_req, res) => {
+  adminMiddleware,
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
-      const knowledge =
+      const rows =
         await all(`
-          SELECT *
+
+          SELECT
+
+            id,
+            title,
+            content,
+            image_url,
+            audio_url,
+            image_hash,
+            image_phash,
+            created_at,
+            updated_at
+
           FROM knowledge
-          ORDER BY id DESC
+
+          ORDER BY
+            id DESC
+
         `);
 
+
       res.json({
-        success: true,
-        knowledge
+
+        success:
+          true,
+
+        knowledge:
+          rows.map(
+            rowToKnowledge
+          )
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
 
+
 /* =====================================================
-   ADMIN KNOWLEDGE SEARCH
+   SEARCH KNOWLEDGE
 ===================================================== */
 
 app.get(
   "/api/admin/knowledge/search",
-  requireAdmin,
-  async (req, res) => {
+  adminMiddleware,
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       const q =
         String(
           req.query.q ||
-            ""
-        ).trim();
+          ""
+        )
+        .trim();
 
-      const knowledge =
-        await all(
-          `
-          SELECT *
-          FROM knowledge
-          WHERE title LIKE ?
-             OR content LIKE ?
-          ORDER BY id DESC
-          `,
-          [
-            `%${q}%`,
-            `%${q}%`
-          ]
-        );
 
-      res.json({
-        success: true,
-        knowledge
-      });
+      if (!q) {
 
-    } catch (error) {
+        const rows =
+          await all(`
 
-      res
-        .status(500)
-        .json({
-          success: false,
-          error:
-            error.message
+            SELECT
+              id,
+              title,
+              content,
+              image_url,
+              audio_url,
+              image_hash,
+              image_phash,
+              created_at,
+              updated_at
+
+            FROM knowledge
+
+            ORDER BY
+              id DESC
+
+          `);
+
+
+        return res.json({
+
+          success:
+            true,
+
+          knowledge:
+            rows.map(
+              rowToKnowledge
+            )
+
         });
-    }
-  }
-);
 
-/* =====================================================
-   ADMIN KNOWLEDGE CREATE
-   IMAGE + AUDIO
-===================================================== */
-
-app.post(
-  "/api/admin/knowledge",
-  requireAdmin,
-
-  knowledgeUpload.fields([
-    {
-      name: "image",
-      maxCount: 1
-    },
-    {
-      name: "audio",
-      maxCount: 1
-    }
-  ]),
-
-  async (req, res) => {
-
-    try {
-
-      const image =
-        req.files?.image?.[0];
-
-      const audio =
-        req.files?.audio?.[0];
-
-      const title =
-        String(
-          req.body.title ||
-            ""
-        ).trim();
-
-      const content =
-        String(
-          req.body.content ||
-            ""
-        ).trim();
-
-      if (
-        !title ||
-        !content
-      ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error:
-              "Title iyo content waa khasab."
-          });
       }
 
-      let imageUrl = "";
-      let audioUrl = "";
-      let imageHash = "";
-      let imagePHash = "";
 
-      if (image) {
+      const rows =
+        await all(
 
-        const buffer =
-          fs.readFileSync(
-            image.path
-          );
-
-        imageUrl =
-          uploadUrl(
-            image.filename
-          );
-
-        imageHash =
-          sha256(buffer);
-
-        imagePHash =
-          await makePHash(
-            buffer
-          );
-      }
-
-      if (audio) {
-        audioUrl =
-          uploadUrl(
-            audio.filename
-          );
-      }
-
-      const result =
-        await run(
           `
-          INSERT INTO knowledge (
+
+          SELECT
+
+            id,
             title,
             content,
             image_url,
             audio_url,
             image_hash,
-            image_phash
-          )
-          VALUES (?, ?, ?, ?, ?, ?)
-          `,
-          [
-            title,
-            content,
-            imageUrl,
-            audioUrl,
-            imageHash,
-            imagePHash
-          ]
-        );
+            image_phash,
+            created_at,
+            updated_at
 
-      const knowledge =
-        await get(
-          `
-          SELECT *
           FROM knowledge
-          WHERE id = ?
+
+          WHERE
+
+            title ILIKE $1
+
+            OR
+
+            content ILIKE $1
+
+          ORDER BY
+            id DESC
+
           `,
-          [result.id]
+
+          [
+            `%${q}%`
+          ]
+
         );
 
-      res.status(201).json({
-        success: true,
-        knowledge
+
+      res.json({
+
+        success:
+          true,
+
+        knowledge:
+          rows.map(
+            rowToKnowledge
+          )
+
       });
 
-    } catch (error) {
-
-      console.error(
-        "KNOWLEDGE CREATE:",
-        error
-      );
+    } catch (
+      error
+    ) {
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
 
+
 /* =====================================================
-   ADMIN KNOWLEDGE UPDATE
+   ADD KNOWLEDGE
+===================================================== */
+
+app.post(
+  "/api/admin/knowledge",
+
+  adminMiddleware,
+
+  knowledgeUpload.fields([
+
+    {
+      name:
+        "image",
+
+      maxCount:
+        1
+    },
+
+    {
+      name:
+        "audio",
+
+      maxCount:
+        1
+    }
+
+  ]),
+
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const title =
+        String(
+          req.body.title ||
+          ""
+        )
+        .trim();
+
+
+      const content =
+        String(
+          req.body.content ||
+          ""
+        )
+        .trim();
+
+
+      const imageFile =
+        req.files?.image?.[0] ||
+        null;
+
+
+      const audioFile =
+        req.files?.audio?.[0] ||
+        null;
+
+
+      if (
+        !title &&
+        !content &&
+        !imageFile &&
+        !audioFile
+      ) {
+
+        return res
+          .status(400)
+          .json({
+
+            success:
+              false,
+
+            error:
+              "Xog geli marka hore."
+
+          });
+
+      }
+
+
+      let imageHash =
+        null;
+
+      let imagePhash =
+        null;
+
+      let imageData =
+        null;
+
+      let imageMime =
+        null;
+
+
+      if (imageFile) {
+
+        imageData =
+          imageFile.buffer;
+
+        imageMime =
+          imageFile.mimetype;
+
+        imageHash =
+          sha256(
+            imageFile.buffer
+          );
+
+        imagePhash =
+          await pHash(
+            imageFile.buffer
+          );
+
+      }
+
+
+      let audioData =
+        null;
+
+      let audioMime =
+        null;
+
+
+      if (audioFile) {
+
+        audioData =
+          audioFile.buffer;
+
+        audioMime =
+          audioFile.mimetype;
+
+      }
+
+
+      const result =
+        await query(
+
+          `
+
+          INSERT INTO knowledge
+
+          (
+            title,
+            content,
+            image_hash,
+            image_phash,
+            image_data,
+            image_mime,
+            audio_data,
+            audio_mime
+          )
+
+          VALUES
+
+          (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7,
+            $8
+          )
+
+          RETURNING id
+
+          `,
+
+          [
+
+            title,
+
+            content,
+
+            imageHash,
+
+            imagePhash,
+
+            imageData,
+
+            imageMime,
+
+            audioData,
+
+            audioMime
+
+          ]
+
+        );
+
+
+      const id =
+        result.rows[0].id;
+
+
+      await query(
+
+        `
+
+        UPDATE knowledge
+
+        SET
+
+          image_url =
+            CASE
+
+              WHEN image_data
+                IS NOT NULL
+
+              THEN
+                $1
+
+              ELSE
+                NULL
+
+            END,
+
+          audio_url =
+            CASE
+
+              WHEN audio_data
+                IS NOT NULL
+
+              THEN
+                $2
+
+              ELSE
+                NULL
+
+            END,
+
+          updated_at =
+            NOW()
+
+        WHERE id =
+          $3
+
+        `,
+
+        [
+
+          `/api/knowledge/${id}/image`,
+
+          `/api/knowledge/${id}/audio`,
+
+          id
+
+        ]
+
+      );
+
+
+      const saved =
+        await get(
+
+          `
+
+          SELECT
+
+            id,
+            title,
+            content,
+            image_url,
+            audio_url,
+            image_hash,
+            image_phash,
+            created_at,
+            updated_at
+
+          FROM knowledge
+
+          WHERE id =
+            $1
+
+          `,
+
+          [
+            id
+          ]
+
+        );
+
+
+      res.json({
+
+        success:
+          true,
+
+        message:
+          "Knowledge PostgreSQL Database-ka waa lagu kaydiyey.",
+
+        knowledge:
+          rowToKnowledge(
+            saved
+          )
+
+      });
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "ADD KNOWLEDGE ERROR:",
+        error
+      );
+
+
+      res
+        .status(500)
+        .json({
+
+          success:
+            false,
+
+          error:
+            error.message
+
+        });
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   EDIT KNOWLEDGE
 ===================================================== */
 
 app.put(
   "/api/admin/knowledge/:id",
-  requireAdmin,
+
+  adminMiddleware,
 
   knowledgeUpload.fields([
+
     {
-      name: "image",
-      maxCount: 1
+      name:
+        "image",
+
+      maxCount:
+        1
     },
+
     {
-      name: "audio",
-      maxCount: 1
+      name:
+        "audio",
+
+      maxCount:
+        1
     }
+
   ]),
 
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
@@ -1292,156 +1728,334 @@ app.put(
           req.params.id
         );
 
+
+      if (
+        !Number.isInteger(id)
+      ) {
+
+        return res
+          .status(400)
+          .json({
+
+            success:
+              false,
+
+            error:
+              "ID khaldan."
+
+          });
+
+      }
+
+
       const old =
         await get(
+
           `
           SELECT *
           FROM knowledge
-          WHERE id = ?
+          WHERE id = $1
           `,
-          [id]
+
+          [
+            id
+          ]
+
         );
 
+
       if (!old) {
+
         return res
           .status(404)
           .json({
-            success: false,
+
+            success:
+              false,
+
             error:
               "Knowledge lama helin."
+
           });
+
       }
 
-      const image =
-        req.files?.image?.[0];
 
-      const audio =
-        req.files?.audio?.[0];
+      const title =
+        req.body.title !==
+        undefined
 
-      let imageUrl =
-        old.image_url ||
-        "";
+          ? String(
+              req.body.title
+            ).trim()
 
-      let audioUrl =
-        old.audio_url ||
-        "";
+          : old.title;
 
-      let imageHash =
-        old.image_hash ||
-        "";
 
-      let imagePHash =
-        old.image_phash ||
-        "";
+      const content =
+        req.body.content !==
+        undefined
 
-      if (image) {
+          ? String(
+              req.body.content
+            ).trim()
 
-        const buffer =
-          fs.readFileSync(
-            image.path
+          : old.content;
+
+
+      const imageFile =
+        req.files?.image?.[0] ||
+        null;
+
+
+      const audioFile =
+        req.files?.audio?.[0] ||
+        null;
+
+
+      if (imageFile) {
+
+        const hash =
+          sha256(
+            imageFile.buffer
           );
 
-        imageUrl =
-          uploadUrl(
-            image.filename
+
+        const phash =
+          await pHash(
+            imageFile.buffer
           );
 
-        imageHash =
-          sha256(buffer);
 
-        imagePHash =
-          await makePHash(
-            buffer
-          );
+        await query(
 
-        deleteFileByUrl(
-          old.image_url
-        );
-      }
-
-      if (audio) {
-
-        audioUrl =
-          uploadUrl(
-            audio.filename
-          );
-
-        deleteFileByUrl(
-          old.audio_url
-        );
-      }
-
-      await run(
-        `
-        UPDATE knowledge
-        SET
-          title = ?,
-          content = ?,
-          image_url = ?,
-          audio_url = ?,
-          image_hash = ?,
-          image_phash = ?,
-          updated_at =
-            CURRENT_TIMESTAMP
-        WHERE id = ?
-        `,
-        [
-          req.body.title ??
-            old.title,
-
-          req.body.content ??
-            old.content,
-
-          imageUrl,
-          audioUrl,
-          imageHash,
-          imagePHash,
-          id
-        ]
-      );
-
-      const knowledge =
-        await get(
           `
-          SELECT *
-          FROM knowledge
-          WHERE id = ?
+
+          UPDATE knowledge
+
+          SET
+
+            title =
+              $1,
+
+            content =
+              $2,
+
+            image_url =
+              $3,
+
+            image_hash =
+              $4,
+
+            image_phash =
+              $5,
+
+            image_data =
+              $6,
+
+            image_mime =
+              $7,
+
+            updated_at =
+              NOW()
+
+          WHERE id =
+            $8
+
           `,
-          [id]
+
+          [
+
+            title,
+
+            content,
+
+            `/api/knowledge/${id}/image`,
+
+            hash,
+
+            phash,
+
+            imageFile.buffer,
+
+            imageFile.mimetype,
+
+            id
+
+          ]
+
         );
+
+      } else {
+
+        await query(
+
+          `
+
+          UPDATE knowledge
+
+          SET
+
+            title =
+              $1,
+
+            content =
+              $2,
+
+            updated_at =
+              NOW()
+
+          WHERE id =
+            $3
+
+          `,
+
+          [
+
+            title,
+
+            content,
+
+            id
+
+          ]
+
+        );
+
+      }
+
+
+      if (audioFile) {
+
+        await query(
+
+          `
+
+          UPDATE knowledge
+
+          SET
+
+            audio_url =
+              $1,
+
+            audio_data =
+              $2,
+
+            audio_mime =
+              $3,
+
+            updated_at =
+              NOW()
+
+          WHERE id =
+            $4
+
+          `,
+
+          [
+
+            `/api/knowledge/${id}/audio`,
+
+            audioFile.buffer,
+
+            audioFile.mimetype,
+
+            id
+
+          ]
+
+        );
+
+      }
+
+
+      const saved =
+        await get(
+
+          `
+
+          SELECT
+
+            id,
+            title,
+            content,
+            image_url,
+            audio_url,
+            image_hash,
+            image_phash,
+            created_at,
+            updated_at
+
+          FROM knowledge
+
+          WHERE id =
+            $1
+
+          `,
+
+          [
+            id
+          ]
+
+        );
+
 
       res.json({
-        success: true,
-        knowledge
+
+        success:
+          true,
+
+        message:
+          "Knowledge waa la cusboonaysiiyey.",
+
+        knowledge:
+          rowToKnowledge(
+            saved
+          )
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       console.error(
-        "KNOWLEDGE UPDATE:",
+        "EDIT KNOWLEDGE ERROR:",
         error
       );
+
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
 
+
 /* =====================================================
-   ADMIN KNOWLEDGE DELETE
+   DELETE KNOWLEDGE
 ===================================================== */
 
 app.delete(
   "/api/admin/knowledge/:id",
-  requireAdmin,
 
-  async (req, res) => {
+  adminMiddleware,
+
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
@@ -1450,113 +2064,607 @@ app.delete(
           req.params.id
         );
 
-      const knowledge =
+
+      const row =
         await get(
+
           `
-          SELECT *
+          SELECT id
           FROM knowledge
-          WHERE id = ?
+          WHERE id = $1
           `,
-          [id]
+
+          [
+            id
+          ]
+
         );
 
-      if (!knowledge) {
+
+      if (!row) {
+
         return res
           .status(404)
           .json({
-            success: false,
+
+            success:
+              false,
+
             error:
               "Knowledge lama helin."
+
           });
+
       }
 
-      await run(
+
+      await query(
+
         `
         DELETE FROM knowledge
-        WHERE id = ?
+        WHERE id = $1
         `,
-        [id]
+
+        [
+          id
+        ]
+
       );
 
-      deleteFileByUrl(
-        knowledge.image_url
-      );
-
-      deleteFileByUrl(
-        knowledge.audio_url
-      );
 
       res.json({
-        success: true,
+
+        success:
+          true,
+
         message:
           "Knowledge waa la tirtiray."
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
 
+
 /* =====================================================
-   HEER 1 + HEER 2
-   /api/match-image
+   DATABASE IMAGE
+===================================================== */
+
+app.get(
+  "/api/knowledge/:id/image",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.id
+        );
+
+
+      const row =
+        await get(
+
+          `
+          SELECT
+            image_data,
+            image_mime
+
+          FROM knowledge
+
+          WHERE id =
+            $1
+
+          `,
+
+          [
+            id
+          ]
+
+        );
+
+
+      if (
+        !row ||
+        !row.image_data
+      ) {
+
+        return res
+          .status(404)
+          .send(
+            "Sawirka lama helin."
+          );
+
+      }
+
+
+      res.setHeader(
+
+        "Content-Type",
+
+        row.image_mime ||
+        "image/jpeg"
+
+      );
+
+
+      res.setHeader(
+
+        "Cache-Control",
+
+        "public, max-age=31536000"
+
+      );
+
+
+      res.send(
+        row.image_data
+      );
+
+    } catch (
+      error
+    ) {
+
+      res
+        .status(500)
+        .send(
+          "Sawirka lama soo qaadi karin."
+        );
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   DATABASE AUDIO
+===================================================== */
+
+app.get(
+  "/api/knowledge/:id/audio",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const id =
+        Number(
+          req.params.id
+        );
+
+
+      const row =
+        await get(
+
+          `
+          SELECT
+            audio_data,
+            audio_mime
+
+          FROM knowledge
+
+          WHERE id =
+            $1
+
+          `,
+
+          [
+            id
+          ]
+
+        );
+
+
+      if (
+        !row ||
+        !row.audio_data
+      ) {
+
+        return res
+          .status(404)
+          .send(
+            "Codka lama helin."
+          );
+
+      }
+
+
+      res.setHeader(
+
+        "Content-Type",
+
+        row.audio_mime ||
+        "audio/mpeg"
+
+      );
+
+
+      res.setHeader(
+
+        "Cache-Control",
+
+        "public, max-age=31536000"
+
+      );
+
+
+      res.send(
+        row.audio_data
+      );
+
+    } catch (
+      error
+    ) {
+
+      res
+        .status(500)
+        .send(
+          "Codka lama soo qaadi karin."
+        );
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   AUDIO TRANSCRIPTION
 ===================================================== */
 
 app.post(
-  "/api/match-image",
-  imageUpload.single("image"),
 
-  async (req, res) => {
+  "/api/admin/knowledge/transcribe",
+
+  adminMiddleware,
+
+  upload.single("audio"),
+
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      if (
+        !ai ||
+        !OPENROUTER_API_KEY
+      ) {
+
+        return res
+          .status(500)
+          .json({
+
+            success:
+              false,
+
+            error:
+              "OPENROUTER_API_KEY lama dejin."
+
+          });
+
+      }
+
+
+      if (!req.file) {
+
+        return res
+          .status(400)
+          .json({
+
+            success:
+              false,
+
+            error:
+              "Fadlan cod geli."
+
+          });
+
+      }
+
+
+      const mime =
+        req.file.mimetype ||
+        "audio/webm";
+
+
+      let format =
+        "webm";
+
+
+      if (
+        mime.includes(
+          "mpeg"
+        ) ||
+        mime.includes(
+          "mp3"
+        )
+      ) {
+
+        format =
+          "mp3";
+
+      } else if (
+        mime.includes(
+          "wav"
+        )
+      ) {
+
+        format =
+          "wav";
+
+      } else if (
+        mime.includes(
+          "mp4"
+        ) ||
+        mime.includes(
+          "m4a"
+        )
+      ) {
+
+        format =
+          "m4a";
+
+      } else if (
+        mime.includes(
+          "ogg"
+        )
+      ) {
+
+        format =
+          "ogg";
+
+      }
+
+
+      const response =
+        await fetch(
+
+          "https://openrouter.ai/api/v1/audio/transcriptions",
+
+          {
+
+            method:
+              "POST",
+
+            headers: {
+
+              Authorization:
+                `Bearer ${OPENROUTER_API_KEY}`,
+
+              "Content-Type":
+                "application/json",
+
+              "HTTP-Referer":
+                APP_URL,
+
+              "X-Title":
+                "NASIIB BUSINESS CENTER"
+
+            },
+
+            body:
+              JSON.stringify({
+
+                model:
+                  TRANSCRIPTION_MODEL,
+
+                input_audio: {
+
+                  data:
+                    req.file.buffer
+                      .toString(
+                        "base64"
+                      ),
+
+                  format:
+                    format
+
+                }
+
+              })
+
+          }
+
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (
+        !response.ok
+      ) {
+
+        return res
+          .status(
+            response.status
+          )
+          .json({
+
+            success:
+              false,
+
+            error:
+              data?.error?.message ||
+              "Codka lama turjumi karin."
+
+          });
+
+      }
+
+
+      res.json({
+
+        success:
+          true,
+
+        text:
+          data.text || ""
+
+      });
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "TRANSCRIBE ERROR:",
+        error
+      );
+
+
+      res
+        .status(500)
+        .json({
+
+          success:
+            false,
+
+          error:
+            error.message
+
+        });
+
+    }
+
+  }
+
+);
+
+
+/* =====================================================
+   IMAGE MATCH
+   LEVEL 1 = EXACT SHA-256
+   LEVEL 2 = SIMILAR dHash
+===================================================== */
+
+app.post(
+
+  "/api/match-image",
+
+  imageUpload.single(
+    "image"
+  ),
+
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       if (!req.file) {
+
         return res
           .status(400)
           .json({
-            success: false,
-            found: false,
-            match: "none",
+
+            success:
+              false,
+
+            found:
+              false,
+
+            match:
+              "none",
+
             message:
               "❌ Fadlan sawir geli."
+
           });
+
       }
+
 
       const buffer =
         req.file.buffer;
 
-      /* ================================================
-         HEER 1 — EXACT SHA-256
-      ================================================= */
 
-      const exactHash =
-        sha256(buffer);
+      /* =========================================
+         LEVEL 1
+         EXACT SHA-256
+      ========================================= */
+
+      const imageHash =
+        sha256(
+          buffer
+        );
+
 
       const exact =
         await get(
+
           `
-          SELECT *
+
+          SELECT
+
+            id,
+            title,
+            content,
+            image_url,
+            audio_url,
+            image_hash,
+            image_phash,
+            created_at,
+            updated_at
+
           FROM knowledge
-          WHERE image_hash = ?
+
+          WHERE image_hash =
+            $1
+
           ORDER BY id DESC
+
           LIMIT 1
+
           `,
-          [exactHash]
+
+          [
+            imageHash
+          ]
+
         );
+
 
       if (exact) {
 
         return res.json({
-          success: true,
-          found: true,
+
+          success:
+            true,
+
+          found:
+            true,
+
+          match:
+            "exact",
 
           title:
             exact.title || "",
@@ -1571,507 +2679,640 @@ app.post(
             exact.audio_url || "",
 
           knowledge:
-            exact,
-
-          match:
-            "exact",
+            rowToKnowledge(
+              exact
+            ),
 
           message:
             "✅ Sawirka Database-ka waa laga helay."
+
         });
+
       }
 
-      /* ================================================
-         HEER 2 — SIMILAR IMAGE
-      ================================================= */
 
-      const userPHash =
-        await makePHash(
+      /* =========================================
+         LEVEL 2
+         SIMILAR IMAGE
+      ========================================= */
+
+      const incomingPhash =
+        await pHash(
           buffer
         );
 
-      const databaseImages =
-        await all(`
-          SELECT *
-          FROM knowledge
-          WHERE image_url IS NOT NULL
-            AND image_url != ''
-            AND image_phash IS NOT NULL
-        `);
 
-      let bestMatch =
+      const rows =
+        await all(
+
+          `
+
+          SELECT
+
+            id,
+            title,
+            content,
+            image_url,
+            audio_url,
+            image_hash,
+            image_phash,
+            created_at,
+            updated_at
+
+          FROM knowledge
+
+          WHERE
+
+            image_data
+            IS NOT NULL
+
+            AND
+
+            image_phash
+            IS NOT NULL
+
+          `
+
+        );
+
+
+      let best =
         null;
 
+
       for (
-        const item
-        of databaseImages
+        const row
+        of rows
       ) {
 
         const distance =
           hammingDistance(
-            userPHash,
-            item.image_phash
+
+            incomingPhash,
+
+            row.image_phash
+
           );
 
+
         if (
-          !bestMatch ||
+          !best ||
           distance <
-            bestMatch.distance
+          best.distance
         ) {
-          bestMatch = {
-            item,
+
+          best = {
+
+            row,
+
             distance
+
           };
+
         }
+
       }
 
+
       if (
-        bestMatch &&
-        bestMatch.distance <=
-          PHASH_THRESHOLD
+        best &&
+        best.distance <=
+        PHASH_THRESHOLD
       ) {
 
         return res.json({
-          success: true,
-          found: true,
 
-          title:
-            bestMatch.item
-              .title || "",
+          success:
+            true,
 
-          content:
-            bestMatch.item
-              .content || "",
-
-          image_url:
-            bestMatch.item
-              .image_url || "",
-
-          audio_url:
-            bestMatch.item
-              .audio_url || "",
-
-          knowledge:
-            bestMatch.item,
+          found:
+            true,
 
           match:
             "similar",
 
           similarity_distance:
-            bestMatch.distance,
+            best.distance,
+
+          title:
+            best.row.title ||
+            "",
+
+          content:
+            best.row.content ||
+            "",
+
+          image_url:
+            best.row.image_url ||
+            "",
+
+          audio_url:
+            best.row.audio_url ||
+            "",
+
+          knowledge:
+            rowToKnowledge(
+              best.row
+            ),
 
           message:
             "✅ Sawir la mid ah ayaa Database-ka laga helay."
+
         });
+
       }
 
-      /* ================================================
-         LAMA HELIN
-         PUBLIC APP → /chat → HEER 3 AI VISION
-      ================================================= */
+
+      /* =========================================
+         DATABASE MISS
+         APP.JS SHOULD CONTINUE TO /chat
+      ========================================= */
 
       return res
         .status(404)
         .json({
-          success: false,
-          found: false,
 
-          title: "",
-          content: "",
-          image_url: "",
-          audio_url: "",
-          knowledge: null,
+          success:
+            false,
 
-          match: "none",
+          found:
+            false,
+
+          match:
+            "none",
 
           message:
-            "❌ Sawirkan Database-ka lagama helin."
+            "❌ Sawirkan Database-ka lagama helin.",
+
+          ai_fallback:
+            true
+
         });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       console.error(
         "MATCH IMAGE ERROR:",
         error
       );
 
+
       res
         .status(500)
         .json({
-          success: false,
-          found: false,
-          match: "none",
+
+          success:
+            false,
+
+          found:
+            false,
+
+          match:
+            "error",
+
           error:
             error.message
+
         });
+
     }
+
   }
+
 );
 
-/* =====================================================
-   HEER 3 — OPENROUTER VISION AI
-===================================================== */
-
-async function analyzeImageWithAI(
-  imageDataUrl,
-  userMessage
-) {
-
-  if (!openrouter) {
-    throw new Error(
-      "OPENROUTER_API_KEY lama dejin."
-    );
-  }
-
-  const systemPrompt = `
-Waxaad tahay NASIIB BUSINESS CENTER AI.
-
-Jawaab kasta ku bixi Af Soomaali.
-
-MARKA SAWIR LAGU SOO DIRO:
-
-1. 👁️ Si taxaddar leh u EEG sawirka.
-
-2. 📝 Akhri qoraalka ku qoran sawirka.
-
-3. 📋 Isku day inaad soo saarto
-   dhammaan qoraalka muuqda.
-
-4. 🔢 Akhri lambarada muuqda.
-
-5. 📅 Akhri taariikhaha muuqda.
-
-6. 🏷️ Akhri magacyada,
-   cinwaanada iyo labels-ka.
-
-7. 📸 Haddii uu yahay screenshot,
-   qoraalka screenshot-ka akhri.
-
-8. 🖼️ Haddii sawirka meel kale laga keenay,
-   weli isku day inaad akhrido qoraalka.
-
-9. 🔎 Haddii uu yahay product,
-   akhri magaca product-ka,
-   xogta iyo qoraalka muuqda.
-
-10. 📄 Haddii uu yahay document,
-    akhri qoraalka muuqda.
-
-11. 🧾 Haddii uu yahay receipt,
-    akhri qiimaha, taariikhda,
-    magaca iyo xogta kale ee muuqata.
-
-12. Haddii qayb ka mid ah qoraalka
-    aan si cad loo arki karin,
-    sheeg inaysan caddayn.
-
-13. ❌ Ha samayn xog aan sawirka
-    laga arki karin.
-
-14. Marka hore soo saar
-    qoraalka sawirka.
-
-15. Kadib sharax waxa
-    sawirku ka hadlayo.
-
-16. Jawaabta ugu dambayn
-    ku bixi Af Soomaali.
-`;
-
-  const response =
-    await openrouter.chat.completions.create({
-
-      model:
-        VISION_MODEL,
-
-      messages: [
-
-        {
-          role: "system",
-
-          content:
-            systemPrompt
-        },
-
-        {
-          role: "user",
-
-          content: [
-
-            {
-              type: "text",
-
-              text:
-                userMessage ||
-                `
-Sawirkan si faahfaahsan u akhri.
-
-📝 Qoraalka ku qoran soo saar.
-
-🔢 Lambarada akhri.
-
-📅 Taariikhaha akhri.
-
-Kadib Af Soomaali ku sharax
-waxa sawirku ka hadlayo.
-`
-            },
-
-            {
-              type:
-                "image_url",
-
-              image_url: {
-                url:
-                  imageDataUrl
-              }
-            }
-
-          ]
-        }
-
-      ],
-
-      temperature:
-        0.1
-    });
-
-  return (
-    response
-      ?.choices?.[0]
-      ?.message
-      ?.content ||
-    "AI wax jawaab ah kama soo saarin sawirka."
-  );
-}
 
 /* =====================================================
-   /chat
-   PUBLIC USER
-   LOGIN LOOMA BAAHNA
+   PUBLIC CHAT
+   TEXT + IMAGE
 ===================================================== */
 
 app.post(
   "/chat",
-
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
-      const clientId =
-        String(
-          req.body.clientId ||
-            "anonymous"
-        ).trim();
+      if (
+        !ai ||
+        !OPENROUTER_API_KEY
+      ) {
+
+        return res
+          .status(500)
+          .json({
+
+            success:
+              false,
+
+            error:
+              "OPENROUTER_API_KEY lama darin."
+
+          });
+
+      }
+
 
       const message =
         String(
           req.body.message ||
-            ""
-        ).trim();
+          ""
+        )
+        .trim();
+
 
       const image =
-        typeof req.body.image ===
-          "string"
-          ? req.body.image
-          : "";
+        req.body.image ||
+        null;
+
+
+      const clientId =
+        String(
+          req.body.clientId ||
+          ""
+        )
+        .trim();
+
 
       if (
         !message &&
         !image
       ) {
+
         return res
           .status(400)
           .json({
-            success: false,
+
+            success:
+              false,
+
             error:
-              "Qoraal ama sawir geli."
+              "Qoraal ama sawir soo dir."
+
           });
+
       }
 
-      if (!openrouter) {
-        return res
-          .status(500)
-          .json({
-            success: false,
-            error:
-              "OPENROUTER_API_KEY lama dejin."
-          });
-      }
 
-      let answer = "";
+      let responseText =
+        "";
 
-      /* ================================================
-         IMAGE
-         HEER 3 — VISION AI
-      ================================================= */
+
+      /* =========================================
+         IMAGE → VISION AI
+      ========================================= */
 
       if (image) {
 
-        answer =
-          await analyzeImageWithAI(
-            image,
-            message
-          );
+        const dataUrl =
+
+          image.startsWith(
+            "data:"
+          )
+
+            ? image
+
+            : `data:image/jpeg;base64,${image}`;
+
+
+        const prompt =
+
+          message ||
+
+          `
+
+Sawirkan si taxaddar leh u eeg.
+
+Af Soomaali iigu sharax.
+
+1. Akhri qoraalka ku qoran sawirka.
+
+2. Akhri tirooyinka iyo lambarrada.
+
+3. Akhri taariikhaha haddii ay jiraan.
+
+4. Sheeg magaca badeecadda ama shirkadda.
+
+5. Sharax waxa sawirku yahay.
+
+6. Haddii qoraal aanu caddeyn,
+   sheeg waxa aan la hubin.
+
+Ha sameyn xog aan sawirka ku jirin.
+
+`;
+
+
+        const completion =
+
+          await ai.chat.completions.create({
+
+            model:
+              VISION_MODEL,
+
+            messages: [
+
+              {
+
+                role:
+                  "system",
+
+                content:
+                  `
+Waxaad tahay AI ka tirsan
+NASIIB BUSINESS CENTER.
+
+Had iyo jeer Af Soomaali ku jawaab.
+
+Marka sawir la diro,
+si taxaddar leh u akhri:
+
+- qoraalka
+- tirooyinka
+- taariikhaha
+- magaca badeecadda
+- xogta muuqata
+
+Ha sameyn xog aan sawirka ku jirin.
+`
+
+              },
+
+              {
+
+                role:
+                  "user",
+
+                content: [
+
+                  {
+
+                    type:
+                      "text",
+
+                    text:
+                      prompt
+
+                  },
+
+                  {
+
+                    type:
+                      "image_url",
+
+                    image_url: {
+
+                      url:
+                        dataUrl
+
+                    }
+
+                  }
+
+                ]
+
+              }
+
+            ],
+
+            max_tokens:
+              1500
+
+          });
+
+
+        responseText =
+
+          completion
+            .choices?.[0]
+            ?.message
+            ?.content ||
+
+          "Sawirka waan helay, laakiin jawaab lama soo saari karin.";
 
       }
 
-      /* ================================================
-         TEXT ONLY
-      ================================================= */
+
+      /* =========================================
+         TEXT → AI
+      ========================================= */
 
       else {
 
-        const knowledge =
-          await all(`
-            SELECT
-              title,
-              content
-            FROM knowledge
-            ORDER BY id DESC
-            LIMIT 100
-          `);
+        const completion =
 
-        const knowledgeText =
-          knowledge
-            .map(
-              (item) =>
-                `Title: ${
-                  item.title || ""
-                }
+          await ai.chat.completions.create({
 
-Content:
-${
-  item.content || ""
-}`
-            )
-            .join(
-              "\n\n"
-            );
+            model:
+              AI_MODEL,
 
-        const response =
-          await openrouter
-            .chat
-            .completions
-            .create({
+            messages: [
 
-              model:
-                AI_MODEL,
+              {
 
-              messages: [
+                role:
+                  "system",
 
-                {
-                  role:
-                    "system",
+                content:
+                  `
+Waxaad tahay AI ka tirsan
+NASIIB BUSINESS CENTER.
 
-                  content:
-                    `
-Waxaad tahay
-NASIIB BUSINESS CENTER AI.
+Had iyo jeer Af Soomaali ku jawaab.
 
-Had iyo jeer ku jawaab
-Af Soomaali.
-
-Isticmaal Knowledge Database-ka
-marka xogtiisu khusayso
-su'aasha user-ka.
-
-DATABASE:
-
-${
-  knowledgeText ||
-  "Database-ku waa madhan."
-}
+Jawaabta ka dhig mid cad,
+kooban oo waxtar leh.
 `
-                },
 
-                {
-                  role:
-                    "user",
+              },
 
-                  content:
-                    message
-                }
+              {
 
-              ],
+                role:
+                  "user",
 
-              temperature:
-                0.3
-            });
+                content:
+                  message
 
-        answer =
-          response
-            ?.choices?.[0]
+              }
+
+            ],
+
+            max_tokens:
+              1200
+
+          });
+
+
+        responseText =
+
+          completion
+            .choices?.[0]
             ?.message
             ?.content ||
-          "";
+
+          "Jawaab lama helin.";
+
       }
 
-      /* ================================================
-         SAVE CHAT HISTORY
-      ================================================= */
 
-      await run(
-        `
-        INSERT INTO chats (
-          client_id,
-          message,
-          image,
-          image_url,
-          response
-        )
-        VALUES (?, ?, ?, ?, ?)
-        `,
-        [
-          clientId,
+      /* =========================================
+         SAVE CHAT
+      ========================================= */
 
-          message ||
-            null,
+      let savedChat =
+        null;
 
-          image ||
-            null,
 
-          image ||
-            null,
+      try {
 
-          answer
-        ]
-      );
+        let imageBuffer =
+          null;
+
+
+        if (
+          image &&
+          image.includes(
+            "base64,"
+          )
+        ) {
+
+          imageBuffer =
+            Buffer.from(
+
+              image
+                .split(
+                  "base64,"
+                )[1],
+
+              "base64"
+
+            );
+
+        }
+
+
+        const result =
+          await query(
+
+            `
+
+            INSERT INTO chats
+
+            (
+              client_id,
+              message,
+              image_data,
+              image_mime,
+              response
+            )
+
+            VALUES
+
+            (
+              $1,
+              $2,
+              $3,
+              $4,
+              $5
+            )
+
+            RETURNING
+
+              id,
+              client_id,
+              message,
+              response,
+              created_at
+
+            `,
+
+            [
+
+              clientId ||
+                null,
+
+              message ||
+                null,
+
+              imageBuffer,
+
+              image
+                ? "image/jpeg"
+                : null,
+
+              responseText
+
+            ]
+
+          );
+
+
+        savedChat =
+          result.rows[0];
+
+      } catch (
+        dbError
+      ) {
+
+        console.error(
+          "CHAT SAVE ERROR:",
+          dbError
+        );
+
+      }
+
 
       res.json({
-        success: true,
+
+        success:
+          true,
 
         response:
-          answer,
+          responseText,
 
-        text:
-          answer,
+        message:
+          responseText,
 
-        clientId,
+        chat:
+          savedChat
 
-        source:
-          image
-            ? "ai_vision"
-            : "ai"
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       console.error(
         "CHAT ERROR:",
         error
       );
 
+
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
-            error.message
+            error?.error?.message ||
+            error?.message ||
+            "AI response error."
+
         });
+
     }
+
   }
 );
+
 
 /* =====================================================
    CHAT HISTORY
@@ -2079,52 +3320,97 @@ ${
 
 app.get(
   "/api/chats",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       const clientId =
         String(
           req.query.clientId ||
-            req.query.client_id ||
-            ""
-        ).trim();
+          ""
+        )
+        .trim();
+
 
       if (!clientId) {
+
         return res.json({
-          success: true,
-          chats: []
+
+          success:
+            true,
+
+          chats:
+            []
+
         });
+
       }
 
-      const chats =
+
+      const rows =
         await all(
+
           `
-          SELECT *
+
+          SELECT
+
+            id,
+            client_id,
+            message,
+            response,
+            created_at
+
           FROM chats
-          WHERE client_id = ?
-          ORDER BY id ASC
+
+          WHERE client_id =
+            $1
+
+          ORDER BY
+            id ASC
+
           `,
-          [clientId]
+
+          [
+            clientId
+          ]
+
         );
 
+
       res.json({
-        success: true,
-        chats
+
+        success:
+          true,
+
+        chats:
+          rows
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
+
 
 /* =====================================================
    DELETE CHAT
@@ -2132,60 +3418,92 @@ app.get(
 
 app.delete(
   "/api/chats",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       const clientId =
         String(
-          req.body.clientId ||
-            req.body.client_id ||
-            req.query.clientId ||
-            req.query.client_id ||
-            ""
-        ).trim();
+
+          req.body?.clientId ||
+
+          req.query.clientId ||
+
+          ""
+
+        )
+        .trim();
+
 
       if (!clientId) {
+
         return res
           .status(400)
           .json({
-            success: false,
+
+            success:
+              false,
+
             error:
               "clientId ayaa loo baahan yahay."
+
           });
+
       }
 
-      const result =
-        await run(
-          `
-          DELETE FROM chats
-          WHERE client_id = ?
-          `,
-          [clientId]
-        );
+
+      await query(
+
+        `
+
+        DELETE FROM chats
+
+        WHERE client_id =
+          $1
+
+        `,
+
+        [
+          clientId
+        ]
+
+      );
+
 
       res.json({
-        success: true,
 
-        deleted:
-          result.changes,
+        success:
+          true,
 
         message:
           "Chat history waa la tirtiray."
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
+
 
 /* =====================================================
    ADMIN CHATS
@@ -2193,37 +3511,66 @@ app.delete(
 
 app.get(
   "/api/admin/chats",
-  requireAdmin,
-
-  async (_req, res) => {
+  adminMiddleware,
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
-      const chats =
+      const rows =
         await all(`
-          SELECT *
+
+          SELECT
+
+            id,
+            client_id,
+            message,
+            response,
+            created_at
+
           FROM chats
-          ORDER BY id DESC
+
+          ORDER BY
+            id DESC
+
           LIMIT 500
+
         `);
 
+
       res.json({
-        success: true,
-        chats
+
+        success:
+          true,
+
+        chats:
+          rows
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
+
 
 /* =====================================================
    ADMIN USERS
@@ -2231,244 +3578,164 @@ app.get(
 
 app.get(
   "/api/admin/users",
-  requireAdmin,
-
-  async (_req, res) => {
+  adminMiddleware,
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
-      const users =
+      const rows =
         await all(`
+
           SELECT
+
             id,
             email,
             role,
             created_at
+
           FROM users
-          ORDER BY id DESC
+
+          ORDER BY
+            id DESC
+
         `);
 
+
       res.json({
-        success: true,
-        users
+
+        success:
+          true,
+
+        users:
+          rows
+
       });
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       res
         .status(500)
         .json({
-          success: false,
+
+          success:
+            false,
+
           error:
             error.message
+
         });
+
     }
+
   }
 );
 
+
 /* =====================================================
-   AUDIO TRANSCRIPTION
+   STATIC FILES
 ===================================================== */
 
-app.post(
-  "/api/admin/knowledge/transcribe",
+app.use(
 
-  requireAdmin,
+  express.static(
+    path.join(
+      __dirname,
+      "public"
+    )
+  )
 
-  audioUpload.single(
-    "audio"
-  ),
+);
 
-  async (req, res) => {
 
-    try {
+/* =====================================================
+   ADMIN PAGE
+===================================================== */
 
-      if (!openrouter) {
-        return res
-          .status(500)
-          .json({
-            success: false,
-            error:
-              "OPENROUTER_API_KEY lama dejin."
-          });
-      }
+app.get(
+  "/admin",
+  (
+    req,
+    res
+  ) => {
 
-      if (!req.file) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error:
-              "Fadlan cod geli."
-          });
-      }
+    res.sendFile(
 
-      const mime =
-        req.file.mimetype ||
-        "audio/webm";
+      path.join(
+        __dirname,
+        "public",
+        "admin",
+        "index.html"
+      )
 
-      let format =
-        "webm";
+    );
 
-      if (
-        mime.includes(
-          "mpeg"
-        )
-      ) {
-        format = "mp3";
-      } else if (
-        mime.includes(
-          "wav"
-        )
-      ) {
-        format = "wav";
-      } else if (
-        mime.includes(
-          "mp4"
-        )
-      ) {
-        format = "mp4";
-      } else if (
-        mime.includes(
-          "m4a"
-        )
-      ) {
-        format = "m4a";
-      }
-
-      const response =
-        await fetch(
-          "https://openrouter.ai/api/v1/audio/transcriptions",
-          {
-            method:
-              "POST",
-
-            headers: {
-              Authorization:
-                `Bearer ${OPENROUTER_API_KEY}`,
-
-              "Content-Type":
-                "application/json",
-
-              "HTTP-Referer":
-                APP_URL,
-
-              "X-Title":
-                "NASIIB BUSINESS CENTER"
-            },
-
-            body:
-              JSON.stringify({
-                model:
-                  TRANSCRIPTION_MODEL,
-
-                input_audio: {
-                  data:
-                    req.file.buffer.toString(
-                      "base64"
-                    ),
-
-                  format
-                }
-              })
-          }
-        );
-
-      const data =
-        await response.json();
-
-      if (!response.ok) {
-        return res
-          .status(
-            response.status
-          )
-          .json({
-            success: false,
-            error:
-              data?.error?.message ||
-              "Codka lama turjumi karin."
-          });
-      }
-
-      res.json({
-        success: true,
-
-        text:
-          data?.text ||
-          data?.transcript ||
-          ""
-      });
-
-    } catch (error) {
-
-      console.error(
-        "TRANSCRIPTION ERROR:",
-        error
-      );
-
-      res
-        .status(500)
-        .json({
-          success: false,
-          error:
-            error.message
-        });
-    }
   }
 );
 
+
+app.get(
+  "/admin/",
+  (
+    req,
+    res
+  ) => {
+
+    res.sendFile(
+
+      path.join(
+        __dirname,
+        "public",
+        "admin",
+        "index.html"
+      )
+
+    );
+
+  }
+);
+
+
 /* =====================================================
-   PUBLIC PAGES
+   HOME
 ===================================================== */
 
 app.get(
   "/",
-  (_req, res) => {
+  (
+    req,
+    res
+  ) => {
+
     res.sendFile(
+
       path.join(
-        PUBLIC_DIR,
+        __dirname,
+        "public",
         "index.html"
       )
+
     );
+
   }
 );
 
-app.get(
-  "/admin",
-  (_req, res) => {
-    res.sendFile(
-      path.join(
-        PUBLIC_DIR,
-        "admin",
-        "index.html"
-      )
-    );
-  }
-);
-
-app.get(
-  "/admin/",
-  (_req, res) => {
-    res.sendFile(
-      path.join(
-        PUBLIC_DIR,
-        "admin",
-        "index.html"
-      )
-    );
-  }
-);
 
 /* =====================================================
    ERROR HANDLER
 ===================================================== */
 
 app.use(
+
   (
     error,
-    _req,
+    req,
     res,
-    _next
+    next
   ) => {
 
     console.error(
@@ -2476,123 +3743,137 @@ app.use(
       error
     );
 
+
+    if (
+      error instanceof
+      multer.MulterError
+    ) {
+
+      return res
+        .status(400)
+        .json({
+
+          success:
+            false,
+
+          error:
+            `Upload error: ${error.message}`
+
+        });
+
+    }
+
+
     res
       .status(500)
       .json({
-        success: false,
+
+        success:
+          false,
+
         error:
           error.message ||
-          "Server error."
+          "Internal server error."
+
       });
+
   }
+
 );
 
-/* =====================================================
-   404
-===================================================== */
-
-app.use(
-  (_req, res) => {
-
-    res
-      .status(404)
-      .json({
-        success: false,
-        error:
-          "API route lama helin."
-      });
-  }
-);
 
 /* =====================================================
-   START
+   START SERVER
 ===================================================== */
 
 async function startServer() {
 
   try {
 
-    await initDatabase();
+    await query(
+      "SELECT NOW()"
+    );
+
+
+    console.log(
+      "✅ PostgreSQL connected."
+    );
+
+
+    await initializeDatabase();
+
 
     await createDefaultAdmin();
 
+
     app.listen(
+
       PORT,
+
       "0.0.0.0",
+
       () => {
 
         console.log("");
         console.log(
-          "======================================"
+          "=========================================="
         );
 
         console.log(
-          "   NASIIB BUSINESS CENTER"
+          "🚀 NASIIB BUSINESS CENTER"
         );
 
         console.log(
-          "======================================"
+          "=========================================="
         );
 
         console.log(
-          `🌐 Port: ${PORT}`
+          `🌐 PORT: ${PORT}`
         );
 
         console.log(
-          "👤 Public User: ON"
+          "🗄️ DATABASE: PostgreSQL"
         );
 
         console.log(
-          "🔐 Public Login: NOT REQUIRED"
+          `🤖 AI MODEL: ${AI_MODEL}`
         );
 
         console.log(
-          "💬 /chat: ON"
+          `👁️ VISION MODEL: ${VISION_MODEL}`
         );
 
         console.log(
-          "🖼️ /api/match-image: ON"
+          `🔎 PHASH THRESHOLD: ${PHASH_THRESHOLD}`
         );
 
         console.log(
-          "🔎 HEER 1 Exact Match: ON"
+          "👤 PUBLIC USER: NO LOGIN"
         );
 
         console.log(
-          "🔎 HEER 2 Similar Match: ON"
+          "👑 ADMIN: /admin/"
         );
 
         console.log(
-          "🤖 HEER 3 Vision AI: ON"
+          "🖼️ IMAGE MATCH: /api/match-image"
         );
 
         console.log(
-          "📝 OCR/Image Text Reading: ON"
+          "💬 CHAT: /chat"
         );
 
         console.log(
-          `🧠 AI Model: ${AI_MODEL}`
+          "=========================================="
         );
 
-        console.log(
-          `👁️ Vision Model: ${VISION_MODEL}`
-        );
-
-        console.log(
-          "🗄️ SQLite: ON"
-        );
-
-        console.log(
-          "👨‍💼 JWT Admin: ON"
-        );
-
-        console.log(
-          "======================================"
-        );
       }
+
     );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "❌ SERVER START ERROR:",
@@ -2600,7 +3881,42 @@ async function startServer() {
     );
 
     process.exit(1);
+
   }
+
 }
+
+
+/* =====================================================
+   SHUTDOWN
+===================================================== */
+
+process.on(
+  "SIGINT",
+  async () => {
+
+    await pool.end();
+
+    process.exit(0);
+
+  }
+);
+
+
+process.on(
+  "SIGTERM",
+  async () => {
+
+    await pool.end();
+
+    process.exit(0);
+
+  }
+);
+
+
+/* =====================================================
+   RUN
+===================================================== */
 
 startServer();
