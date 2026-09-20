@@ -477,18 +477,21 @@ function hammingDistance(
 
 }
 
-
 /* =====================================================
    DATABASE INITIALIZATION
 ===================================================== */
 
 async function initializeDatabase() {
 
+  // ===================================================
+  // USERS TABLE
+  // ===================================================
+
   await query(`
-
     CREATE TABLE IF NOT EXISTS users (
-
       id BIGSERIAL PRIMARY KEY,
+
+      name TEXT,
 
       email TEXT UNIQUE NOT NULL,
 
@@ -497,26 +500,46 @@ async function initializeDatabase() {
       role TEXT NOT NULL
         DEFAULT 'user',
 
-      created_at
-        TIMESTAMPTZ NOT NULL
+      created_at TIMESTAMPTZ NOT NULL
         DEFAULT NOW()
-
     )
-
   `);
 
 
+  // ===================================================
+  // USERS TABLE MIGRATION
+  // ===================================================
+
   await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS name TEXT
+  `);
 
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS role TEXT
+    DEFAULT 'user'
+  `);
+
+  await query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS created_at
+    TIMESTAMPTZ NOT NULL
+    DEFAULT NOW()
+  `);
+
+
+  // ===================================================
+  // KNOWLEDGE TABLE
+  // ===================================================
+
+  await query(`
     CREATE TABLE IF NOT EXISTS knowledge (
-
       id BIGSERIAL PRIMARY KEY,
 
-      title TEXT NOT NULL
-        DEFAULT '',
+      title TEXT,
 
-      content TEXT NOT NULL
-        DEFAULT '',
+      content TEXT,
 
       image_url TEXT,
 
@@ -534,68 +557,101 @@ async function initializeDatabase() {
 
       audio_mime TEXT,
 
-      created_at
-        TIMESTAMPTZ NOT NULL
+      created_at TIMESTAMPTZ NOT NULL
         DEFAULT NOW(),
 
-      updated_at
-        TIMESTAMPTZ NOT NULL
+      updated_at TIMESTAMPTZ NOT NULL
         DEFAULT NOW()
-
     )
-
   `);
 
-// ==========================================
-// KNOWLEDGE IMAGE/AUDIO URL MIGRATION
-// ==========================================
 
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_url TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS audio_url TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_hash TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_phash TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_data BYTEA
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_mime TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS audio_data BYTEA
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS audio_mime TEXT
-`);
-
-  // kadibna code-kii hore ee line 550...
+  // ===================================================
+  // KNOWLEDGE MIGRATION
+  // ===================================================
 
   await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS title TEXT
+  `);
 
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS content TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_url TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS audio_url TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_hash TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_phash TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_data BYTEA
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_mime TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS audio_data BYTEA
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS audio_mime TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS created_at
+    TIMESTAMPTZ NOT NULL
+    DEFAULT NOW()
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS updated_at
+    TIMESTAMPTZ NOT NULL
+    DEFAULT NOW()
+  `);
+
+
+  // ===================================================
+  // KNOWLEDGE IMAGE HASH INDEX
+  // ===================================================
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS
+    idx_knowledge_image_hash
+    ON knowledge(image_hash)
+  `);
+
+
+  // ===================================================
+  // CHATS TABLE
+  // ===================================================
+
+  await query(`
     CREATE TABLE IF NOT EXISTS chats (
-
       id BIGSERIAL PRIMARY KEY,
 
       client_id TEXT,
@@ -612,99 +668,74 @@ await query(`
 
       response TEXT,
 
-      created_at
-        TIMESTAMPTZ NOT NULL
+      created_at TIMESTAMPTZ NOT NULL
         DEFAULT NOW()
-
     )
-
-  `);
-// ==========================================
-// CHATS CLIENT_ID MIGRATION
-// ==========================================
-
-await query(`
-  ALTER TABLE chats
-  ADD COLUMN IF NOT EXISTS client_id TEXT
-`);
-// ==========================================
-// KNOWLEDGE IMAGE COLUMNS MIGRATION
-// ==========================================
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_hash TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_phash TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_data BYTEA
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS image_mime TEXT
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS audio_data BYTEA
-`);
-
-await query(`
-  ALTER TABLE knowledge
-  ADD COLUMN IF NOT EXISTS audio_mime TEXT
-`);
-  await query(`
-
-    CREATE INDEX IF NOT EXISTS
-    idx_knowledge_image_hash
-
-    ON knowledge(image_hash)
-
   `);
 
 
+  // ===================================================
+  // CHATS MIGRATION
+  // ===================================================
+
   await query(`
+    ALTER TABLE chats
+    ADD COLUMN IF NOT EXISTS client_id TEXT
+  `);
 
-    CREATE INDEX IF NOT EXISTS
-    idx_knowledge_image_phash
+  await query(`
+    ALTER TABLE chats
+    ADD COLUMN IF NOT EXISTS user_id BIGINT
+  `);
 
-    ON knowledge(image_phash)
+  await query(`
+    ALTER TABLE chats
+    ADD COLUMN IF NOT EXISTS message TEXT
+  `);
 
+  await query(`
+    ALTER TABLE chats
+    ADD COLUMN IF NOT EXISTS image_data BYTEA
+  `);
+
+  await query(`
+    ALTER TABLE chats
+    ADD COLUMN IF NOT EXISTS image_mime TEXT
+  `);
+
+  await query(`
+    ALTER TABLE chats
+    ADD COLUMN IF NOT EXISTS response TEXT
+  `);
+
+  await query(`
+    ALTER TABLE chats
+    ADD COLUMN IF NOT EXISTS created_at
+    TIMESTAMPTZ NOT NULL
+    DEFAULT NOW()
   `);
 
 
-  await query(`
-
-    CREATE INDEX IF NOT EXISTS
-    idx_knowledge_created_at
-
-    ON knowledge(created_at DESC)
-
-  `);
-
+  // ===================================================
+  // CHATS INDEX
+  // ===================================================
 
   await query(`
-
     CREATE INDEX IF NOT EXISTS
     idx_chats_client_id
-
     ON chats(client_id)
+  `);
 
+  await query(`
+    CREATE INDEX IF NOT EXISTS
+    idx_chats_user_id
+    ON chats(user_id)
   `);
 
 
-  console.log(
-    "✅ PostgreSQL tables diyaar."
-  );
-
+  console.log("✅ PostgreSQL tables diyaar.");
 }
+
 
 
 /* =====================================================
