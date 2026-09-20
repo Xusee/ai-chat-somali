@@ -220,7 +220,7 @@
     avatar.textContent =
       type === "user"
         ? "👤"
-        : "🤖";
+        : "👳";
 
     /* Content */
 
@@ -412,7 +412,7 @@
       "avatar";
 
     avatar.textContent =
-      "🤖";
+      "👳";
 
     const content =
       document.createElement("div");
@@ -1182,7 +1182,7 @@
     showTyping();
 
     setStatus(
-      "🤖 AI ayaa ka jawaabaya..."
+      "👳 AI ayaa ka jawaabaya..."
     );
 
     try {
@@ -1560,7 +1560,7 @@
 
     welcome.innerHTML = `
       <div class="welcome-icon">
-        🤖
+        👳
       </div>
 
       <h2>
