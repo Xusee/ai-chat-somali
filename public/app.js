@@ -1571,7 +1571,7 @@
       <p>
         Weydii su'aal.
         Waxaad diri kartaa qoraal,
-        sawir, fadlan sawirku ha ahaado inta cad oo kaliya ka jar 
+        sawir, fadlan sawirku ha ahaado inta cadi ah oo kaliya
           hadii aad screenshot ku qaaday ka jar hareeraha.
       </p>
     `;
