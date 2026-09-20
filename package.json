@@ -1,20 +1,23 @@
 {
   "name": "nasiib-business-center",
   "version": "1.0.0",
-  "description": "Nasiib Business Center AI Chat Somali",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "bcryptjs": "^3.0.2",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
-    "openai": "^6.16.0",
+    "openai": "^5.12.2",
+    "sharp": "^0.34.3",
     "sqlite3": "^5.1.7"
   }
 }
