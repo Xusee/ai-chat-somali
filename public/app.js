@@ -837,7 +837,7 @@
 
   function showNotFound() {
     addMessage(
-      "❌ Sawirkan Database-ka lagama helin <abbr titale=">fadlan</abbr>.",
+      "❌ Sawirkan Database-ka lagama helin.",
       "assistant"
     );
   }
