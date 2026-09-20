@@ -1,328 +1,270 @@
-/* =========================================================
-   NASIIB BUSINESS CENTER
-   PUBLIC APP.JS
-========================================================= */
-
 (() => {
-
     "use strict";
 
     /* =====================================================
+       NASIIB BUSINESS CENTER
+       PUBLIC USER APP
+    ===================================================== */
+
+    /*
+    ========================================================
        API
-    ===================================================== */
+    ========================================================
+    */
 
-    const API_CHAT =
-        "/chat";
-
-    const API_MATCH_IMAGE =
-        "/api/match-image";
-
-    const API_HISTORY =
-        "/api/chats";
-
-    const API_HEALTH =
-        "/api/health";
+    const API_CHAT = "/chat";
+    const API_MATCH_IMAGE = "/api/match-image";
+    const API_HISTORY = "/api/chats";
+    const API_HEALTH = "/api/health";
 
 
-    /* =====================================================
+    /*
+    ========================================================
        SETTINGS
-    ===================================================== */
+    ========================================================
+    */
 
     const MAX_IMAGE_SIZE =
-        10 * 1024 * 1024;
+        5 * 1024 * 1024;
+
+    const IMAGE_TYPES = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif"
+    ];
 
 
-    /* =====================================================
+    /*
+    ========================================================
+       DOM HELPER
+    ========================================================
+    */
+
+    const $ = (id) => {
+        return document.getElementById(id);
+    };
+
+
+    const qs = (selector) => {
+        return document.querySelector(selector);
+    };
+
+
+    /*
+    ========================================================
+       STATE
+    ========================================================
+    */
+
+    let selectedImageFile = null;
+
+    let selectedImageDataUrl = null;
+
+    let isSending = false;
+
+    let isMatchingImage = false;
+
+    let currentAudio = null;
+
+    let currentClientId = null;
+
+
+    /*
+    ========================================================
        CLIENT ID
-       Public user - Login looma baahna
-    ===================================================== */
+    ========================================================
+    */
+
+    function createClientId() {
+
+        if (
+            window.crypto &&
+            typeof window.crypto.randomUUID === "function"
+        ) {
+
+            return window.crypto.randomUUID();
+
+        }
+
+
+        return (
+            "client-" +
+            Date.now() +
+            "-" +
+            Math.random()
+                .toString(36)
+                .substring(2, 12)
+        );
+
+    }
+
 
     function getClientId() {
 
-        let clientId =
+        let id =
             localStorage.getItem(
-                "nasiibClientId"
+                "nasiib_client_id"
             );
 
-        if (!clientId) {
 
-            clientId =
-                "client-" +
-                Date.now() +
-                "-" +
-                Math.random()
-                    .toString(36)
-                    .substring(2, 12);
+        if (!id) {
+
+            id = createClientId();
 
             localStorage.setItem(
-                "nasiibClientId",
-                clientId
+                "nasiib_client_id",
+                id
             );
 
         }
 
-        return clientId;
+
+        currentClientId = id;
+
+        return id;
+
     }
 
+
+    /*
+    ========================================================
+       INITIAL CLIENT ID
+    ========================================================
+    */
 
     const clientId =
         getClientId();
 
 
-    /* =====================================================
-       DOM HELPER
-    ===================================================== */
+    /*
+    ========================================================
+       POSSIBLE DOM ELEMENTS
+       App-ku wuxuu aqbalayaa IDs kala duwan.
+    ========================================================
+    */
 
-    const $ = (id) =>
-        document.getElementById(id);
+    const chatForm =
+        $("chatForm") ||
+        $("messageForm") ||
+        qs("form");
 
 
-    function firstElement(
-        ids
+    const messageInput =
+        $("messageInput") ||
+        $("message") ||
+        $("chatInput") ||
+        $("prompt");
+
+
+    const sendButton =
+        $("sendButton") ||
+        $("sendBtn") ||
+        $("send");
+
+
+    const galleryButton =
+        $("galleryButton") ||
+        $("galleryBtn") ||
+        $("gallery");
+
+
+    const cameraButton =
+        $("cameraButton") ||
+        $("cameraBtn") ||
+        $("camera");
+
+
+    const removeImageButton =
+        $("removeImageButton") ||
+        $("removeImageBtn") ||
+        $("removeImage");
+
+
+    const imagePreviewContainer =
+        $("imagePreviewContainer") ||
+        $("imagePreview") ||
+        $("previewContainer");
+
+
+    const imagePreview =
+        $("imagePreviewImg") ||
+        $("previewImage") ||
+        $("imagePreview");
+
+
+    const chatContainer =
+        $("chatContainer") ||
+        $("chatMessages") ||
+        $("messages") ||
+        $("chat");
+
+
+    const historyContainer =
+        $("chatHistory") ||
+        $("history") ||
+        $("historyList");
+
+
+    const deleteChatButton =
+        $("deleteChatButton") ||
+        $("deleteChatBtn") ||
+        $("clearChat");
+
+
+    /*
+    ========================================================
+       DYNAMIC INPUTS
+       Haddii HTML-ka uusan input lahayn,
+       JS ayaa abuura.
+    ========================================================
+    */
+
+    let galleryInput = null;
+
+    let cameraInput = null;
+
+
+    function createHiddenFileInput(
+        id,
+        captureMode = null
     ) {
 
-        for (
-            const id of ids
-        ) {
+        let input =
+            document.getElementById(id);
 
-            const element =
-                $(id);
 
-            if (element) {
-                return element;
-            }
-
+        if (input) {
+            return input;
         }
 
-        return null;
-    }
 
-
-    /* =====================================================
-       DOM ELEMENTS
-    ===================================================== */
-
-    let messageInput =
-        firstElement([
-            "messageInput",
-            "chatInput",
-            "promptInput",
-            "message",
-            "userMessage",
-            "textInput"
-        ]);
-
-
-    let sendButton =
-        firstElement([
-            "sendButton",
-            "sendBtn",
-            "sendMessage",
-            "send"
-        ]);
-
-
-    let galleryButton =
-        firstElement([
-            "galleryButton",
-            "galleryBtn",
-            "gallery"
-        ]);
-
-
-    let cameraButton =
-        firstElement([
-            "cameraButton",
-            "cameraBtn",
-            "camera"
-        ]);
-
-
-    let galleryInput =
-        firstElement([
-            "galleryInput",
-            "galleryFile",
-            "imageInput",
-            "fileInput"
-        ]);
-
-
-    let cameraInput =
-        firstElement([
-            "cameraInput",
-            "cameraFile",
-            "cameraFileInput"
-        ]);
-
-
-    let imagePreview =
-        firstElement([
-            "imagePreview",
-            "previewImage",
-            "selectedImage"
-        ]);
-
-
-    let imagePreviewContainer =
-        firstElement([
-            "imagePreviewContainer",
-            "previewContainer",
-            "imagePreviewBox"
-        ]);
-
-
-    let removeImageButton =
-        firstElement([
-            "removeImageButton",
-            "removeImageBtn",
-            "removeImage"
-        ]);
-
-
-    let messagesContainer =
-        firstElement([
-            "chatMessages",
-            "messages",
-            "chatArea",
-            "chatContainer",
-            "conversation"
-        ]);
-
-
-    let clearChatButton =
-        firstElement([
-            "clearChatButton",
-            "clearChatBtn",
-            "deleteChat",
-            "deleteChats"
-        ]);
-
-
-    let statusElement =
-        firstElement([
-            "statusMessage",
-            "chatStatus",
-            "status"
-        ]);
-
-
-    /* =====================================================
-       STATE
-    ===================================================== */
-
-    let selectedImageFile =
-        null;
-
-
-    let selectedImageData =
-        null;
-
-
-    let isSending =
-        false;
-
-
-    /* =====================================================
-       CREATE MISSING CHAT CONTAINER
-    ===================================================== */
-
-    function ensureMessagesContainer() {
-
-        if (messagesContainer) {
-            return messagesContainer;
-        }
-
-        messagesContainer =
-            document.createElement(
-                "div"
-            );
-
-        messagesContainer.id =
-            "chatMessages";
-
-        messagesContainer.className =
-            "chat-messages";
-
-        document.body.appendChild(
-            messagesContainer
-        );
-
-        return messagesContainer;
-    }
-
-
-    /* =====================================================
-       CREATE MISSING PREVIEW
-    ===================================================== */
-
-    function ensurePreviewContainer() {
-
-        if (imagePreviewContainer) {
-            return imagePreviewContainer;
-        }
-
-        imagePreviewContainer =
-            document.createElement(
-                "div"
-            );
-
-        imagePreviewContainer.id =
-            "imagePreviewContainer";
-
-        imagePreviewContainer.className =
-            "image-preview-container";
-
-        if (messageInput) {
-
-            messageInput
-                .parentElement
-                ?.appendChild(
-                    imagePreviewContainer
-                );
-
-        } else {
-
-            document.body.appendChild(
-                imagePreviewContainer
-            );
-
-        }
-
-        return imagePreviewContainer;
-    }
-
-
-    /* =====================================================
-       CREATE HIDDEN FILE INPUT
-    ===================================================== */
-
-    function createHiddenInput(
-        type
-    ) {
-
-        const input =
+        input =
             document.createElement(
                 "input"
             );
 
-        input.type =
-            "file";
+
+        input.type = "file";
+
+        input.id = id;
 
         input.accept =
             "image/*";
 
-        input.style.display =
-            "none";
 
-
-        if (type === "camera") {
+        if (captureMode) {
 
             input.setAttribute(
                 "capture",
-                "environment"
+                captureMode
             );
 
         }
+
+
+        input.style.display =
+            "none";
 
 
         document.body.appendChild(
@@ -330,91 +272,161 @@
         );
 
 
-        input.addEventListener(
+        return input;
+
+    }
+
+
+    function initializeFileInputs() {
+
+        galleryInput =
+            createHiddenFileInput(
+                "nasiibGalleryInput"
+            );
+
+
+        cameraInput =
+            createHiddenFileInput(
+                "nasiibCameraInput",
+                "environment"
+            );
+
+
+        /*
+        Gallery
+        */
+
+        if (galleryButton) {
+
+            galleryButton.addEventListener(
+                "click",
+                (event) => {
+
+                    event.preventDefault();
+
+                    galleryInput.click();
+
+                }
+            );
+
+        }
+
+
+        /*
+        Camera
+        */
+
+        if (cameraButton) {
+
+            cameraButton.addEventListener(
+                "click",
+                (event) => {
+
+                    event.preventDefault();
+
+                    cameraInput.click();
+
+                }
+            );
+
+        }
+
+
+        /*
+        Gallery change
+        */
+
+        galleryInput.addEventListener(
             "change",
-            function () {
-
-                handleImageSelected(
-                    this.files?.[0]
-                );
-
-            }
+            handleFileInput
         );
 
 
-        return input;
+        /*
+        Camera change
+        */
+
+        cameraInput.addEventListener(
+            "change",
+            handleFileInput
+        );
+
     }
 
 
-    /* =====================================================
-       GALLERY
-    ===================================================== */
+    /*
+    ========================================================
+       FILE INPUT
+    ========================================================
+    */
 
-    function openGallery() {
+    function handleFileInput(event) {
 
-        if (!galleryInput) {
+        const files =
+            event.target.files;
 
-            galleryInput =
-                createHiddenInput(
-                    "gallery"
-                );
+
+        if (
+            !files ||
+            !files.length
+        ) {
+
+            return;
 
         }
 
-        galleryInput.value =
-            "";
 
-        galleryInput.click();
+        const file =
+            files[0];
+
+
+        selectImage(
+            file
+        );
+
+
+        /*
+        Allow same image to be selected again.
+        */
+
+        event.target.value = "";
+
     }
 
 
-    /* =====================================================
-       CAMERA
-    ===================================================== */
+    /*
+    ========================================================
+       IMAGE VALIDATION
+    ========================================================
+    */
 
-    function openCamera() {
-
-        if (!cameraInput) {
-
-            cameraInput =
-                createHiddenInput(
-                    "camera"
-                );
-
-        }
-
-        cameraInput.value =
-            "";
-
-        cameraInput.click();
-    }
-
-
-    /* =====================================================
-       IMAGE SELECTED
-    ===================================================== */
-
-    function handleImageSelected(
+    function validateImageFile(
         file
     ) {
 
         if (!file) {
-            return;
+
+            return {
+                valid: false,
+                message:
+                    "Sawir lama helin."
+            };
+
         }
 
 
         if (
-            !file.type.startsWith(
-                "image/"
+            !IMAGE_TYPES.includes(
+                file.type
             )
         ) {
 
-            showStatus(
-                "❌ Fadlan sawir dooro.",
-                true
-            );
+            return {
+                valid: false,
+                message:
+                    "Fadlan dooro JPG, PNG, WEBP ama GIF."
+            };
 
-            return;
         }
 
 
@@ -423,232 +435,709 @@
             MAX_IMAGE_SIZE
         ) {
 
-            showStatus(
-                "❌ Sawirku waa ka weyn yahay 10MB.",
-                true
+            return {
+                valid: false,
+                message:
+                    "Sawirku waa inuu ka yaraadaa 5MB."
+            };
+
+        }
+
+
+        return {
+            valid: true
+        };
+
+    }
+
+
+    /*
+    ========================================================
+       READ IMAGE
+    ========================================================
+    */
+
+    function readFileAsDataURL(
+        file
+    ) {
+
+        return new Promise(
+            (
+                resolve,
+                reject
+            ) => {
+
+                const reader =
+                    new FileReader();
+
+
+                reader.onload =
+                    () => {
+
+                        resolve(
+                            reader.result
+                        );
+
+                    };
+
+
+                reader.onerror =
+                    () => {
+
+                        reject(
+                            new Error(
+                                "Sawirka lama akhrin karin."
+                            )
+                        );
+
+                    };
+
+
+                reader.readAsDataURL(
+                    file
+                );
+
+            }
+        );
+
+    }
+
+
+    /*
+    ========================================================
+       SELECT IMAGE
+    ========================================================
+    */
+
+    async function selectImage(
+        file
+    ) {
+
+        const validation =
+            validateImageFile(
+                file
+            );
+
+
+        if (!validation.valid) {
+
+            showError(
+                validation.message
             );
 
             return;
+
         }
 
 
-        selectedImageFile =
-            file;
+        try {
+
+            selectedImageFile =
+                file;
 
 
-        const reader =
-            new FileReader();
-
-
-        reader.onload =
-            function (event) {
-
-                selectedImageData =
-                    event.target.result;
-
-                showImagePreview(
-                    selectedImageData
+            selectedImageDataUrl =
+                await readFileAsDataURL(
+                    file
                 );
 
-            };
+
+            showImagePreview(
+                selectedImageDataUrl
+            );
 
 
-        reader.onerror =
-            function () {
-
-                showStatus(
-                    "❌ Sawirka lama akhrin karin.",
-                    true
-                );
-
-            };
+            updateImageStatus(
+                "Sawirka waa diyaar."
+            );
 
 
-        reader.readAsDataURL(
-            file
-        );
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+
+            clearSelectedImage();
+
+
+            showError(
+                "Sawirka lama akhrin karin."
+            );
+
+        }
 
     }
 
 
-    /* =====================================================
+    /*
+    ========================================================
        IMAGE PREVIEW
-    ===================================================== */
+    ========================================================
+    */
 
     function showImagePreview(
-        src
+        dataUrl
     ) {
 
-        const container =
-            ensurePreviewContainer();
+        /*
+        If dedicated image element exists
+        */
 
-
-        container.innerHTML =
-            "";
-
-
-        const wrapper =
-            document.createElement(
-                "div"
+        const previewImg =
+            imagePreview ||
+            qs(
+                ".image-preview img"
             );
 
-        wrapper.className =
-            "selected-image-wrapper";
 
+        if (previewImg) {
 
-        const img =
-            document.createElement(
-                "img"
-            );
+            previewImg.src =
+                dataUrl;
 
-        img.className =
-            "selected-image-preview";
-
-        img.src =
-            src;
-
-        img.alt =
-            "Sawir la doortay";
-
-
-        const remove =
-            document.createElement(
-                "button"
-            );
-
-        remove.type =
-            "button";
-
-        remove.className =
-            "remove-image-button";
-
-        remove.innerHTML =
-            "✕";
-
-        remove.title =
-            "Ka saar sawirka";
-
-
-        remove.addEventListener(
-            "click",
-            removeSelectedImage
-        );
-
-
-        wrapper.appendChild(
-            img
-        );
-
-        wrapper.appendChild(
-            remove
-        );
-
-        container.appendChild(
-            wrapper
-        );
-
-        container.style.display =
-            "block";
-
-    }
-
-
-    /* =====================================================
-       REMOVE IMAGE
-    ===================================================== */
-
-    function removeSelectedImage() {
-
-        selectedImageFile =
-            null;
-
-        selectedImageData =
-            null;
-
-
-        if (
-            galleryInput
-        ) {
-
-            galleryInput.value =
-                "";
+            previewImg.style.display =
+                "block";
 
         }
 
 
-        if (
-            cameraInput
-        ) {
-
-            cameraInput.value =
-                "";
-
-        }
-
-
-        if (
-            imagePreview
-        ) {
-
-            imagePreview.src =
-                "";
-
-            imagePreview.style.display =
-                "none";
-
-        }
-
+        /*
+        If container exists
+        */
 
         if (
             imagePreviewContainer
         ) {
 
-            imagePreviewContainer.innerHTML =
-                "";
-
             imagePreviewContainer.style.display =
+                "block";
+
+            imagePreviewContainer.classList.add(
+                "has-image"
+            );
+
+        }
+
+
+        /*
+        If no preview exists,
+        create one automatically.
+        */
+
+        if (
+            !previewImg &&
+            !imagePreviewContainer
+        ) {
+
+            createAutomaticPreview(
+                dataUrl
+            );
+
+        }
+
+
+        /*
+        Remove button
+        */
+
+        if (
+            removeImageButton
+        ) {
+
+            removeImageButton.style.display =
+                "inline-flex";
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       AUTOMATIC PREVIEW
+    ========================================================
+    */
+
+    function createAutomaticPreview(
+        dataUrl
+    ) {
+
+        let wrapper =
+            document.getElementById(
+                "nasiibAutoImagePreview"
+            );
+
+
+        if (!wrapper) {
+
+            wrapper =
+                document.createElement(
+                    "div"
+                );
+
+
+            wrapper.id =
+                "nasiibAutoImagePreview";
+
+
+            wrapper.className =
+                "nasiib-auto-image-preview";
+
+
+            const img =
+                document.createElement(
+                    "img"
+                );
+
+
+            img.id =
+                "nasiibAutoPreviewImage";
+
+
+            const remove =
+                document.createElement(
+                    "button"
+                );
+
+
+            remove.type =
+                "button";
+
+
+            remove.textContent =
+                "×";
+
+
+            remove.title =
+                "Ka saar sawirka";
+
+
+            remove.className =
+                "nasiib-auto-remove-image";
+
+
+            remove.addEventListener(
+                "click",
+                clearSelectedImage
+            );
+
+
+            wrapper.appendChild(
+                img
+            );
+
+
+            wrapper.appendChild(
+                remove
+            );
+
+
+            /*
+            Put before form
+            */
+
+            if (chatForm) {
+
+                chatForm.parentNode.insertBefore(
+                    wrapper,
+                    chatForm
+                );
+
+            } else {
+
+                document.body.prepend(
+                    wrapper
+                );
+
+            }
+
+        }
+
+
+        const img =
+            document.getElementById(
+                "nasiibAutoPreviewImage"
+            );
+
+
+        if (img) {
+
+            img.src =
+                dataUrl;
+
+        }
+
+
+        wrapper.style.display =
+            "flex";
+
+    }
+
+
+    /*
+    ========================================================
+       REMOVE IMAGE
+    ========================================================
+    */
+
+    function clearSelectedImage() {
+
+        selectedImageFile =
+            null;
+
+
+        selectedImageDataUrl =
+            null;
+
+
+        /*
+        Preview image
+        */
+
+        const previewImg =
+            imagePreview ||
+            qs(
+                ".image-preview img"
+            );
+
+
+        if (previewImg) {
+
+            previewImg.removeAttribute(
+                "src"
+            );
+
+
+            previewImg.style.display =
                 "none";
 
         }
 
 
-        showStatus(
-            "Sawirka waa laga saaray.",
-            false
-        );
+        /*
+        Preview container
+        */
 
-    }
+        if (
+            imagePreviewContainer
+        ) {
 
+            imagePreviewContainer.style.display =
+                "none";
 
-    /* =====================================================
-       STATUS
-    ===================================================== */
+            imagePreviewContainer.classList.remove(
+                "has-image"
+            );
 
-    function showStatus(
-        message,
-        isError = false
-    ) {
-
-        if (!statusElement) {
-            return;
         }
 
-        statusElement.textContent =
-            message;
 
-        statusElement.classList.toggle(
-            "error",
-            Boolean(isError)
+        /*
+        Automatic preview
+        */
+
+        const autoPreview =
+            document.getElementById(
+                "nasiibAutoImagePreview"
+            );
+
+
+        if (autoPreview) {
+
+            autoPreview.style.display =
+                "none";
+
+        }
+
+
+        /*
+        Remove button
+        */
+
+        if (
+            removeImageButton
+        ) {
+
+            removeImageButton.style.display =
+                "none";
+
+        }
+
+
+        updateImageStatus(
+            ""
         );
 
     }
 
 
-    /* =====================================================
-       ESCAPE HTML
-    ===================================================== */
+    /*
+    ========================================================
+       REMOVE IMAGE BUTTON
+    ========================================================
+    */
 
-    function escapeHTML(
+    if (removeImageButton) {
+
+        removeImageButton.addEventListener(
+            "click",
+            (event) => {
+
+                event.preventDefault();
+
+                clearSelectedImage();
+
+            }
+        );
+
+    }
+
+
+    /*
+    ========================================================
+       IMAGE STATUS
+    ========================================================
+    */
+
+    function updateImageStatus(
+        text
+    ) {
+
+        const status =
+            $("imageStatus") ||
+            $("uploadStatus");
+
+
+        if (status) {
+
+            status.textContent =
+                text || "";
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       SHOW ERROR
+    ========================================================
+    */
+
+    function showError(
+        message
+    ) {
+
+        console.error(
+            message
+        );
+
+
+        const errorBox =
+            $("errorMessage") ||
+            $("error");
+
+
+        if (errorBox) {
+
+            errorBox.textContent =
+                message;
+
+            errorBox.style.display =
+                "block";
+
+
+            setTimeout(
+                () => {
+
+                    errorBox.style.display =
+                        "none";
+
+                },
+                5000
+            );
+
+
+            return;
+
+        }
+
+
+        /*
+        Optional custom notification
+        */
+
+        showTemporaryNotification(
+            message,
+            "error"
+        );
+
+    }
+
+
+    /*
+    ========================================================
+       TEMP NOTIFICATION
+    ========================================================
+    */
+
+    function showTemporaryNotification(
+        message,
+        type = "info"
+    ) {
+
+        let box =
+            document.getElementById(
+                "nasiibNotification"
+            );
+
+
+        if (!box) {
+
+            box =
+                document.createElement(
+                    "div"
+                );
+
+
+            box.id =
+                "nasiibNotification";
+
+
+            box.style.position =
+                "fixed";
+
+            box.style.left =
+                "50%";
+
+            box.style.bottom =
+                "25px";
+
+            box.style.transform =
+                "translateX(-50%)";
+
+            box.style.zIndex =
+                "99999";
+
+            box.style.padding =
+                "12px 18px";
+
+            box.style.borderRadius =
+                "12px";
+
+            box.style.background =
+                "#202123";
+
+            box.style.color =
+                "#fff";
+
+            box.style.maxWidth =
+                "90%";
+
+            box.style.fontSize =
+                "14px";
+
+            box.style.boxShadow =
+                "0 5px 25px rgba(0,0,0,.25)";
+
+
+            document.body.appendChild(
+                box
+            );
+
+        }
+
+
+        box.textContent =
+            message;
+
+
+        box.dataset.type =
+            type;
+
+
+        box.style.display =
+            "block";
+
+
+        clearTimeout(
+            box._timer
+        );
+
+
+        box._timer =
+            setTimeout(
+                () => {
+
+                    box.style.display =
+                        "none";
+
+                },
+                4000
+            );
+
+    }
+
+
+    /*
+    ========================================================
+       LOADING
+    ========================================================
+    */
+
+    function setLoading(
+        loading
+    ) {
+
+        isSending =
+            loading;
+
+
+        if (sendButton) {
+
+            sendButton.disabled =
+                loading;
+
+
+            if (loading) {
+
+                sendButton.dataset.originalText =
+                    sendButton.textContent;
+
+
+                sendButton.textContent =
+                    "⏳";
+
+            } else {
+
+                sendButton.textContent =
+                    sendButton.dataset.originalText ||
+                    "➤";
+
+            }
+
+        }
+
+
+        if (messageInput) {
+
+            messageInput.disabled =
+                loading;
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       ESCAPE HTML
+    ========================================================
+    */
+
+    function escapeHtml(
         value
     ) {
 
@@ -679,16 +1168,18 @@
     }
 
 
-    /* =====================================================
-       FORMAT TEXT
-    ===================================================== */
+    /*
+    ========================================================
+       FORMAT MESSAGE
+    ========================================================
+    */
 
-    function formatText(
-        text
+    function formatMessage(
+        value
     ) {
 
-        return escapeHTML(
-            text
+        return escapeHtml(
+            value
         )
             .replace(
                 /\n/g,
@@ -698,366 +1189,766 @@
     }
 
 
-    /* =====================================================
-       SCROLL
-    ===================================================== */
+    /*
+    ========================================================
+       ADD CHAT MESSAGE
+    ========================================================
+    */
 
-    function scrollToBottom() {
-
-        const container =
-            ensureMessagesContainer();
-
-        container.scrollTop =
-            container.scrollHeight;
-
-    }
-
-
-    /* =====================================================
-       ADD USER MESSAGE
-    ===================================================== */
-
-    function addUserMessage(
+    function addMessage(
+        role,
         text,
-        image
+        options = {}
     ) {
 
-        const container =
-            ensureMessagesContainer();
+        /*
+        If no chat container exists,
+        do nothing silently.
+        */
+
+        if (!chatContainer) {
+
+            console.warn(
+                "Chat container lama helin."
+            );
+
+            return null;
+
+        }
 
 
-        const message =
+        const messageElement =
             document.createElement(
                 "div"
             );
 
-        message.className =
-            "chat-message user-message";
+
+        messageElement.className =
+            `message ${role}`;
 
 
-        let html =
-            `<div class="message-role">Adiga</div>`;
+        messageElement.dataset.role =
+            role;
+
+
+        /*
+        USER / ASSISTANT
+        */
+
+        let html = "";
+
+
+        if (
+            options.imageUrl
+        ) {
+
+            html += `
+                <div class="message-image">
+                    <img
+                        src="${escapeHtml(options.imageUrl)}"
+                        alt="Sawir"
+                        loading="lazy"
+                    >
+                </div>
+            `;
+
+        }
 
 
         if (text) {
 
-            html +=
-                `<div class="message-text">${formatText(text)}</div>`;
-
-        }
-
-
-        if (image) {
-
-            html +=
-                `
-                <div class="message-image">
-                    <img
-                        src="${image}"
-                        alt="Sawirka isticmaalaha"
-                    >
+            html += `
+                <div class="message-text">
+                    ${formatMessage(text)}
                 </div>
-                `;
+            `;
 
         }
 
 
-        message.innerHTML =
+        messageElement.innerHTML =
             html;
 
 
-        container.appendChild(
-            message
+        chatContainer.appendChild(
+            messageElement
         );
 
 
-        scrollToBottom();
+        scrollChatToBottom();
+
+
+        return messageElement;
 
     }
 
 
-    /* =====================================================
-       ADD AI MESSAGE
-    ===================================================== */
+    /*
+    ========================================================
+       ADD USER MESSAGE WITH IMAGE
+    ========================================================
+    */
 
-    function addAIMessage(
-        text
+    function addUserMessageWithImage(
+        text,
+        imageDataUrl
     ) {
 
-        const container =
-            ensureMessagesContainer();
+        if (!chatContainer) {
+            return;
+        }
 
 
-        const message =
+        const messageElement =
             document.createElement(
                 "div"
             );
 
-        message.className =
-            "chat-message ai-message";
+
+        messageElement.className =
+            "message user";
 
 
-        message.innerHTML =
-            `
-            <div class="message-role">
-                NASIIB AI
-            </div>
+        let html = "";
 
-            <div class="message-text">
-                ${formatText(text)}
-            </div>
+
+        if (imageDataUrl) {
+
+            html += `
+                <div class="message-image">
+                    <img
+                        src="${escapeHtml(imageDataUrl)}"
+                        alt="Sawir la diray"
+                    >
+                </div>
             `;
 
+        }
 
-        container.appendChild(
-            message
+
+        if (text) {
+
+            html += `
+                <div class="message-text">
+                    ${formatMessage(text)}
+                </div>
+            `;
+
+        }
+
+
+        messageElement.innerHTML =
+            html;
+
+
+        chatContainer.appendChild(
+            messageElement
         );
 
 
-        scrollToBottom();
+        scrollChatToBottom();
 
     }
 
 
-    /* =====================================================
-       LOADING MESSAGE
-    ===================================================== */
-
-    function addLoadingMessage() {
-
-        const container =
-            ensureMessagesContainer();
-
-
-        const message =
-            document.createElement(
-                "div"
-            );
-
-        message.className =
-            "chat-message ai-message loading-message";
-
-
-        message.innerHTML =
-            `
-            <div class="message-role">
-                NASIIB AI
-            </div>
-
-            <div class="message-text">
-                ⏳ Waan shaqaynayaa...
-            </div>
-            `;
-
-
-        container.appendChild(
-            message
-        );
-
-
-        scrollToBottom();
-
-
-        return message;
-
-    }
-
-
-    /* =====================================================
+    /*
+    ========================================================
        DATABASE IMAGE RESULT
-    ===================================================== */
+    ========================================================
+    */
 
-    function addDatabaseResult(
-        data
+    function renderDatabaseMatch(
+        result
     ) {
 
-        const container =
-            ensureMessagesContainer();
+        if (!chatContainer) {
+            return;
+        }
 
 
-        const message =
+        const wrapper =
             document.createElement(
                 "div"
             );
 
-        message.className =
-            "chat-message database-message";
+
+        wrapper.className =
+            "message assistant database-match";
 
 
         const title =
-            data.title ||
-            data.knowledge?.title ||
-            "Database";
+            result.title ||
+            "Database Match";
 
 
         const content =
-            data.content ||
-            data.knowledge?.content ||
+            result.content ||
             "";
 
 
         const imageUrl =
-            data.image_url ||
-            data.knowledge?.image_url ||
+            result.image_url ||
             "";
 
 
         const audioUrl =
-            data.audio_url ||
-            data.knowledge?.audio_url ||
+            result.audio_url ||
             "";
 
 
-        let html =
-            `
-            <div class="message-role">
-                📚 Database
-            </div>
-
-            <div class="database-result">
-            `;
+        const knowledge =
+            result.knowledge ||
+            "";
 
 
-        if (title) {
+        let html = `
 
-            html +=
-                `
-                <h3>
-                    ${escapeHTML(title)}
-                </h3>
-                `;
+            <div class="database-match-card">
 
-        }
+                <div class="database-match-header">
+                    <strong>
+                        📚 Database-ka waa laga helay
+                    </strong>
 
-
-        if (content) {
-
-            html +=
-                `
-                <div class="database-content">
-                    ${formatText(content)}
+                    <span class="exact-badge">
+                        ✓ EXACT
+                    </span>
                 </div>
-                `;
 
-        }
+                <div class="database-match-title">
+                    ${escapeHtml(title)}
+                </div>
 
+        `;
+
+
+        /*
+        Database Image
+        */
 
         if (imageUrl) {
 
-            html +=
-                `
+            html += `
+
                 <div class="database-image">
                     <img
-                        src="${escapeHTML(imageUrl)}"
-                        alt="${escapeHTML(title)}"
+                        src="${escapeHtml(imageUrl)}"
+                        alt="${escapeHtml(title)}"
                         loading="lazy"
                     >
                 </div>
-                `;
+
+            `;
 
         }
 
+
+        /*
+        Content
+        */
+
+        if (content) {
+
+            html += `
+
+                <div class="database-content">
+                    ${formatMessage(content)}
+                </div>
+
+            `;
+
+        }
+
+
+        /*
+        Knowledge
+        */
+
+        if (knowledge) {
+
+            html += `
+
+                <div class="database-knowledge">
+                    <strong>📝 Knowledge:</strong>
+                    <div>
+                        ${formatMessage(knowledge)}
+                    </div>
+                </div>
+
+            `;
+
+        }
+
+
+        /*
+        Audio
+        */
 
         if (audioUrl) {
 
-            html +=
-                `
+            html += `
+
                 <div class="database-audio">
 
-                    <div class="audio-title">
-                        🔊 ▶️ Dhageyso Codka
-                    </div>
-
-                    <audio
-                        controls
-                        preload="none"
-                        src="${escapeHTML(audioUrl)}"
+                    <button
+                        type="button"
+                        class="play-audio-btn"
+                        data-audio-url="${escapeHtml(audioUrl)}"
                     >
-                    </audio>
+                        🔊 ▶️ Dhageyso Codka
+                    </button>
 
                 </div>
-                `;
+
+            `;
 
         }
 
 
-        html +=
-            `
+        html += `
+
             </div>
-            `;
+
+        `;
 
 
-        message.innerHTML =
+        wrapper.innerHTML =
             html;
 
 
-        container.appendChild(
-            message
+        chatContainer.appendChild(
+            wrapper
         );
 
 
-        scrollToBottom();
+        /*
+        Audio button
+        */
+
+        const audioButton =
+            wrapper.querySelector(
+                ".play-audio-btn"
+            );
+
+
+        if (audioButton) {
+
+            audioButton.addEventListener(
+                "click",
+                () => {
+
+                    playAudio(
+                        audioUrl,
+                        audioButton
+                    );
+
+                }
+            );
+
+        }
+
+
+        scrollChatToBottom();
 
     }
 
 
-    /* =====================================================
-       IMAGE NOT FOUND
-    ===================================================== */
+    /*
+    ========================================================
+       DATABASE NOT FOUND
+    ========================================================
+    */
 
-    function addImageNotFound() {
+    function renderDatabaseNotFound(
+        result
+    ) {
 
-        const container =
-            ensureMessagesContainer();
+        if (!chatContainer) {
+            return;
+        }
 
 
-        const message =
+        const wrapper =
             document.createElement(
                 "div"
             );
 
-        message.className =
-            "chat-message error-message";
+
+        wrapper.className =
+            "message assistant image-not-found";
 
 
-        message.innerHTML =
-            `
-            <div class="message-role">
-                📚 Database
+        const aiAnswer =
+            result?.ai_answer ||
+            result?.answer ||
+            "";
+
+
+        wrapper.innerHTML = `
+
+            <div class="image-not-found-card">
+
+                <div class="not-found-title">
+                    ❌ Sawirkan Database-ka lagama helin.
+                </div>
+
+                <div class="not-found-ai">
+                    <strong>🤖 AI ayaa sawirka fasiray:</strong>
+
+                    ${
+                        aiAnswer
+                            ? `
+                                <div class="ai-image-answer">
+                                    ${formatMessage(aiAnswer)}
+                                </div>
+                              `
+                            : `
+                                <div class="ai-image-answer">
+                                    AI fasiraad lama helin.
+                                </div>
+                              `
+                    }
+
+                </div>
+
             </div>
 
-            <div class="message-text">
-                ❌ Sawirkan Database-ka lagama helin.
-            </div>
-            `;
+        `;
 
 
-        container.appendChild(
-            message
+        chatContainer.appendChild(
+            wrapper
         );
 
 
-        scrollToBottom();
+        scrollChatToBottom();
 
     }
 
 
-    /* =====================================================
+    /*
+    ========================================================
+       AI CHAT RESPONSE
+    ========================================================
+    */
+
+    function renderAIResponse(
+        result
+    ) {
+
+        const answer =
+            result?.answer ||
+            result?.message ||
+            "";
+
+
+        if (answer) {
+
+            addMessage(
+                "assistant",
+                answer
+            );
+
+        }
+
+
+        /*
+        Knowledge returned by /chat
+        */
+
+        if (
+            Array.isArray(
+                result?.knowledge
+            ) &&
+            result.knowledge.length
+        ) {
+
+            renderKnowledgeResults(
+                result.knowledge
+            );
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       KNOWLEDGE RESULTS
+    ========================================================
+    */
+
+    function renderKnowledgeResults(
+        knowledge
+    ) {
+
+        if (!chatContainer) {
+            return;
+        }
+
+
+        /*
+        Don't display huge duplicate cards
+        if AI already answered.
+        */
+
+        knowledge.forEach(
+            item => {
+
+                const card =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                card.className =
+                    "knowledge-result";
+
+
+                let html = `
+
+                    <div class="knowledge-result-title">
+                        📚 ${escapeHtml(
+                            item.title ||
+                            "Knowledge"
+                        )}
+                    </div>
+
+                `;
+
+
+                if (item.image_url) {
+
+                    html += `
+
+                        <img
+                            src="${escapeHtml(item.image_url)}"
+                            alt=""
+                            class="knowledge-result-image"
+                            loading="lazy"
+                        >
+
+                    `;
+
+                }
+
+
+                if (item.content) {
+
+                    html += `
+
+                        <div class="knowledge-result-content">
+                            ${formatMessage(
+                                item.content
+                            )}
+                        </div>
+
+                    `;
+
+                }
+
+
+                if (item.audio_url) {
+
+                    html += `
+
+                        <button
+                            type="button"
+                            class="knowledge-audio-btn"
+                            data-audio-url="${escapeHtml(
+                                item.audio_url
+                            )}"
+                        >
+                            🔊 ▶️ Dhageyso Codka
+                        </button>
+
+                    `;
+
+                }
+
+
+                card.innerHTML =
+                    html;
+
+
+                chatContainer.appendChild(
+                    card
+                );
+
+
+                const audioButton =
+                    card.querySelector(
+                        ".knowledge-audio-btn"
+                    );
+
+
+                if (audioButton) {
+
+                    audioButton.addEventListener(
+                        "click",
+                        () => {
+
+                            playAudio(
+                                item.audio_url,
+                                audioButton
+                            );
+
+                        }
+                    );
+
+                }
+
+            }
+        );
+
+
+        scrollChatToBottom();
+
+    }
+
+
+    /*
+    ========================================================
+       PLAY AUDIO
+    ========================================================
+    */
+
+    function playAudio(
+        url,
+        button
+    ) {
+
+        if (!url) {
+            return;
+        }
+
+
+        try {
+
+            /*
+            Stop previous audio
+            */
+
+            if (currentAudio) {
+
+                currentAudio.pause();
+
+                currentAudio.currentTime =
+                    0;
+
+            }
+
+
+            currentAudio =
+                new Audio(
+                    url
+                );
+
+
+            if (button) {
+
+                button.textContent =
+                    "⏸️ Jooji Codka";
+
+            }
+
+
+            currentAudio.play()
+                .catch(
+                    error => {
+
+                        console.error(
+                            error
+                        );
+
+
+                        showError(
+                            "Codka lama ciyaari karin."
+                        );
+
+                    }
+                );
+
+
+            currentAudio.onended =
+                () => {
+
+                    if (button) {
+
+                        button.textContent =
+                            "🔊 ▶️ Dhageyso Codka";
+
+                    }
+
+                };
+
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+
+            showError(
+                "Audio error."
+            );
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       SCROLL CHAT
+    ========================================================
+    */
+
+    function scrollChatToBottom() {
+
+        if (!chatContainer) {
+            return;
+        }
+
+
+        requestAnimationFrame(
+            () => {
+
+                chatContainer.scrollTop =
+                    chatContainer.scrollHeight;
+
+            }
+        );
+
+    }
+
+
+    /*
+    ========================================================
        MATCH IMAGE
-    ===================================================== */
+    ========================================================
+    */
 
     async function matchImage(
-        file
+        file,
+        text = ""
     ) {
 
         if (!file) {
 
-            return {
-                success: false,
-                found: false
-            };
+            return null;
 
         }
+
+
+        isMatchingImage =
+            true;
+
+
+        updateImageStatus(
+            "🔎 Database-ka ayaa sawirka baaraya..."
+        );
 
 
         const formData =
@@ -1066,154 +1957,70 @@
 
         formData.append(
             "image",
-            file
+            file,
+            file.name ||
+            "image.jpg"
         );
 
 
-        const response =
-            await fetch(
-                API_MATCH_IMAGE,
-                {
-                    method:
-                        "POST",
+        if (text) {
 
-                    body:
-                        formData
-                }
+            formData.append(
+                "text",
+                text
             );
 
-
-        let data = null;
+        }
 
 
         try {
 
-            data =
-                await response.json();
+            const response =
+                await fetch(
+                    API_MATCH_IMAGE,
+                    {
+                        method:
+                            "POST",
 
-        } catch {
-
-            data = {
-                success: false
-            };
-
-        }
-
-
-        if (
-            response.ok &&
-            data?.found
-        ) {
-
-            return data;
-
-        }
+                        body:
+                            formData
+                    }
+                );
 
 
-        if (
-            response.status ===
-            404
-        ) {
+            const result =
+                await parseJSONResponse(
+                    response
+                );
 
-            return {
 
-                success:
-                    false,
+            if (!response.ok) {
 
-                found:
-                    false,
+                throw new Error(
+                    result?.message ||
+                    "Image matching error."
+                );
 
-                message:
-                    "❌ Sawirkan Database-ka lagama helin."
+            }
 
-            };
+
+            return result;
+
+        } finally {
+
+            isMatchingImage =
+                false;
 
         }
-
-
-        throw new Error(
-            data?.error ||
-            "Sawirka lama hubin karin."
-        );
 
     }
 
 
-    /* =====================================================
-       SEND TO CHAT API
-    ===================================================== */
-
-    async function sendToChat(
-        text,
-        image
-    ) {
-
-        const response =
-            await fetch(
-                API_CHAT,
-                {
-
-                    method:
-                        "POST",
-
-                    headers: {
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
-
-                    body:
-                        JSON.stringify({
-
-                            client_id:
-                                clientId,
-
-                            message:
-                                text,
-
-                            image:
-                                image || ""
-
-                        })
-
-                }
-            );
-
-
-        let data = null;
-
-
-        try {
-
-            data =
-                await response.json();
-
-        } catch {
-
-            data = null;
-
-        }
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                data?.error ||
-                "Chat request ayaa fashilmay."
-            );
-
-        }
-
-
-        return data;
-
-    }
-
-
-    /* =====================================================
-       SEND MESSAGE
-    ===================================================== */
+    /*
+    ========================================================
+       SEND CHAT
+    ========================================================
+    */
 
     async function sendMessage() {
 
@@ -1228,38 +2035,43 @@
                 : "";
 
 
-        const image =
-            selectedImageData;
-
-
-        if (!text && !image) {
-
-            showStatus(
-                "Qor fariin ama dooro sawir.",
-                true
+        const hasImage =
+            Boolean(
+                selectedImageFile
             );
 
+
+        if (
+            !text &&
+            !hasImage
+        ) {
+
             return;
-        }
-
-
-        isSending =
-            true;
-
-
-        if (sendButton) {
-
-            sendButton.disabled =
-                true;
 
         }
 
 
-        addUserMessage(
-            text,
-            image
+        setLoading(
+            true
         );
 
+
+        /*
+        Save selected values
+        before clearing UI.
+        */
+
+        const file =
+            selectedImageFile;
+
+
+        const imageDataUrl =
+            selectedImageDataUrl;
+
+
+        /*
+        Clear input immediately
+        */
 
         if (messageInput) {
 
@@ -1269,310 +2081,697 @@
         }
 
 
-        showStatus(
-            "⏳ Waan hubinayaa...",
-            false
+        /*
+        ==============================================
+        IMAGE EXISTS
+        ==============================================
+        */
+
+        if (file) {
+
+            /*
+            Show user message
+            */
+
+            addUserMessageWithImage(
+                text,
+                imageDataUrl
+            );
+
+
+            try {
+
+                /*
+                1. MATCH DATABASE
+                */
+
+                const matchResult =
+                    await matchImage(
+                        file,
+                        text
+                    );
+
+
+                /*
+                ======================================
+                EXACT DATABASE MATCH
+                ======================================
+                */
+
+                if (
+                    matchResult &&
+                    matchResult.found === true &&
+                    matchResult.match === "exact"
+                ) {
+
+                    renderDatabaseMatch(
+                        matchResult
+                    );
+
+
+                    /*
+                    If user also wrote text,
+                    send text + image to AI.
+                    */
+
+                    if (text) {
+
+                        await sendTextAndImageToAI(
+                            text,
+                            imageDataUrl
+                        );
+
+                    }
+
+
+                }
+
+                /*
+                ======================================
+                NOT FOUND
+                ======================================
+                */
+
+                else {
+
+                    renderDatabaseNotFound(
+                        matchResult
+                    );
+
+
+                    /*
+                    Image + Text:
+                    send both to /chat
+                    so AI can understand
+                    both.
+                    */
+
+                    if (text) {
+
+                        await sendTextAndImageToAI(
+                            text,
+                            imageDataUrl
+                        );
+
+                    }
+
+                }
+
+
+                /*
+                Remove selected image
+                */
+
+                clearSelectedImage();
+
+
+                /*
+                Reload history
+                */
+
+                await loadChatHistory(
+                    false
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "IMAGE SEND ERROR:",
+                    error
+                );
+
+
+                showError(
+                    error.message ||
+                    "Sawirka lama diri karin."
+                );
+
+            } finally {
+
+                setLoading(
+                    false
+                );
+
+                updateImageStatus(
+                    ""
+                );
+
+            }
+
+
+            return;
+
+        }
+
+
+        /*
+        ==============================================
+        TEXT ONLY
+        ==============================================
+        */
+
+        addMessage(
+            "user",
+            text
         );
 
 
         try {
 
-            /*
-             * ==========================================
-             * IMAGE ONLY
-             * ==========================================
-             */
-
-            if (
-                image &&
-                !text
-            ) {
-
-                const result =
-                    await matchImage(
-                        selectedImageFile
-                    );
-
-
-                if (
-                    result.found
-                ) {
-
-                    addDatabaseResult(
-                        result
-                    );
-
-                    showStatus(
-                        "✅ Sawirka Database-ka waa laga helay.",
-                        false
-                    );
-
-                } else {
-
-                    addImageNotFound();
-
-                    showStatus(
-                        "❌ Sawirkan Database-ka lagama helin.",
-                        true
-                    );
-
-                }
-
-
-                removeSelectedImage();
-
-
-                return;
-            }
-
-
-            /*
-             * ==========================================
-             * TEXT + IMAGE
-             * ==========================================
-             */
-
-            if (
-                image &&
-                text
-            ) {
-
-                let matchResult =
-                    null;
-
-
-                try {
-
-                    matchResult =
-                        await matchImage(
-                            selectedImageFile
-                        );
-
-                } catch (
-                    imageError
-                ) {
-
-                    console.warn(
-                        "Image match error:",
-                        imageError
-                    );
-
-                }
-
-
-                if (
-                    matchResult &&
-                    matchResult.found
-                ) {
-
-                    addDatabaseResult(
-                        matchResult
-                    );
-
-                }
-
-
-                const loading =
-                    addLoadingMessage();
-
-
-                const data =
-                    await sendToChat(
-                        text,
-                        image
-                    );
-
-
-                loading.remove();
-
-
-                addAIMessage(
-                    data.response ||
-                    data.message ||
-                    "Jawaab lama helin."
+            const result =
+                await sendTextToAI(
+                    text
                 );
 
 
-                removeSelectedImage();
-
-
-                showStatus(
-                    "✅ Waa la diray.",
-                    false
-                );
-
-
-                return;
-            }
-
-
-            /*
-             * ==========================================
-             * TEXT ONLY
-             * ==========================================
-             */
-
-            const loading =
-                addLoadingMessage();
-
-
-            const data =
-                await sendToChat(
-                    text,
-                    ""
-                );
-
-
-            loading.remove();
-
-
-            addAIMessage(
-                data.response ||
-                data.message ||
-                "Jawaab lama helin."
+            renderAIResponse(
+                result
             );
 
 
-            showStatus(
-                "✅ Waa la diray.",
+            await loadChatHistory(
                 false
             );
+
 
         } catch (error) {
 
             console.error(
-                "SEND ERROR:",
+                "TEXT CHAT ERROR:",
                 error
             );
 
 
-            addAIMessage(
-                "❌ " +
-                (
-                    error.message ||
-                    "Wax khalad ah ayaa dhacay."
-                )
-            );
-
-
-            showStatus(
-                "❌ " +
-                (
-                    error.message ||
-                    "Fariinta lama diri karin."
-                ),
-                true
+            showError(
+                error.message ||
+                "Fariinta lama diri karin."
             );
 
         } finally {
 
-            isSending =
-                false;
-
-
-            if (sendButton) {
-
-                sendButton.disabled =
-                    false;
-
-            }
+            setLoading(
+                false
+            );
 
         }
 
     }
 
 
-    /* =====================================================
-       LOAD CHAT HISTORY
-    ===================================================== */
+    /*
+    ========================================================
+       SEND TEXT ONLY TO AI
+    ========================================================
+    */
 
-    async function loadChatHistory() {
+    async function sendTextToAI(
+        text
+    ) {
 
-        try {
+        const response =
+            await fetch(
+                API_CHAT,
+                {
 
-            const response =
-                await fetch(
-                    `${API_HISTORY}?client_id=${encodeURIComponent(clientId)}`
-                );
+                    method:
+                        "POST",
 
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-            if (!response.ok) {
-                return;
-            }
+                    body:
+                        JSON.stringify({
 
+                            client_id:
+                                clientId,
 
-            const data =
-                await response.json();
+                            message:
+                                text
 
-
-            const chats =
-                data.chats ||
-                [];
-
-
-            const container =
-                ensureMessagesContainer();
-
-
-            container.innerHTML =
-                "";
-
-
-            chats.forEach(
-                (chat) => {
-
-                    if (
-                        chat.message ||
-                        chat.image
-                    ) {
-
-                        addUserMessage(
-                            chat.message ||
-                            "",
-                            chat.image ||
-                            null
-                        );
-
-                    }
-
-
-                    if (
-                        chat.response
-                    ) {
-
-                        addAIMessage(
-                            chat.response
-                        );
-
-                    }
+                        })
 
                 }
             );
 
 
-            scrollToBottom();
+        const result =
+            await parseJSONResponse(
+                response
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result?.message ||
+                "Chat request failed."
+            );
+
+        }
+
+
+        return result;
+
+    }
+
+
+    /*
+    ========================================================
+       SEND TEXT + IMAGE TO AI
+    ========================================================
+    */
+
+    async function sendTextAndImageToAI(
+        text,
+        imageDataUrl
+    ) {
+
+        if (!text && !imageDataUrl) {
+
+            return null;
+
+        }
+
+
+        const response =
+            await fetch(
+                API_CHAT,
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            client_id:
+                                clientId,
+
+                            message:
+                                text || "",
+
+                            image:
+                                imageDataUrl || null
+
+                        })
+
+                }
+            );
+
+
+        const result =
+            await parseJSONResponse(
+                response
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result?.message ||
+                "AI image + text request failed."
+            );
+
+        }
+
+
+        /*
+        Render AI response
+        */
+
+        renderAIResponse(
+            result
+        );
+
+
+        return result;
+
+    }
+
+
+    /*
+    ========================================================
+       IMAGE-ONLY FUNCTION
+       Waxaa loo isticmaali karaa haddii aad rabto
+       image-only inuu kaliya match sameeyo.
+    ========================================================
+    */
+
+    async function sendImageOnly(
+        file
+    ) {
+
+        if (!file) {
+            return;
+        }
+
+
+        const result =
+            await matchImage(
+                file
+            );
+
+
+        if (
+            result?.found === true &&
+            result?.match === "exact"
+        ) {
+
+            renderDatabaseMatch(
+                result
+            );
+
+        } else {
+
+            renderDatabaseNotFound(
+                result
+            );
+
+        }
+
+
+        clearSelectedImage();
+
+
+        await loadChatHistory(
+            false
+        );
+
+
+        return result;
+
+    }
+
+
+    /*
+    ========================================================
+       JSON RESPONSE PARSER
+    ========================================================
+    */
+
+    async function parseJSONResponse(
+        response
+    ) {
+
+        const contentType =
+            response.headers.get(
+                "content-type"
+            ) || "";
+
+
+        if (
+            contentType.includes(
+                "application/json"
+            )
+        ) {
+
+            return await response.json();
+
+        }
+
+
+        const text =
+            await response.text();
+
+
+        return {
+
+            success:
+                response.ok,
+
+            message:
+                text ||
+                "Server response lama fahmi."
+
+        };
+
+    }
+
+
+    /*
+    ========================================================
+       CHAT HISTORY
+    ========================================================
+    */
+
+    async function loadChatHistory(
+        showLoading = true
+    ) {
+
+        if (
+            !historyContainer
+        ) {
+
+            return;
+
+        }
+
+
+        try {
+
+            if (showLoading) {
+
+                historyContainer.innerHTML =
+                    `
+                    <div class="history-loading">
+                        ⏳ Soo dejinaya...
+                    </div>
+                    `;
+
+            }
+
+
+            const response =
+                await fetch(
+                    `${API_HISTORY}?client_id=${encodeURIComponent(
+                        clientId
+                    )}`
+                );
+
+
+            const result =
+                await parseJSONResponse(
+                    response
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    result?.message ||
+                    "History lama soo qaadi karin."
+                );
+
+            }
+
+
+            renderChatHistory(
+                result?.chats ||
+                []
+            );
+
 
         } catch (error) {
 
-            console.warn(
-                "History error:",
+            console.error(
+                "HISTORY ERROR:",
                 error
             );
+
+
+            if (showLoading) {
+
+                historyContainer.innerHTML =
+                    `
+                    <div class="history-empty">
+                        History lama soo qaadi karin.
+                    </div>
+                    `;
+
+            }
 
         }
 
     }
 
 
-    /* =====================================================
-       DELETE CHAT HISTORY
-    ===================================================== */
+    /*
+    ========================================================
+       RENDER CHAT HISTORY
+    ========================================================
+    */
+
+    function renderChatHistory(
+        chats
+    ) {
+
+        if (!historyContainer) {
+            return;
+        }
+
+
+        historyContainer.innerHTML =
+            "";
+
+
+        if (
+            !Array.isArray(chats) ||
+            !chats.length
+        ) {
+
+            historyContainer.innerHTML =
+                `
+                <div class="history-empty">
+                    💬 Weli chat ma jiro.
+                </div>
+                `;
+
+            return;
+
+        }
+
+
+        chats.forEach(
+            chat => {
+
+                const item =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                item.className =
+                    `history-item ${
+                        chat.role || ""
+                    }`;
+
+
+                let text =
+                    chat.message ||
+                    chat.response ||
+                    "";
+
+
+                if (!text) {
+
+                    text =
+                        "🖼️ Sawir";
+
+                }
+
+
+                item.innerHTML =
+                    `
+                    <div class="history-role">
+                        ${
+                            chat.role ===
+                            "user"
+                                ? "👤 Adiga"
+                                : "🤖 AI"
+                        }
+                    </div>
+
+                    <div class="history-text">
+                        ${escapeHtml(
+                            text.substring(
+                                0,
+                                100
+                            )
+                        )}
+                    </div>
+
+                    ${
+                        chat.created_at
+                            ? `
+                                <div class="history-date">
+                                    ${formatDate(
+                                        chat.created_at
+                                    )}
+                                </div>
+                              `
+                            : ""
+                    }
+                    `;
+
+
+                historyContainer.appendChild(
+                    item
+                );
+
+            }
+        );
+
+    }
+
+
+    /*
+    ========================================================
+       FORMAT DATE
+    ========================================================
+    */
+
+    function formatDate(
+        value
+    ) {
+
+        try {
+
+            const date =
+                new Date(
+                    value
+                );
+
+
+            if (
+                Number.isNaN(
+                    date.getTime()
+                )
+            ) {
+
+                return "";
+
+            }
+
+
+            return date.toLocaleString(
+                "so-SO",
+                {
+                    dateStyle:
+                        "short",
+
+                    timeStyle:
+                        "short"
+                }
+            );
+
+        } catch {
+
+            return "";
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       DELETE CHAT
+    ========================================================
+    */
 
     async function deleteChatHistory() {
 
         const confirmed =
             window.confirm(
-                "Ma hubtaa inaad tirtirayso dhammaan Chat History?"
+                "Ma hubtaa inaad tirtirayso dhammaan Chat History-ga?"
             );
 
 
@@ -1585,53 +2784,82 @@
 
             const response =
                 await fetch(
-                    `${API_HISTORY}?client_id=${encodeURIComponent(clientId)}`,
+                    API_HISTORY,
                     {
+
                         method:
-                            "DELETE"
+                            "DELETE",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                client_id:
+                                    clientId
+
+                            })
+
                     }
                 );
 
 
-            const data =
-                await response.json();
+            const result =
+                await parseJSONResponse(
+                    response
+                );
 
 
             if (!response.ok) {
 
                 throw new Error(
-                    data?.error ||
-                    "Chat history lama tirtiri karin."
+                    result?.message ||
+                    "Chat lama tirtiri karin."
                 );
 
             }
 
 
-            const container =
-                ensureMessagesContainer();
+            /*
+            Clear chat screen
+            */
+
+            if (chatContainer) {
+
+                chatContainer.innerHTML =
+                    "";
+
+            }
 
 
-            container.innerHTML =
-                "";
+            /*
+            Clear history
+            */
 
-
-            showStatus(
-                "🗑️ Chat history waa la tirtiray.",
-                false
+            renderChatHistory(
+                []
             );
+
+
+            showTemporaryNotification(
+                "🗑️ Chat History waa la tirtiray.",
+                "success"
+            );
+
 
         } catch (error) {
 
             console.error(
-                "DELETE HISTORY ERROR:",
                 error
             );
 
 
-            showStatus(
-                "❌ " +
-                error.message,
-                true
+            showError(
+                error.message ||
+                "Chat lama tirtiri karin."
             );
 
         }
@@ -1639,24 +2867,72 @@
     }
 
 
-    /* =====================================================
-       GALLERY CHANGE
-    ===================================================== */
+    /*
+    ========================================================
+       DELETE BUTTON
+    ========================================================
+    */
 
-    function bindGalleryInput() {
+    if (deleteChatButton) {
 
-        if (!galleryInput) {
-            return;
-        }
+        deleteChatButton.addEventListener(
+            "click",
+            deleteChatHistory
+        );
+
+    }
 
 
-        galleryInput.addEventListener(
-            "change",
-            function () {
+    /*
+    ========================================================
+       ENTER = SEND
+       SHIFT + ENTER = NEW LINE
+    ========================================================
+    */
 
-                handleImageSelected(
-                    this.files?.[0]
-                );
+    if (messageInput) {
+
+        messageInput.addEventListener(
+            "keydown",
+            (event) => {
+
+                /*
+                Enter only
+                */
+
+                if (
+                    event.key ===
+                    "Enter" &&
+                    !event.shiftKey
+                ) {
+
+                    event.preventDefault();
+
+
+                    sendMessage();
+
+                }
+
+
+                /*
+                Shift + Enter
+                */
+
+                if (
+                    event.key ===
+                    "Enter" &&
+                    event.shiftKey
+                ) {
+
+                    /*
+                    Browser default:
+                    New line.
+
+                    We intentionally do not
+                    preventDefault().
+                    */
+
+                }
 
             }
         );
@@ -1664,24 +2940,21 @@
     }
 
 
-    /* =====================================================
-       CAMERA CHANGE
-    ===================================================== */
+    /*
+    ========================================================
+       SEND BUTTON
+    ========================================================
+    */
 
-    function bindCameraInput() {
+    if (sendButton) {
 
-        if (!cameraInput) {
-            return;
-        }
+        sendButton.addEventListener(
+            "click",
+            (event) => {
 
+                event.preventDefault();
 
-        cameraInput.addEventListener(
-            "change",
-            function () {
-
-                handleImageSelected(
-                    this.files?.[0]
-                );
+                sendMessage();
 
             }
         );
@@ -1689,119 +2962,257 @@
     }
 
 
-    /* =====================================================
-       BUTTON EVENTS
-    ===================================================== */
+    /*
+    ========================================================
+       FORM SUBMIT
+    ========================================================
+    */
 
-    function bindEvents() {
+    if (chatForm) {
 
-        if (sendButton) {
+        chatForm.addEventListener(
+            "submit",
+            (event) => {
 
-            sendButton.addEventListener(
-                "click",
-                sendMessage
-            );
+                event.preventDefault();
 
-        }
+                sendMessage();
 
+            }
+        );
 
-        if (galleryButton) {
-
-            galleryButton.addEventListener(
-                "click",
-                function (event) {
-
-                    event.preventDefault();
-
-                    openGallery();
-
-                }
-            );
-
-        }
+    }
 
 
-        if (cameraButton) {
+    /*
+    ========================================================
+       PASTE IMAGE
+    ========================================================
+    */
 
-            cameraButton.addEventListener(
-                "click",
-                function (event) {
+    document.addEventListener(
+        "paste",
+        (event) => {
 
-                    event.preventDefault();
-
-                    openCamera();
-
-                }
-            );
-
-        }
+            const items =
+                event.clipboardData?.items;
 
 
-        if (removeImageButton) {
-
-            removeImageButton.addEventListener(
-                "click",
-                removeSelectedImage
-            );
-
-        }
+            if (!items) {
+                return;
+            }
 
 
-        if (clearChatButton) {
+            for (
+                const item of items
+            ) {
 
-            clearChatButton.addEventListener(
-                "click",
-                deleteChatHistory
-            );
+                if (
+                    item.type &&
+                    item.type.startsWith(
+                        "image/"
+                    )
+                ) {
 
-        }
-
-
-        bindGalleryInput();
-
-        bindCameraInput();
-
-
-        /* =================================================
-           ENTER -> SEND
-           SHIFT + ENTER -> NEW LINE
-        ================================================= */
-
-        if (messageInput) {
-
-            messageInput.addEventListener(
-                "keydown",
-                function (event) {
-
-                    if (
-                        event.key ===
-                        "Enter"
-                    ) {
-
-                        if (
-                            event.shiftKey
-                        ) {
-
-                            /*
-                             * Shift + Enter
-                             * = New line
-                             */
-
-                            return;
-                        }
+                    const file =
+                        item.getAsFile();
 
 
-                        /*
-                         * Enter
-                         * = Send
-                         */
+                    if (file) {
 
-                        event.preventDefault();
-
-                        sendMessage();
+                        selectImage(
+                            file
+                        );
 
                     }
 
+
+                    break;
+
+                }
+
+            }
+
+        }
+    );
+
+
+    /*
+    ========================================================
+       DRAG & DROP IMAGE
+    ========================================================
+    */
+
+    function initializeDragDrop() {
+
+        const dropTarget =
+            chatContainer ||
+            document.body;
+
+
+        if (!dropTarget) {
+            return;
+        }
+
+
+        [
+            "dragenter",
+            "dragover"
+        ].forEach(
+            eventName => {
+
+                dropTarget.addEventListener(
+                    eventName,
+                    (event) => {
+
+                        event.preventDefault();
+
+                        event.stopPropagation();
+
+                        dropTarget.classList.add(
+                            "drag-over"
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+        [
+            "dragleave",
+            "drop"
+        ].forEach(
+            eventName => {
+
+                dropTarget.addEventListener(
+                    eventName,
+                    (event) => {
+
+                        event.preventDefault();
+
+                        event.stopPropagation();
+
+                        dropTarget.classList.remove(
+                            "drag-over"
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+        dropTarget.addEventListener(
+            "drop",
+            (event) => {
+
+                const files =
+                    event.dataTransfer?.files;
+
+
+                if (
+                    !files ||
+                    !files.length
+                ) {
+
+                    return;
+
+                }
+
+
+                const image =
+                    Array.from(
+                        files
+                    ).find(
+                        file =>
+                            file.type.startsWith(
+                                "image/"
+                            )
+                    );
+
+
+                if (image) {
+
+                    selectImage(
+                        image
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /*
+    ========================================================
+       MOBILE RESPONSIVE HANDLING
+    ========================================================
+    */
+
+    function initializeMobileHandling() {
+
+        const setViewportHeight =
+            () => {
+
+                const vh =
+                    window.innerHeight *
+                    0.01;
+
+
+                document.documentElement.style.setProperty(
+                    "--app-vh",
+                    `${vh}px`
+                );
+
+            };
+
+
+        setViewportHeight();
+
+
+        window.addEventListener(
+            "resize",
+            setViewportHeight
+        );
+
+
+        window.addEventListener(
+            "orientationchange",
+            () => {
+
+                setTimeout(
+                    setViewportHeight,
+                    250
+                );
+
+            }
+        );
+
+
+        /*
+        Mobile keyboard handling
+        */
+
+        if (
+            window.visualViewport
+        ) {
+
+            window.visualViewport.addEventListener(
+                "resize",
+                () => {
+
+                    document.body.classList.add(
+                        "keyboard-visible"
+                    );
+
+
+                    scrollChatToBottom();
+
                 }
             );
 
@@ -1810,41 +3221,191 @@
     }
 
 
-    /* =====================================================
-       HEALTH CHECK
-    ===================================================== */
+    /*
+    ========================================================
+       MOBILE IMAGE CAMERA/GALLERY
+    ========================================================
+    */
 
-    async function checkHealth() {
+    function initializeMobileImageButtons() {
+
+        /*
+        Add fallback buttons if HTML doesn't
+        have gallery/camera buttons.
+        */
+
+        if (
+            !galleryButton &&
+            !cameraButton
+        ) {
+
+            createAutomaticMediaButtons();
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       AUTOMATIC MEDIA BUTTONS
+    ========================================================
+    */
+
+    function createAutomaticMediaButtons() {
+
+        const container =
+            document.createElement(
+                "div"
+            );
+
+
+        container.id =
+            "nasiibMediaButtons";
+
+
+        container.className =
+            "nasiib-media-buttons";
+
+
+        const gallery =
+            document.createElement(
+                "button"
+            );
+
+
+        gallery.type =
+            "button";
+
+
+        gallery.id =
+            "nasiibDynamicGalleryButton";
+
+
+        gallery.innerHTML =
+            "🖼️ Gallery";
+
+
+        gallery.addEventListener(
+            "click",
+            () => {
+
+                galleryInput.click();
+
+            }
+        );
+
+
+        const camera =
+            document.createElement(
+                "button"
+            );
+
+
+        camera.type =
+            "button";
+
+
+        camera.id =
+            "nasiibDynamicCameraButton";
+
+
+        camera.innerHTML =
+            "📷 Camera";
+
+
+        camera.addEventListener(
+            "click",
+            () => {
+
+                cameraInput.click();
+
+            }
+        );
+
+
+        container.appendChild(
+            gallery
+        );
+
+
+        container.appendChild(
+            camera
+        );
+
+
+        if (chatForm) {
+
+            chatForm.parentNode.insertBefore(
+                container,
+                chatForm
+            );
+
+        } else {
+
+            document.body.prepend(
+                container
+            );
+
+        }
+
+    }
+
+
+    /*
+    ========================================================
+       HEALTH CHECK
+    ========================================================
+    */
+
+    async function checkServerHealth() {
 
         try {
 
             const response =
                 await fetch(
-                    API_HEALTH
+                    API_HEALTH,
+                    {
+                        method:
+                            "GET"
+                    }
                 );
 
 
-            const data =
-                await response.json();
+            const result =
+                await parseJSONResponse(
+                    response
+                );
 
 
             if (
-                data.status ===
-                "online"
+                result?.success
             ) {
 
-                showStatus(
-                    "🟢 Server online",
-                    false
+                console.log(
+                    "✅ Server:",
+                    result.status
+                );
+
+
+                console.log(
+                    "📚 Knowledge:",
+                    result.knowledge_count
+                );
+
+
+                console.log(
+                    "💬 Chats:",
+                    result.chat_count
                 );
 
             }
 
-        } catch {
+        } catch (error) {
 
-            showStatus(
-                "🔴 Server-ka lama xiriirin.",
-                true
+            console.warn(
+                "⚠️ Server health check failed:",
+                error.message
             );
 
         }
@@ -1852,145 +3413,437 @@
     }
 
 
-    /* =====================================================
-       INITIALIZE
-    ===================================================== */
+    /*
+    ========================================================
+       AUTO TEXTAREA RESIZE
+    ========================================================
+    */
 
-    function initialize() {
+    function initializeTextareaResize() {
 
-        /*
-         * DOM-ka dib ayaa loo raadinayaa
-         * haddii script-ku ku jiro HEAD.
-         */
-
-        messageInput =
-            messageInput ||
-            firstElement([
-                "messageInput",
-                "chatInput",
-                "promptInput",
-                "message",
-                "userMessage",
-                "textInput"
-            ]);
+        if (!messageInput) {
+            return;
+        }
 
 
-        sendButton =
-            sendButton ||
-            firstElement([
-                "sendButton",
-                "sendBtn",
-                "sendMessage",
-                "send"
-            ]);
+        const resize =
+            () => {
+
+                /*
+                Only textarea
+                */
+
+                if (
+                    messageInput.tagName
+                        .toLowerCase() !==
+                    "textarea"
+                ) {
+
+                    return;
+
+                }
 
 
-        galleryButton =
-            galleryButton ||
-            firstElement([
-                "galleryButton",
-                "galleryBtn",
-                "gallery"
-            ]);
+                messageInput.style.height =
+                    "auto";
 
 
-        cameraButton =
-            cameraButton ||
-            firstElement([
-                "cameraButton",
-                "cameraBtn",
-                "camera"
-            ]);
+                const maxHeight =
+                    window.innerWidth <= 600
+                        ? 120
+                        : 180;
 
 
-        galleryInput =
-            galleryInput ||
-            firstElement([
-                "galleryInput",
-                "galleryFile",
-                "imageInput",
-                "fileInput"
-            ]);
+                messageInput.style.height =
+                    Math.min(
+                        messageInput.scrollHeight,
+                        maxHeight
+                    ) + "px";
+
+            };
 
 
-        cameraInput =
-            cameraInput ||
-            firstElement([
-                "cameraInput",
-                "cameraFile",
-                "cameraFileInput"
-            ]);
+        messageInput.addEventListener(
+            "input",
+            resize
+        );
 
 
-        imagePreview =
-            imagePreview ||
-            firstElement([
-                "imagePreview",
-                "previewImage",
-                "selectedImage"
-            ]);
-
-
-        imagePreviewContainer =
-            imagePreviewContainer ||
-            firstElement([
-                "imagePreviewContainer",
-                "previewContainer",
-                "imagePreviewBox"
-            ]);
-
-
-        removeImageButton =
-            removeImageButton ||
-            firstElement([
-                "removeImageButton",
-                "removeImageBtn",
-                "removeImage"
-            ]);
-
-
-        messagesContainer =
-            messagesContainer ||
-            firstElement([
-                "chatMessages",
-                "messages",
-                "chatArea",
-                "chatContainer",
-                "conversation"
-            ]);
-
-
-        clearChatButton =
-            clearChatButton ||
-            firstElement([
-                "clearChatButton",
-                "clearChatBtn",
-                "deleteChat",
-                "deleteChats"
-            ]);
-
-
-        statusElement =
-            statusElement ||
-            firstElement([
-                "statusMessage",
-                "chatStatus",
-                "status"
-            ]);
-
-
-        bindEvents();
-
-        loadChatHistory();
-
-        checkHealth();
+        resize();
 
     }
 
 
-    /* =====================================================
+    /*
+    ========================================================
+       AUTO INSERT IMAGE PREVIEW CSS
+       Haddii style.css uusan lahayn
+       classes-kan, JS ayaa ku daraya.
+    ========================================================
+    */
+
+    function injectFallbackStyles() {
+
+        if (
+            document.getElementById(
+                "nasiibAppFallbackStyles"
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        const style =
+            document.createElement(
+                "style"
+            );
+
+
+        style.id =
+            "nasiibAppFallbackStyles";
+
+
+        style.textContent = `
+
+            .nasiib-auto-image-preview {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px;
+                margin: 8px 0;
+                position: relative;
+                width: fit-content;
+                max-width: 90%;
+                border-radius: 14px;
+                background: rgba(127,127,127,.12);
+            }
+
+            .nasiib-auto-image-preview img {
+                width: 90px;
+                height: 90px;
+                object-fit: cover;
+                border-radius: 10px;
+                display: block;
+            }
+
+            .nasiib-auto-remove-image {
+                width: 32px;
+                height: 32px;
+                border: 0;
+                border-radius: 50%;
+                cursor: pointer;
+                background: #d33;
+                color: white;
+                font-size: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .database-match-card,
+            .image-not-found-card,
+            .knowledge-result {
+                margin: 10px 0;
+                padding: 14px;
+                border-radius: 15px;
+                background: rgba(127,127,127,.10);
+            }
+
+            .database-match-header {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                align-items: center;
+                margin-bottom: 10px;
+            }
+
+            .exact-badge {
+                padding: 4px 8px;
+                border-radius: 20px;
+                font-size: 11px;
+                font-weight: 700;
+                background: #10a37f;
+                color: #fff;
+            }
+
+            .database-match-title,
+            .knowledge-result-title {
+                font-weight: 700;
+                font-size: 17px;
+                margin-bottom: 10px;
+            }
+
+            .database-image img,
+            .knowledge-result-image {
+                display: block;
+                width: 100%;
+                max-width: 420px;
+                max-height: 420px;
+                object-fit: contain;
+                border-radius: 12px;
+                margin: 8px 0;
+            }
+
+            .database-content,
+            .database-knowledge,
+            .knowledge-result-content {
+                line-height: 1.6;
+                margin-top: 10px;
+            }
+
+            .database-audio {
+                margin-top: 14px;
+            }
+
+            .play-audio-btn,
+            .knowledge-audio-btn {
+                border: 0;
+                border-radius: 10px;
+                padding: 10px 14px;
+                cursor: pointer;
+                font-weight: 600;
+            }
+
+            .not-found-title {
+                font-weight: 700;
+                margin-bottom: 10px;
+            }
+
+            .ai-image-answer {
+                margin-top: 8px;
+                line-height: 1.6;
+            }
+
+            .nasiib-media-buttons {
+                display: flex;
+                gap: 8px;
+                margin: 8px 0;
+                flex-wrap: wrap;
+            }
+
+            .nasiib-media-buttons button {
+                border: 0;
+                border-radius: 10px;
+                padding: 9px 12px;
+                cursor: pointer;
+            }
+
+            .history-item {
+                padding: 9px;
+                margin-bottom: 6px;
+                border-radius: 10px;
+                cursor: default;
+            }
+
+            .history-role {
+                font-size: 12px;
+                opacity: .7;
+                margin-bottom: 3px;
+            }
+
+            .history-text {
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .history-date {
+                font-size: 10px;
+                opacity: .55;
+                margin-top: 3px;
+            }
+
+            .history-empty,
+            .history-loading {
+                padding: 12px;
+                text-align: center;
+                opacity: .65;
+            }
+
+            .message-image img {
+                max-width: min(320px, 80vw);
+                max-height: 320px;
+                object-fit: contain;
+                border-radius: 14px;
+                margin-bottom: 8px;
+            }
+
+            .message-text {
+                line-height: 1.6;
+                word-break: break-word;
+            }
+
+            .drag-over {
+                outline: 2px dashed #10a37f;
+                outline-offset: -4px;
+            }
+
+            @media (max-width: 600px) {
+
+                .database-match-card,
+                .image-not-found-card,
+                .knowledge-result {
+                    padding: 11px;
+                    border-radius: 12px;
+                }
+
+                .database-image img,
+                .knowledge-result-image {
+                    max-height: 280px;
+                }
+
+                .message-image img {
+                    max-width: 75vw;
+                    max-height: 280px;
+                }
+
+                .database-match-title,
+                .knowledge-result-title {
+                    font-size: 15px;
+                }
+
+                .nasiib-auto-image-preview img {
+                    width: 70px;
+                    height: 70px;
+                }
+
+            }
+
+        `;
+
+
+        document.head.appendChild(
+            style
+        );
+
+    }
+
+
+    /*
+    ========================================================
+       SAVE CLIENT ID GLOBALLY
+    ========================================================
+    */
+
+    window.NasiibChat = {
+
+        clientId,
+
+        sendMessage,
+
+        selectImage,
+
+        clearSelectedImage,
+
+        matchImage,
+
+        sendImageOnly,
+
+        loadChatHistory,
+
+        deleteChatHistory,
+
+        checkServerHealth
+
+    };
+
+
+    /*
+    ========================================================
+       INITIALIZE
+    ========================================================
+    */
+
+    function initializeApp() {
+
+        console.log(
+            "===================================="
+        );
+
+        console.log(
+            "🇸🇴 NASIIB BUSINESS CENTER"
+        );
+
+        console.log(
+            "👤 Public User"
+        );
+
+        console.log(
+            "Client ID:",
+            clientId
+        );
+
+        console.log(
+            "===================================="
+        );
+
+
+        /*
+        CSS
+        */
+
+        injectFallbackStyles();
+
+
+        /*
+        File inputs
+        */
+
+        initializeFileInputs();
+
+
+        /*
+        Mobile
+        */
+
+        initializeMobileHandling();
+
+
+        /*
+        Drag & Drop
+        */
+
+        initializeDragDrop();
+
+
+        /*
+        Automatic buttons
+        */
+
+        initializeMobileImageButtons();
+
+
+        /*
+        Textarea
+        */
+
+        initializeTextareaResize();
+
+
+        /*
+        History
+        */
+
+        loadChatHistory(
+            true
+        );
+
+
+        /*
+        Server
+        */
+
+        checkServerHealth();
+
+    }
+
+
+    /*
+    ========================================================
        DOM READY
-    ===================================================== */
+    ========================================================
+    */
 
     if (
         document.readyState ===
@@ -1999,43 +3852,13 @@
 
         document.addEventListener(
             "DOMContentLoaded",
-            initialize
+            initializeApp
         );
 
     } else {
 
-        initialize();
+        initializeApp();
 
     }
-
-
-    /* =====================================================
-       PUBLIC API
-    ===================================================== */
-
-    window.NasiibApp = {
-
-        sendMessage,
-
-        openGallery,
-
-        openCamera,
-
-        removeSelectedImage,
-
-        loadChatHistory,
-
-        deleteChatHistory,
-
-        matchImage,
-
-        getClientId() {
-
-            return clientId;
-
-        }
-
-    };
-
 
 })();
