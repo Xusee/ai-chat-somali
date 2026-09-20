@@ -546,40 +546,49 @@ async function initializeDatabase() {
 
   `);
 
+// ==========================================
+// KNOWLEDGE IMAGE/AUDIO URL MIGRATION
+// ==========================================
 
-  // ==========================================
-  // KNOWLEDGE IMAGE COLUMNS MIGRATION
-  // ==========================================
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_url TEXT
+`);
 
-  await query(`
-    ALTER TABLE knowledge
-    ADD COLUMN IF NOT EXISTS image_hash TEXT
-  `);
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS audio_url TEXT
+`);
 
-  await query(`
-    ALTER TABLE knowledge
-    ADD COLUMN IF NOT EXISTS image_phash TEXT
-  `);
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_hash TEXT
+`);
 
-  await query(`
-    ALTER TABLE knowledge
-    ADD COLUMN IF NOT EXISTS image_data BYTEA
-  `);
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_phash TEXT
+`);
 
-  await query(`
-    ALTER TABLE knowledge
-    ADD COLUMN IF NOT EXISTS image_mime TEXT
-  `);
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_data BYTEA
+`);
 
-  await query(`
-    ALTER TABLE knowledge
-    ADD COLUMN IF NOT EXISTS audio_data BYTEA
-  `);
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_mime TEXT
+`);
 
-  await query(`
-    ALTER TABLE knowledge
-    ADD COLUMN IF NOT EXISTS audio_mime TEXT
-  `);
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS audio_data BYTEA
+`);
+
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS audio_mime TEXT
+`);
 
   // kadibna code-kii hore ee line 550...
 
