@@ -837,7 +837,7 @@
 
   function showNotFound() {
     addMessage(
-      "❌ Sawirkan Database-ka lagama helin <abbr titale="fadlan sawirku ha ahaado inta cad oo kaliya ka jar hadii aad screenshot ku qaaday ka jar hareeraha">fadlan</abbr>.",
+      "❌ Sawirkan Database-ka lagama helin <abbr titale=">fadlan</abbr>.",
       "assistant"
     );
   }
