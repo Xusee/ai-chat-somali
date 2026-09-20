@@ -102,26 +102,20 @@ app.use(
    POSTGRESQL
 ===================================================== */
 
+
+
 const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
 
-  connectionString:
-    DATABASE_URL,
-
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? {
-          rejectUnauthorized: false
-        }
-      : undefined,
+  ssl: {
+    rejectUnauthorized: false
+  },
 
   max: 10,
 
-  idleTimeoutMillis:
-    30000,
+  idleTimeoutMillis: 30000,
 
-  connectionTimeoutMillis:
-    10000
-
+  connectionTimeoutMillis: 10000
 });
 
 
@@ -553,6 +547,42 @@ async function initializeDatabase() {
   `);
 
 
+  // ==========================================
+  // KNOWLEDGE IMAGE COLUMNS MIGRATION
+  // ==========================================
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_hash TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_phash TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_data BYTEA
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS image_mime TEXT
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS audio_data BYTEA
+  `);
+
+  await query(`
+    ALTER TABLE knowledge
+    ADD COLUMN IF NOT EXISTS audio_mime TEXT
+  `);
+
+  // kadibna code-kii hore ee line 550...
+
   await query(`
 
     CREATE TABLE IF NOT EXISTS chats (
@@ -580,8 +610,47 @@ async function initializeDatabase() {
     )
 
   `);
+// ==========================================
+// CHATS CLIENT_ID MIGRATION
+// ==========================================
 
+await query(`
+  ALTER TABLE chats
+  ADD COLUMN IF NOT EXISTS client_id TEXT
+`);
+// ==========================================
+// KNOWLEDGE IMAGE COLUMNS MIGRATION
+// ==========================================
 
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_hash TEXT
+`);
+
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_phash TEXT
+`);
+
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_data BYTEA
+`);
+
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS image_mime TEXT
+`);
+
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS audio_data BYTEA
+`);
+
+await query(`
+  ALTER TABLE knowledge
+  ADD COLUMN IF NOT EXISTS audio_mime TEXT
+`);
   await query(`
 
     CREATE INDEX IF NOT EXISTS
@@ -661,32 +730,29 @@ async function createDefaultAdmin() {
       12
     );
 
-
-  await query(
-
-    `
-    INSERT INTO users
-    (
-      email,
-      password,
-      role
-    )
-
-    VALUES
-    (
-      $1,
-      $2,
-      'admin'
-    )
-    `,
-
-    [
-      ADMIN_EMAIL,
-      passwordHash
-    ]
-
-  );
-
+await query(
+  `
+  INSERT INTO users
+  (
+    name,
+    email,
+    password,
+    role
+  )
+  VALUES
+  (
+    $1,
+    $2,
+    $3,
+    'admin'
+  )
+  `,
+ [
+  "Admin",
+  ADMIN_EMAIL,
+  passwordHash
+]
+);
 
   console.log(
     `👑 Default admin created: ${ADMIN_EMAIL}`
